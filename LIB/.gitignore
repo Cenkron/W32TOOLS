@@ -1,0 +1,4 @@
+# Ignore everything in this directory except this file
+# This a non-cleanable capture of the Release LIB files from FWILD
+# They are not intended to be version controlled
+*.lib

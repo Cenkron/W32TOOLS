@@ -1,0 +1,10 @@
+<afx.h>		<afx.h>		0	Common
+<ctype.h>	<ctype.h>	0	  "
+MOVED LINE			1A	Moved
+<string.h>	<string.h>	2	Common
+DIFF 1				X	X
+		DIFF 2 X	X	X
+<stdlib.h>	<stdlib.h>	3	Common
+		MOVED LINE	1B	Moved
+<ctype.h>	<ctype.h>	4	Common
+<afx.h>		<afx.h>		4	  "

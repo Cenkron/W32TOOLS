@@ -1,0 +1,1196 @@
+
+******* Common
+
+000001  /*
+000002  
+000003  
+000004     M   M   EEEEE   M   M   L        OOO     GGG       H   H
+000005     MM MM   E       MM MM   L       O   O   G   G      H   H
+000006     M M M   E       M M M   L       O   O   G          H   H
+000007     M M M   EEEE    M M M   L       O   O   G          HHHHH
+000008     M   M   E       M   M   L       O   O   G GGG      H   H
+000009     M   M   E       M   M   L       O   O   G   G  ..  H   H
+000010     M   M   EEEEE   M   M   LLLLL    OOO     GGGG  ..  H   H
+000011  
+000012  
+000013  
+000014  
+000015    Modification History
+000016  
+000017    Date    Programmer              Modification
+000018  --------  ------------------- -----------------------------------------------
+000019  93/11/10  Pat Ireland         ORIGINAL
+000020  93/12/23  Pat Ireland         Add #define LOG_IMAN_CI_INFO & struct
+000021  94/01/11  Pat Ireland         Add #define LOG_IMAN_RELEASE
+000022  94/01/18  Pat Ireland         Add usPICISequence to MEM_LOG_IMAGE_READY &
+000023                                                                   add LOG_IMAN_POINT & struct
+000024  94/01/27  Pat Ireland         Add LOG_IMAN_RELEASE & struct
+000025  94/01/28  Pat Ireland         Add support for FILS logging
+000026  94/02/03  Pat Ireland         Add #define LOG_FILS_POINT, LOG_FILS_NEXT/LAST
+000027  94/02/10  Pat Ireland         Add usImagesQueued to MEM_LOG_IMAGE_READY
+000028  94/02/15  Pat Ireland         Add LOG_IMAN_THROTTLE & struct
+000029  94/02/24  Pat Ireland         Add LOG_IMAN_DOC_HOLD & struct
+000030  94/03/29  Pat Ireland         Add LOG_IMAN_OBJECT & struct
+000031  94/09/01  Pat Ireland         Update LOG_THROTTLE
+000032  94/10/06  Pat Ireland         Add LOG_IMAN_DRIVER_MSG & struct
+000033  96/05/22  Pat Ireland         Support for new IMAN memory management
+
+******* Only in  \projects\edsl\h\MEMLOG.H
+
+000034  97/04/10  Pat Ireland         Support for IMONDIAG
+000035  97/05/05  Brian Johnson       Ported to Win NT 4.x
+
+******* Common
+
+000036  
+000037  */
+000038  
+
+******* Only in  \projects\edsl\h\MEMLOG.H
+
+000039  #ifndef INCL_MEMLOG_H
+
+******* Only in  \buic\inc\memlog.h
+
+000037  #if ! defined(INCL_MEMLOG_H)
+000038  
+
+******* Common
+
+000040  #define INCL_MEMLOG_H
+000041  
+
+******* Only in  \projects\edsl\h\MEMLOG.H
+
+000042  #ifndef  MEMLOGDLL
+000043  #define  MEMLOGDLL      DLLIMPORT
+000044  #endif
+000045  
+000046  #if defined(__cplusplus)
+
+******* Moved in  \projects\edsl\h\MEMLOG.H
+
+000047  extern "C" {
+
+******* Only in  \projects\edsl\h\MEMLOG.H
+
+000048  #endif
+000049  
+000050  #ifndef APIRET
+000051  #define APIRET DWORD
+000052  #endif
+000053  
+000054  typedef PVOID  *PPVOID;
+000055  
+000056  #define LOG_BANK_COUNT         4        // Must be power of two
+
+******* Only in  \buic\inc\memlog.h
+
+000041  #define LOG_BANK_COUNT         4
+
+******* Common
+
+000057  #define LOG_BANK_CAPACITY      262144
+
+******* Only in  \projects\edsl\h\MEMLOG.H
+
+000058  #define LOG_MEMORY_SIZE        (LOG_BANK_COUNT * LOG_BANK_CAPACITY)
+000059  #define SEMAPHORE_TIMEOUT      5000 // Semaphore wait timeout
+000060  
+000061  #define IMAN_MEMORY_NAME       "IMANMEMORYLOGMEMORY"
+000062  #define IAPP_MEMORY_NAME       "IAPPMEMORYLOGMEMORY"
+000063  #define FILS_MEMORY_NAME       "FILSMEMORYLOGMEMORY"
+000064  #define IMON_MEMORY_NAME       "IMONMEMORYLOGMEMORY"
+000065  #define RAMIT_MEMORY_NAME      "RAMITMEMORYLOGMEMORY"
+000066  
+000067  #define IMAN_SEM_NAME          "IMANMEMORYLOGSEMAPHORE"
+000068  #define IAPP_SEM_NAME          "IAPPMEMORYLOGSEMAPHORE"
+000069  #define FILS_SEM_NAME          "FILSMEMORYLOGSEMAPHORE"
+000070  #define IMON_SEM_NAME          "IMONMEMORYLOGSEMAPHORE"
+000071  #define RAMIT_SEM_NAME         "RAMITMEMORYLOGSEMAPHORE"
+
+******* Only in  \buic\inc\memlog.h
+
+000043  
+000044  #define IMAN_MEMORY_NAME       "\\SHAREMEM\\IMANMEM.MEM"
+000045  #define IAPP_MEMORY_NAME       "\\SHAREMEM\\IAPPMEN.MEM"
+000046  #define FILS_MEMORY_NAME       "\\SHAREMEM\\FILSMEN.MEM"
+000047  
+000048  #define IMAN_MEMORY_SEMAPHORE  "\\SEM32\\PWIIMAN.SEM"
+000049  #define IAPP_MEMORY_SEMAPHORE  "\\SEM32\\PWIIAPP.SEM"
+000050  #define FILS_MEMORY_SEMAPHORE  "\\SEM32\\PWIFILS.SEM"
+
+******* Common
+
+000072  
+000073  #define IMAN_LOGGING           "LOGGING"
+000074  #define IAPP_LOGGING           "LOGGING"
+000075  #define FILS_LOGGING           "LOGGING"
+
+******* Only in  \projects\edsl\h\MEMLOG.H
+
+000076  #define IMON_LOGGING           "LOGGING"
+000077  #define RAMIT_LOGGING          "LOGGING"
+
+******* Common
+
+000078  
+000079  #define LOGGING_ENABLED        "ENABLED"
+000080  #define LOGGING_DISABLED       "DISABLED"
+000081  
+000082  #define IMAN_MEMORY_LOG        0
+000083  #define IAPP_MEMORY_LOG        1
+000084  #define FILS_MEMORY_LOG        2
+
+******* Only in  \projects\edsl\h\MEMLOG.H
+
+000085  #define IMON_MEMORY_LOG        3
+000086  #define RAMIT_MEMORY_LOG       4
+000087  #define LAST_MEMORY_LOG        4
+000088  
+000089  #define MEMORY_LOG_CHANNELS    (LAST_MEMORY_LOG + 1)
+
+******* Only in  \buic\inc\memlog.h
+
+000062  #define LAST_MEMORY_LOG        2
+
+******* Common
+
+000090  
+000091  typedef
+000092      struct
+000093          {
+000094          ULONG                  ulCurrentBank;
+000095          ULONG                  aulCurrentSize [ LOG_BANK_COUNT ];
+
+******* Only in  \projects\edsl\h\MEMLOG.H
+
+000096          BYTE                   abMemoryLog    [ LOG_MEMORY_SIZE ];
+
+******* Only in  \buic\inc\memlog.h
+
+000069          BYTE                   abMemoryLog [ LOG_BANK_COUNT *
+000070                                               LOG_BANK_CAPACITY ];
+
+******* Common
+
+000097          }   MEMORY_LOG, MEMLOG, * PMEMLOG;
+000098  
+000099  typedef
+000100      struct
+000101          {
+000102          BYTE                   bCommand;
+000103          BYTE                   bLength;
+000104          }   MEMORY_LOG_HEADER, MEMLOGHDR, MLH, *PMLH, * PMEMLOGHDR;
+000105  
+000106  typedef
+000107      struct
+000108          {
+000109          ULONG                  ulTimeStamp;
+000110          ULONG                  ulSequenceNumber;
+000111          MLH                    MemLogHeader;
+000112          BYTE                   abData [ 1 ];
+000113          }   MEMORY_LOG_ENTRY, MEMLOGENTRY, MLE, *PMLE, *PMEMLOGENTRY;
+000114  
+000115  #if defined(MEMLOGACCESS)
+000116  
+
+******* Only in  \projects\edsl\h\MEMLOG.H
+
+000117  // This portion must be defined in a single file only
+000118  // NOTE that this mechanism depends on having per-process data instances !
+000119  
+000120  static char                    *apszMemoryNames [ MEMORY_LOG_CHANNELS ] =
+
+******* Only in  \buic\inc\memlog.h
+
+000091  static char                   *apszMemoryNames [ 3 ] =
+
+******* Common
+
+000121      {
+000122      IMAN_MEMORY_NAME,
+000123      IAPP_MEMORY_NAME,
+
+******* Only in  \projects\edsl\h\MEMLOG.H
+
+000124      FILS_MEMORY_NAME,
+000125      IMON_MEMORY_NAME,
+000126      RAMIT_MEMORY_NAME
+000127      };
+000128  
+000129  static char                    *apszSemaphoreNames [ MEMORY_LOG_CHANNELS ] =
+000130      {
+000131      IMAN_SEM_NAME,
+000132      IAPP_SEM_NAME,
+000133      FILS_SEM_NAME,
+000134      IMON_SEM_NAME,
+000135      RAMIT_SEM_NAME
+000136      };
+000137  
+000138  static HANDLE                  hMapObject = NULL;
+000139  
+000140  static PMEMLOG                 pMemoryArea = (PMEMLOG) NULL;
+000141  
+000142  static USHORT                  usAccessMemoryHandle   = (USHORT)(-1);
+000143  
+000144  static HANDLE                  hMemorySemaphoreObject = NULL;
+000145  
+000146  static ULONG                   ulSequenceNumber = 0;
+000147  
+000148  #endif
+000149  
+000150  
+000151  
+000152  MEMLOGDLL APIRET WINAPI AccessMemoryLogger
+
+******* Only in  \buic\inc\memlog.h
+
+000095      FILS_MEMORY_NAME
+000096      };
+000097  
+000098  static char                   *apszMemoryLogSemaphoreName [ 3 ] =
+000099      {
+000100      IMAN_MEMORY_SEMAPHORE,
+000101      IAPP_MEMORY_SEMAPHORE,
+000102      FILS_MEMORY_SEMAPHORE
+000103      };
+000104  
+000105  static PMEMLOG                 apCreateMemoryAreas [ 3 ] =
+000106      {
+000107      (PMEMLOG) NULL,
+000108      (PMEMLOG) NULL,
+000109      (PMEMLOG) NULL
+000110      };
+000111  
+000112  static PMEMLOG                 apAccessMemoryAreas [ 3 ] =
+000113      {
+000114      (PMEMLOG) NULL,
+000115      (PMEMLOG) NULL,
+000116      (PMEMLOG) NULL
+000117      };
+000118  
+000119  static HMTX                    ahmtxMemorySemaphores [ 3 ];
+000120  
+000121  static ULONG                   aulSequenceNumber [ 3 ] =
+000122      {
+000123      0,
+000124      0,
+000125      0
+000126      };
+000127  
+000128  #endif
+000129  
+000130  #if defined (__CPLUSPLUS)
+000131  
+
+******* Moved in  \buic\inc\memlog.h
+
+000132  extern "C" {
+
+******* Only in  \buic\inc\memlog.h
+
+000133  
+000134  #endif
+000135  
+000136  APIRET APIENTRY AccessMemoryLogger
+000137  
+
+******* Common
+
+000153                          (USHORT         usMemoryHandle);
+000154  
+
+******* Only in  \projects\edsl\h\MEMLOG.H
+
+000155  MEMLOGDLL APIRET WINAPI InitializeMemoryLogger
+
+******* Only in  \buic\inc\memlog.h
+
+000140  APIRET APIENTRY InitializeMemoryLogger
+000141  
+
+******* Common
+
+000156                          (USHORT         usMemoryHandle,
+000157                           PPVOID         ppMemoryArea);
+000158  
+
+******* Only in  \projects\edsl\h\MEMLOG.H
+
+000159  MEMLOGDLL APIRET WINAPI WriteMemoryLogger
+
+******* Only in  \buic\inc\memlog.h
+
+000145  APIRET APIENTRY WriteMemoryLogger
+000146  
+
+******* Common
+
+000160                          (USHORT         usMemoryHandle,
+000161                           PMLH           EntryToLog);
+000162  
+
+******* Only in  \projects\edsl\h\MEMLOG.H
+
+000163  
+
+******* Only in  \buic\inc\memlog.h
+
+000150  #if defined (__CPLUSPLUS)
+000151  
+
+******* Moved in  \buic\inc\memlog.h
+
+000152  }
+
+******* Only in  \buic\inc\memlog.h
+
+000153  
+000154  #endif
+
+******* Common
+
+000164  
+000165  typedef
+000166      struct
+000167          {
+000168          MLH                     MemLogHeader;
+000169          RQM                     QueueEntry;
+000170          }   MEMORY_LOG_QUEUE;
+000171  
+000172  typedef
+000173      struct
+000174          {
+000175          MLH                     MemLogHeader;
+000176          USHORT                  usHostCommand;
+000177          USHORT                  usHostPacketCount;
+000178          USHORT                  usHostRetryCount;
+000179          }   MEMORY_LOG_HOST_MSG;
+000180  
+000181  typedef
+000182      struct
+000183          {
+000184          MLH                     MemLogHeader;
+000185          USHORT                  usRow;
+000186          USHORT                  usCol;
+000187          USHORT                  usRoutine;
+000188          RQM                     QueueEntry;
+000189          }   MEMORY_LOG_STATE;
+000190  
+000191  typedef
+000192      struct
+000193          {
+000194          MLH                     MemLogHeader;
+000195          BYTE                    bDocID;
+000196          BYTE                    bCol;
+000197          USHORT                  usRow;
+000198          USHORT                  usRoutine;
+000199          }   MEMORY_LOG_DOC_STATE;
+000200  
+000201  typedef
+000202      struct
+000203          {
+000204          MLH                     MemLogHeader;
+000205          USHORT                  usRow;
+000206          USHORT                  usCol;
+000207          USHORT                  usRoutine;
+000208          }   MEMORY_LOG_ROUTINE;
+000209  
+000210  typedef
+000211      struct
+000212          {
+000213          MLH                     MemLogHeader;
+000214          ULONG                   ulTotalSize;
+000215          ULONG                   ulDetailDataSize;
+000216          ULONG                   ulFrontImageSize;
+000217          ULONG                   ulBackImageSize;
+000218          }   MEMORY_LOG_DOCUMENT;
+000219  
+000220  typedef
+000221      struct
+000222          {
+000223          MLH                     MemLogHeader;
+000224          BYTE                    bDocID;
+000225          BYTE                    bFiller;
+000226          }   MEMORY_LOG_DOC_ID;
+000227  
+000228  typedef
+000229      struct
+000230          {
+000231          MLH                     MemLogHeader;
+000232          USHORT                  usTrackerSequence;
+000233          USHORT                  usImageCount;
+000234          USHORT                  usCurrentSequence;
+000235          }   MEMORY_LOG_DOC_HOLD;
+000236  
+000237  typedef
+000238      struct
+000239          {
+000240          MLH                     MemLogHeader;
+000241          ULONG                   ulCommitSize;
+000242          ULONG                   ulNextAvailableByte;
+000243          BYTE                    bDocID;
+000244          BYTE                    bFiller;
+000245          }   MEMORY_LOG_RELEASE;
+000246  
+000247  typedef
+000248      struct
+000249          {
+000250          MLH                     MemLogHeader;
+000251          ULONG                   ulTime;
+000252          USHORT                  usSeq;
+000253          USHORT                  usIns;
+000254          BYTE                    bDocID;
+000255          BYTE                    bFiller;
+000256          }   MEMORY_LOG_2IAPP;
+000257  
+000258  typedef
+000259      struct
+000260          {
+000261          MLH                     MemLogHeader;
+000262          BYTE                    bEventID;
+
+******* Only in  \buic\inc\memlog.h
+
+000254          BYTE                   bFiller;
+
+******* Common
+
+000263          }   MEMORY_LOG_EVENT;
+000264  
+000265  typedef
+000266      struct
+000267          {
+000268          MLH                     MemLogHeader;
+
+******* Only in  \projects\edsl\h\MEMLOG.H
+
+000269          BYTE                    bEventID;
+000270          BYTE                    bSideID;
+000271          }   MEMORY_LOG_SIDE_EVENT;
+000272  
+000273  typedef
+000274      struct
+000275          {
+000276          MLH                     MemLogHeader;
+
+******* Common
+
+000277          ULONG                   ulData;
+000278          USHORT                  usData;
+000279          BYTE                    bData;
+000280          BYTE                    bFiller;
+000281          }   MEMORY_LOG_POINT;
+000282  
+000283  typedef
+000284      struct
+000285          {
+000286          MLH                     MemLogHeader;
+000287          char                    acCFSLast [ 16 ];
+000288          }   MEMORY_LOG_CFSL;
+000289  
+000290  typedef
+000291      struct
+000292          {
+000293          MLH                     MemLogHeader;
+
+******* Only in  \projects\edsl\h\MEMLOG.H
+
+000294          BYTE                    bSideID;
+000295          char                    szDeviceName [ 9 ];
+000296          }   MEMORY_LOG_DEVICE;
+000297  
+000298  typedef
+000299      struct
+000300          {
+000301          MLH                     MemLogHeader;
+
+******* Common
+
+000302          ULONG                   ulAddr;
+000303          BYTE                    bAddrType;
+
+******* Only in  \projects\edsl\h\MEMLOG.H
+
+000304          BYTE                    bSideID;
+
+******* Only in  \buic\inc\memlog.h
+
+000280          BYTE                   bFiller;
+
+******* Common
+
+000305          }   MEMORY_LOG_ADDR;
+000306  
+000307  typedef
+000308      struct
+000309          {
+000310          MLH                     MemLogHeader;
+000311          BYTE                    bEntryCompressor;
+000312          BYTE                    bEntryIAPP;
+000313          BYTE                    bEntryActive;
+000314          BYTE                    bEntryRelease;
+000315          BYTE                    bEntryConsume;
+000316          BYTE                    bEntryCopySize;
+000317          BYTE                    bThrottleCompressor;
+000318          BYTE                    bThrottleIAPP;
+000319          BYTE                    bThrottleActive;
+000320          BYTE                    bThrottleRelease;
+000321          BYTE                    bThrottleConsume;
+000322          BYTE                    bThrottleCopySize;
+000323          BYTE                    bReply;
+000324          BYTE                    bFiller;
+000325          }   MEMORY_LOG_THROTTLE;
+000326  
+000327  typedef
+000328      struct
+000329          {
+000330          MLH                     MemLogHeader;
+000331          USHORT                  usImageID;
+000332          USHORT                  usTrackerSequence;
+000333          USHORT                  usImagesQueued;
+000334          BYTE                    bDocID;
+
+******* Only in  \projects\edsl\h\MEMLOG.H
+
+000335          BYTE                    bSideID;
+
+******* Only in  \buic\inc\memlog.h
+
+000311          BYTE                   bFiller;
+
+******* Common
+
+000336          }   MEMORY_LOG_IMG_READY;
+000337  
+000338  typedef
+000339      struct
+000340          {
+000341          MLH                     MemLogHeader;
+000342          BYTE                    bDocID;
+
+******* Only in  \projects\edsl\h\MEMLOG.H
+
+000343          BYTE                    bSideID;
+
+******* Only in  \buic\inc\memlog.h
+
+000319          BYTE                   bCommand;
+
+******* Common
+
+000344          ULONG                   ulRawSize;
+000345          ULONG                   ulRawAddr;
+000346          ULONG                   ulCompSize;
+000347          ULONG                   ulCompAddr;
+000348          }   MEMORY_LOG_FETCH_IMG;
+000349  
+000350  typedef
+000351      struct
+000352          {
+000353          MLH                     MemLogHeader;
+000354          ULONG                   ulRawSize;
+000355          ULONG                   ulRawAddr;
+000356          ULONG                   ulCompSize;
+000357          ULONG                   ulCompAddr;
+000358          ULONG                   ulCompStart;
+000359          ULONG                   ulCompStop;
+
+******* Only in  \projects\edsl\h\MEMLOG.H
+
+000360          BYTE                    bSideID;
+000361          BYTE                    bFIller;
+
+******* Common
+
+000362          }   MEMORY_LOG_CI_INFO;
+000363  
+000364  typedef
+000365      struct
+000366          {
+000367          MLH                     MemLogHeader;
+000368          ULONG                   ulDocAddr;
+000369          BYTE                    bDocID;
+000370          BYTE                    bFiller;
+000371          }   MEMORY_LOG_DISK_ACCESS, *PMLDA;
+000372  
+000373  typedef
+000374      struct
+000375          {
+000376          MLH                     MemLogHeader;
+000377          ULONG                   ulDocumentArrivalTime;
+000378          USHORT                  usDocumentArrivalSequence;
+000379          USHORT                  usDocumentInsertionSequence;
+000380          }   MEMORY_LOG_UNIQUE_ID, *PMLUI;
+000381  
+000382  typedef
+000383      struct
+000384          {
+000385          MLH                     MemLogHeader;
+000386          RQM                     QueueEntry;
+000387          LONG                    lThreadArg;
+
+******* Only in  \projects\edsl\h\MEMLOG.H
+
+000388          }   MEMORY_LOG_DISK_THREAD, *PMLDISKTHRD;
+000389  
+000390  typedef
+000391      struct
+000392          {
+000393          MLH                     MemLogHeader;
+000394          APIRET                  Status;
+
+******* Only in  \buic\inc\memlog.h
+
+000362          }   MEMORY_LOG_QUEUE_1, *PMLQ1;
+000363  
+000364  typedef
+000365      struct
+000366          {
+000367          MLH                    MemLogHeader;
+000368          USHORT                 usStatus;
+
+******* Common
+
+000395          }   MEMORY_LOG_MSG;
+000396  
+000397  typedef
+000398      struct
+000399          {
+000400          MLH                     MemLogHeader;
+000401          BYTE                    bObjectType;
+000402          BYTE                    bDocID;
+000403          USHORT                  usObjectLength;
+000404          }   MEMORY_LOG_OBJECT;
+000405  
+000406  typedef
+000407      struct
+000408          {
+000409          MLH                     MemLogHeader;
+000410          ULONG                   ulBaseAddress;
+000411          ULONG                   ulCurrentCommit;
+000412          ULONG                   ulCommitDelta;
+000413          ULONG                   ulNewAddress;
+000414          BYTE                    bDocID;
+000415          BYTE                    bDirection;
+000416          BYTE                    bLocation;
+000417          BYTE                    bFiller;
+000418          }   MEMORY_LOG_DOS_SET_MEM;
+000419  
+000420  typedef
+000421      struct
+000422          {
+000423          MLH                     MemLogHeader;
+000424          ULONG                   ulBaseAddress;
+000425          ULONG                   ulCommitSize;
+000426          ULONG                   ulReturnSize;
+000427          ULONG                   ulReturnFlag;
+000428          BYTE                    bDocID;
+000429          BYTE                    bLocation;
+000430          }   MEMORY_LOG_QUERY_MEM;
+000431  
+000432  typedef
+000433      struct
+000434          {
+000435          MLH                     MemLogHeader;
+000436          USHORT                  usStateRow;
+000437          USHORT                  usStateRoutine;
+000438          USHORT                  usDriverCommand;
+000439          BYTE                    bCommand;
+
+******* Only in  \projects\edsl\h\MEMLOG.H
+
+000440          BYTE                    bSideID;
+
+******* Only in  \buic\inc\memlog.h
+
+000414          BYTE                   bFiller;
+
+******* Common
+
+000441          }   MEMORY_LOG_DRIVER_MSG;
+000442  
+000443  typedef
+000444      struct
+000445          {
+000446          MLH                     MemLogHeader;
+000447          ULONG                   ulDocAddress;
+000448          USHORT                  usQueueHead;
+000449          USHORT                  usQueueTail;
+000450          USHORT                  usQueueCount;
+000451          BYTE                    bDocID;
+000452          }  MEMORY_LOG_DOC_MEM_MSG;
+000453  
+000454  
+000455  typedef
+000456      struct
+000457          {
+000458          MLH                     MemLogHeader;
+000459          BYTE                  * pbOffset;
+000460          USHORT                  usCount;
+000461          BYTE                    bDocID;
+000462          }   MEMORY_LOG_QUEUE_DOC;
+000463  
+000464  typedef
+000465      struct
+000466          {
+000467          MLH                     MemLogHeader;
+000468          BYTE                  * pbDocHdr;
+000469          BYTE                    bDocID;
+000470          }   MEMORY_LOG_DOC_ADDR;
+000471  
+000472  typedef
+000473      struct
+000474          {
+000475          MLH                     MemLogHeader;
+000476          USHORT                  usDetailLength;
+000477          BYTE                    bDocID;
+000478          BYTE                    bQueueSlot;
+000479          BYTE                    bQueueCount;
+000480          }   MEMORY_LOG_EDSL_2IMAN;
+000481  
+000482  typedef
+000483      struct
+000484          {
+000485          MLH                     MemLogHeader;
+000486          USHORT                  usDetailLength;
+000487          BYTE                    bDocID;
+000488          }   MEMORY_LOG_EDSL_CAPTURE;
+000489  
+000490  #define LOG_IMAN_QUEUE           0
+000491  #define LOG_IMAN_FRONT_IMG       1
+000492  #define LOG_IMAN_BACK_IMG        2
+000493  #define LOG_IMAN_FETCH_IMG       3
+000494  #define LOG_IMAN_IMG_READY       4
+000495  #define LOG_IMAN_EVENT           5
+
+******* Only in  \projects\edsl\h\MEMLOG.H
+
+000496  #define LOG_IMAN_SIDE_EVENT      6
+000497  #define LOG_IMAN_ADDR            7
+000498  #define LOG_IMAN_CI_INFO         8
+000499  #define LOG_IMAN_2IAPP           9
+000500  #define LOG_IMAN_POINT          10
+000501  #define LOG_IMAN_HOST_MSG       11
+000502  #define LOG_IMAN_RELEASE        12
+000503  #define LOG_IMAN_DOC_STATE      13
+000504  #define LOG_IMAN_THROTTLE       14
+000505  #define LOG_IMAN_DOC_HOLD       15
+000506  #define LOG_IMAN_OBJECT         16
+000507  #define LOG_IMAN_DOS_SET_MEM    17
+000508  #define LOG_IMAN_QUERY_MEM      18
+000509  #define LOG_IMAN_DRIVER_MSG     19
+000510  #define LOG_IMAN_GET_DOC_MEM    20
+000511  #define LOG_IMAN_FREE_DOC_MEM   21
+000512  #define LOG_IMAN_DOC_ADDR       22
+000513  #define LOG_IMAN_DEVICE         23
+
+******* Only in  \buic\inc\memlog.h
+
+000470  #define LOG_IMAN_ADDR          6
+000471  #define LOG_IMAN_CI_INFO       7
+000472  #define LOG_IMAN_2IAPP         8
+000473  #define LOG_IMAN_POINT         9
+000474  #define LOG_IMAN_HOST_MSG      10
+000475  #define LOG_IMAN_RELEASE       11
+000476  #define LOG_IMAN_DOC_STATE     12
+000477  #define LOG_IMAN_THROTTLE      13
+000478  #define LOG_IMAN_DOC_HOLD      14
+000479  #define LOG_IMAN_OBJECT        15
+000480  #define LOG_IMAN_DOS_SET_MEM   16
+000481  #define LOG_IMAN_QUERY_MEM     17
+000482  #define LOG_IMAN_DRIVER_MSG    18
+000483  #define LOG_IMAN_GET_DOC_MEM   19    // Get new space
+000484  #define LOG_IMAN_FREE_DOC_MEM  20    // Release existing space
+000485  #define LOG_IMAN_DOC_ADDR      21
+000486  
+
+******* Common
+
+000514  
+000515  #define EVENT_IMAGE_OPEN         0
+
+******* Only in  \projects\edsl\h\MEMLOG.H
+
+000516  #define EVENT_CI_OPEN            1
+000517  #define EVENT_GET_MSG_OPEN       2
+000518  #define EVENT_PUT_MSG_OPEN       3
+000519  #define EVENT_START_OPEN         4
+000520  
+000521  #define EVENT_GET_MSG            5
+000522  #define EVENT_PUT_MSG            6
+000523  
+000524  #define EVENT_ALACRON_OPEN       7
+000525  #define EVENT_ALACRON_CLOSE      8
+000526  #define EVENT_ALACRON_DEV        9
+000527  #define EVENT_ALACRON_MAPLOAD   10
+000528  #define EVENT_ALACRON_ADDR      11
+000529  #define EVENT_ALACRON_CALL      12
+000530  #define EVENT_ALACRON_GET       13
+000531  #define EVENT_ALACRON_START     14
+000532  
+000533  #define EVENT_IMAGE_WRITE       15
+000534  #define EVENT_IMAGE_READ        16
+000535  #define EVENT_IMAGE_CONFIGURE   17
+000536  #define EVENT_IMAGE_ARM         18
+000537  #define EVENT_IMAGE_DISARM      19
+000538  #define EVENT_IMAGE_RESET       20
+000539  #define EVENT_IMAGE_COMMAND     21
+000540  #define EVENT_IMAGE_PROCESS     22
+000541  #define EVENT_IMAGE_IMAGE       23
+000542  #define EVENT_IMAGE_SHUTDOWN    24
+000543  
+000544  #define EVENT_IAPP_STOP         25
+
+******* Only in  \buic\inc\memlog.h
+
+000489  #define EVENT_IMAGE_CLOSE      1
+000490  #define EVENT_IMAGE_WRITE      2
+000491  #define EVENT_IMAGE_READ       3
+000492  #define EVENT_IMAGE_START      4
+000493  #define EVENT_IMAGE_CONFIGURE  5
+000494  #define EVENT_IMAGE_ARM        6
+000495  #define EVENT_IMAGE_DISARM     7
+000496  #define EVENT_IMAGE_RESET      8
+000497  #define EVENT_IMAGE_COMMAND    9
+000498  #define EVENT_IMAGE_PROCESS    10
+000499  #define EVENT_IMAGE_IMAGE      11
+000500  #define EVENT_ALACRON_OPEN     12
+000501  #define EVENT_ALACRON_CLOSE    13
+000502  #define EVENT_ALACRON_DEV      14
+000503  #define EVENT_ALACRON_MAPLOAD  15
+000504  #define EVENT_ALACRON_ADDR     16
+000505  #define EVENT_ALACRON_CALL     17
+000506  #define EVENT_ALACRON_GET      18
+000507  
+
+******* Common
+
+000545  
+000546  #define ADDR_MAIN_VIRTUAL        0
+000547  #define ADDR_READY_VIRTUAL       1
+000548  #define ADDR_READY_PHYSICAL      2
+000549  #define ADDR_ANCHOR_PHYSICAL     3
+000550  #define ADDR_VERSION_PHYSICAL    4
+
+******* Only in  \projects\edsl\h\MEMLOG.H
+
+000551  #define ADDR_EBT_TABLE           5
+000552  #define ADDR_LUT_TABLE           6
+
+******* Common
+
+000553  
+000554  #define EXPAND_SETMEM            0
+000555  #define CONTRACT_SETMEM          1
+000556  
+000557  #define MEMSET_CONSUMED          1
+000558  #define MEMSET_TAIL              2
+000559  #define MEMSET_RELEASE           3
+000560  #define MEMSET_IMAGE             4
+000561  
+000562  #define MEMQUERY_FETCH           1
+000563  #define MEMQUERY_PRE_SHRINK      2
+000564  #define MEMQUERY_POST_SHRINK     3
+000565  
+000566  #if defined (IMANDIAG_PROGRAM)
+000567  
+000568  static char                     *pszIMANCommandNames [ ] =
+000569  
+000570      {
+000571      "STATE",
+000572      "FTIMG",
+000573      "BCKIM",
+000574      "FETCH",
+000575      "READY",
+000576      "EVENT",
+
+******* Only in  \projects\edsl\h\MEMLOG.H
+
+000577      "EVSID",
+
+******* Common
+
+000578      "ADDR ",
+000579      "CI   ",
+000580      "2IAPP",
+000581      "POINT",
+000582      "HOST ",
+000583      "RELEA",
+000584      "DOC  ",
+000585      "THROT",
+000586      "HOLD ",
+000587      "OBJ  ",
+000588      "MSET ",
+000589      "QMEM ",
+000590      "DRMSG",
+000591      "GETDM",
+000592      "FREDM",
+
+******* Only in  \projects\edsl\h\MEMLOG.H
+
+000593      "DOCAR",
+000594      "DEVIC"
+
+******* Only in  \buic\inc\memlog.h
+
+000553      "DOCAR"
+
+******* Common
+
+000595      };
+000596  
+000597  static char                     *pszIMANEventNames [ ] =
+000598      {
+
+******* Only in  \projects\edsl\h\MEMLOG.H
+
+000599      "IMAGE OPEN",        // Side sensitive
+000600      "CI OPEN",           // Side sensitive
+000601      "GET MSG OPEN",      // Side sensitive
+000602      "PUT MSG OPEN",      // Side sensitive
+000603      "START OPEN",        // Side sensitive
+000604  
+000605      "GET MSG",           // Side sensitive
+000606      "PUT MSG",           // Side sensitive
+000607  
+000608      "ALACRON OPEN",      // Side sensitive
+000609      "ALACRON CLOSE",     // Side sensitive
+000610      "ALACRON DEV",       // Side sensitive
+000611      "ALACRON MAPLOAD",   // Side sensitive
+000612      "ALACRON ADDR",      // Side sensitive
+000613      "ALACRON CALL",      // Side sensitive
+000614      "ALACRON GET",       // Side sensitive
+000615      "ALACRON START",     // Side sensitive
+000616  
+
+******* Only in  \buic\inc\memlog.h
+
+000558      "IMAGE OPEN",
+000559      "IMAGE CLOSE",
+
+******* Common
+
+000617      "IMAGE WRITE",
+000618      "IMAGE READ",
+
+******* Only in  \buic\inc\memlog.h
+
+000562      "IMAGE START",
+
+******* Common
+
+000619      "IMAGE CONFIGURE",
+000620      "IMAGE ARM",
+000621      "IMAGE DISARM",
+000622      "IMAGE RESET",
+000623      "IMAGE COMMAND",
+000624      "IMAGE PROCESS",
+000625      "IMAGE IMAGE",
+
+******* Only in  \projects\edsl\h\MEMLOG.H
+
+000626      "IMAGE SHUTDOWN",
+000627  
+000628      "IAPP STOP"
+
+******* Only in  \buic\inc\memlog.h
+
+000570      "ALACRON OPEN",
+000571      "ALACRON CLOSE",
+000572      "ALACRON DEV",
+000573      "ALACRON MAPLOAD",
+000574      "ALACRON ADDR",
+000575      "ALACRON CALL",
+000576      "ALACRON GET"
+
+******* Common
+
+000629      };
+000630  
+000631  static char                     *pszIMANAddrNames [ ] =
+
+******* Only in  \projects\edsl\h\MEMLOG.H
+
+000632  
+
+******* Common
+
+000633      {
+000634      "MAIN VIRTUAL",
+000635      "READY VIRTUAL",
+000636      "READY PHYSICAL",
+000637      "ANCHOR PHYSICAL",
+
+******* Only in  \projects\edsl\h\MEMLOG.H
+
+000638      "VERSION PHYSICAL",
+000639      "EBT TABLE",
+000640      "LUT TABLE"
+000641      };
+000642  
+000643  #endif
+
+******* Only in  \buic\inc\memlog.h
+
+000585      "VERSION PHYSICAL"
+000586      };
+000587  
+000588  #endif
+000589  
+000590  
+
+******* Common
+
+000644  
+000645  #define LOG_IAPP_QUEUE           0
+000646  #define LOG_IAPP_DISK_WRITE      1
+000647  #define LOG_IAPP_DISK_READ       2
+000648  #define LOG_DISK_CONTROL_QUEUE   3
+000649  #define LOG_UNIQUE_DOC_ID        4
+000650  #define LOG_FILS_REQUEST_ID      5
+000651  #define LOG_FILS_RETURN_ID       6
+000652  #define LOG_NO_DOCUMENT_ON_DISK  7
+000653  #define LOG_CURRENT_ID           8
+000654  #define LOG_NEXT_ID              9
+000655  #define LOG_WRITE_OFFSET        10
+000656  #define LOG_2IMAN_QUEUE         11
+000657  #define LOG_2IMON_QUEUE         12
+000658  #define LOG_2FILS_QUEUE         13
+000659  #define LOG_IMON_RETURN_ID      14
+000660  #define LOG_QUEUE_IMAN_DOC      15
+000661  #define LOG_DEQUEUE_IMAN_DOC    16
+000662  #define LOG_IAPP_DOC_ADDR       17
+000663  
+
+******* Only in  \buic\inc\memlog.h
+
+000611  
+000612  
+
+******* Common
+
+000664  #if defined (IAPPDIAG_PROGRAM)
+000665  
+000666  static char                     *pszIAPPCommandNames [ ] =
+000667  
+000668      {
+000669      "QUEUE ",
+000670      "DKWRIT",
+000671      "DKREAD",
+000672      "DKQUE ",
+000673      "UNIDOC",
+000674      "FSRQID",
+000675      "FSRTID",
+000676      "NODOCS",
+000677      "CURRID",
+000678      "NEXTID",
+000679      "POWROF",
+000680      "2IMANQ",
+000681      "2IMONQ",
+000682      "2FILSQ",
+000683      "MORTID",
+000684      "DOCQUE",
+000685      "DOCDEQ",
+000686      "DOCADR"
+000687      };
+000688  
+000689  #endif
+000690  
+000691  
+000692  
+000693  #define LOG_FILS_QUEUE          0
+000694  #define LOG_FILS_ROUTINE        1
+000695  #define LOG_FILS_DOCUMENT       2
+000696  #define LOG_FILS_POINT          3
+000697  #define LOG_FILS_LAST           4
+000698  #define LOG_FILS_NEXT           5
+000699  #define LOG_FILS_CFSL           6
+000700  
+000701  
+000702  
+000703  #if defined (FILSDIAG_PROGRAM)
+000704  
+000705  static char                     *pszFILSCommandNames [ ] =
+000706  
+000707      {
+000708      "QUEUE",
+000709      "STATE",
+000710      "DOC  ",
+000711      "POINT",
+000712      "LAST ",
+000713      "NEXT ",
+000714      "CFSL "
+000715      };
+000716  
+000717  #endif
+000718  
+000719  
+000720  
+
+******* Only in  \projects\edsl\h\MEMLOG.H
+
+000721  #define LOG_IMON_QUEUE          0
+000722  #define LOG_IMON_ROUTINE        1
+000723  
+000724  
+000725  #if defined (IMONDIAG_PROGRAM)
+000726  
+000727  static char                     *pszIMONCommandNames [ ] =
+000728  
+000729      {
+000730      "QUEUE",
+000731      "STATE"
+000732      };
+000733  
+000734  #endif
+000735  
+000736  
+000737  
+
+******* Common
+
+000738  #if defined (EDSLDIAG_PROGRAM)
+000739  
+000740  #define LOG_EDSL_QUEUE                  0
+000741  #define LOG_EDSL_QUEUE_DETAIL   1
+000742  #define LOG_EDSL_DEQUEUE_DETAIL 2
+000743  #define LOG_EDSL_STOP                   3
+000744  #define LOG_EDSL_START                  4
+000745  #define LOG_EDSL_CAPTURE_DETAIL 5
+000746  
+000747  static char                               *pszEDSLCommandNames [ ] =
+000748  
+000749      {
+000750      "QUEUE",
+000751      "INDT ",
+000752      "OUTDT",
+000753      "STOP ",
+000754      "START",
+000755      "CAPDT"
+000756      };
+000757  
+000758  #endif
+000759  
+
+******* Only in  \projects\edsl\h\MEMLOG.H
+
+000760  #if defined (__cplusplus)
+
+******* Moved in  \projects\edsl\h\MEMLOG.H
+
+000761  }
+
+******* Only in  \projects\edsl\h\MEMLOG.H
+
+000762  #endif
+000763  
+000764  #endif
+
+******* Only in  \buic\inc\memlog.h
+
+000692  #endif
+000693  
+
+******* End - Files are different

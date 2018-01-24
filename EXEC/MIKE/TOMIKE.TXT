@@ -1,0 +1,80 @@
+Mike,
+
+I have looked at the EXEC problem.  It seems to me that
+you are doing something very strange here, passing a
+directory name to exec where a command name should be.
+
+I recognize that Win95 will do an implied CD in this
+case, but this doesn't work right under the spawn()
+library family, in Win95, although it does in Win NT.
+Your example works fine under NT.
+
+I can make your example work under Win95 by putting
+the "sh" qualifier as the command, as illustrated.
+This forces spawn() to be called with an explicit
+command shell execution.
+
+I think what happens is that calling spawn() with
+a directory name, in the mode that doesn't force a
+command shell, winds up spawning a command shell anyway,
+but it doesn't work right, and it gets confused when
+it attempts to continue execution of the script, which
+it shouldn't be doing in the first place.
+
+In short, I think the combination of your usage and a
+Win95 error is responsible for this problem.  The only
+way I think I could fix it is to specifically check for
+a valid directory name as the first argument to EXEC,
+and spawn it specially for that case.  Does that change
+make sense to you?
+
+What is the reason for trying to execute a directory?
+I had a real hard time understanding this batch file,
+and I suspect you have simplified it beyond making any
+sense at all.
+
+Brian
+
+-----------------------
+Original version of _cd.bat:
+
+@echo off
+
+if (%1) == () goto no_drive
+    echo %1 >%TMP%\_cd.dat
+    exec -xy %%+d0 <%TMP%\_cd.dat
+    rm -n %TMP%\_cd.dat
+:no_drive
+
+:loop
+if (%1) == () goto endloop
+    cd %1
+    shift
+    goto loop
+
+:endloop
+
+-----------------------
+Changed version of _cd.bat:
+(see EXEC request)
+
+@echo off
+
+if (%1) == () goto no_drive
+    echo %1 >%TMP%\_cd.dat
+    exec -xy sh %%+d0 <%TMP%\_cd.dat
+    rm -n %TMP%\_cd.dat
+:no_drive
+
+:loop
+if (%1) == () goto endloop
+    cd %1
+    shift
+    goto loop
+
+:endloop
+
+-----------------------
+src.bat:
+
+@_cd src %1 %2 %3 %4 %5 %6 %7 %8 %9

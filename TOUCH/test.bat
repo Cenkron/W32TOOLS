@@ -1,0 +1,1 @@
+release\touch -f RegistrationcodeforMagicISO.eml y:RegistrationcodeforMagicISO.eml

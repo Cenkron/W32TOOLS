@@ -1,0 +1,110 @@
+			    Contrast Program Notes
+
+    This program contrasts two files by finding shared lines of data,
+    and displaying the files with identical sections in the same
+    colours.
+
+    The two files, either defined on the command line or in a dialog box, are
+    read in, the number of lines counted, and arrays set up. A hash code for each
+    line is calculated from its contents, and lines that occur exactly once in
+    each file found (these are referred to as 'pins'). Lines that are the same in
+    the two files, which are above or below pins, are also counted as pins. All
+    other lines are treated as unique.
+
+    A composite file is constructed, which is an attempt to show all
+    the lines from both files in the most likely order. Matching blocks of lines
+    are kept together; if two blocks of lines have swapped positions in the
+    second file, the smaller one is shown twice, above and below the larger one.
+    Unique lines are fitted in between the matched blocks in the order they come
+    in the real files.
+
+    The two real files may be displayed, or the composite. The text colour
+    indicates which lines have been matched, and which are unique. The
+    background colour shows either which file the lines belong to (if they are
+    unique or have been moved to a different position in the second file), or
+    that they are matched, and also not moved.
+
+    A 'bar chart' of the two files is also displayed.
+
+    "Hungarian notation" prefixes used: ht for hash table index
+				       lt for line table index
+
+The line tables consist of several arrays, each with one entry for every line in each file.
+
+For each line in each file, a hash value is calculated. This is used as an
+index for the hash table, which is an array of subscripts for the line tables.
+If there is no subscript at that point in the hash table, the subscript of the
+current line is entered.
+
+HashTable      ltLinePair
+ÚÄÄÄÄÄÄÄ¿      ÚÄÄÄÄÄÄÄÄ¿
+³	³  ÚÄÄ>ÆÍÍÍÍÍÍÍÍµ
+³	³  ³   ³	³
+³	³  ³   ³	³
+³	³  ³   ³	³
+ÆÍÍÍÍÍÍÍµÄÄÙ   ³	³
+³	³      ³	³
+³	³      ³	³
+³	³      ³	³
+³	³      ³	³
+³	³      ³	³
+³	³      ³	³
+³	³      ³	³
+³	³      ³	³
+ÀÄÄÄÄÄÄÄÙ      ³	³
+	       ÀÄÄÄÄÄÄÄÄÙ
+
+If there is a subscript present, the hash value of that line (stored in
+pLineHashTable) is compared with that of the current line. If they don't
+match, the computer looks at the next entry in the hash table.
+
+However, if the hash values match, the computer has found an identical line,
+so it changes the entry in the hash table to point to the current line, and
+puts the index of the identical line in the ltLinePair entry of the current
+line. Thus a chain of identical lines will be built up.
+
+HashTable      ltLinePair
+ÚÄÄÄÄÄÄÄ¿      ÚÄÄÄÄÄÄÄÄ¿
+³	³      ÆÍÍÍÍÍÍÍÍµ<ÄÄÄÄ¿
+³	³      ³	³     ³
+³	³      ³	³     ³
+³	³      ³	³     ³
+ÆÍÍÍÍÍÍÍµÄÄ¿   ÆÍÍÍÍÍÍÍÍµ<ÄÄ¿ÄÙ
+³	³  ³   ³	³   ³
+³	³  ³   ³	³   ³
+³	³  ³   ³	³   ³
+³	³  ³   ÆÍÍÍÍÍÍÍÍµ<¿ÄÙ
+³	³  ³   ³	³ ³
+³	³  ³   ³	³ ³
+³	³  ³   ³	³ ³
+³	³  ³   ³	³ ³
+ÀÄÄÄÄÄÄÄÙ  ÀÄÄ>ÆÍÍÍÍÍÍÍÍµÄÙ
+	       ÀÄÄÄÄÄÄÄÄÙ
+
+After this has been done for all the lines in the two files, the computer looks
+at each entry in the hash table. If an entry points to a pair of lines, one
+from each file, the ltLinePair entry for each line is given the other's index.
+
+In any other case (no matching line, two matching lines in the same file, or
+more than two matching lines) the chain is broken up totally.
+
+HashTable      ltLinePair
+ÚÄÄÄÄÄÄÄ¿      ÚÄÄÄÄÄÄÄÄ¿
+³	³    ÚÄÆÍÍÍÍÍÍÍÍµ<¿
+ÆÍÍÍÍÍÍÍµÄÄ¿ ³ ³	³ ³
+³	³  ³ ³ ³	³ ³
+³	³  ³ ³ ³	³ ³
+³	³  ³ ³ ³	³ ³
+³	³  À>À>ÆÍÍÍÍÍÍÍÍµÄÙ
+³	³      ³	³
+³	³      ³	³
+³	³    ÚÄÆÍÍÍÍÍÍÍÍµ<¿
+³	³    ³ ³	³ ³
+³	³    ³ ³	³ ³
+³	³    ³ ³	³ ³
+ÆÍÍÍÍÍÍÍµÄÄ¿ ³ ³	³ ³
+ÀÄÄÄÄÄÄÄÙ  À>À>ÆÍÍÍÍÍÍÍÍµÄÙ
+	       ÀÄÄÄÄÄÄÄÄÙ
+
+Lines either side of these 'pins' which match each other (but have not already
+been made pins, because there were more than 2 of them) are then made into pins.

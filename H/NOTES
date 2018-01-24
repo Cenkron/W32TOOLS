@@ -1,0 +1,13 @@
+The following files are here only to support
+the corrected version of DTOXTIME.C:
+
+CRUNTIME.H
+CTIME.H
+INTERNAL.H
+
+If MS ever corrects DTOXTIME, then I must
+  remove H\CRUNTIME.H
+  remove H\CTIME.H
+  remove H\INTERNAL.H
+  remove FWILD\DTOXTIME.C
+  remove the changes to FWILD.C that forces DTOXTIME to be linked.

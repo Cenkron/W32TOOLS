@@ -1,0 +1,26 @@
+-------------------------------------------------------------------------------
+HACKING
+-------------------------------------------------------------------------------
+
+Coding style
+------------
+
+This project is programmed using the Whitesmiths coding style:
+
+https://en.wikipedia.org/wiki/Indentation_style#Styles
+
+Please use the same style for any code contributions, thanks!
+
+Contributions
+-------------
+
+ - In order to contribute you should ideally clone the git repository and
+   let us know (preferably via the github issues list) from where to
+   pull/review your changes. You can use github.com, or any other public git
+   hosting site.
+
+Random notes
+------------
+
+ - Most of this code is very old, dating back too 1983 or so.  It is not
+   necessarily a paragon of good design or style by today's standards.

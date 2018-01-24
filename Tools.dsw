@@ -1,0 +1,683 @@
+Microsoft Developer Studio Workspace File, Format Version 6.00
+# WARNING: DO NOT EDIT OR DELETE THIS WORKSPACE FILE!
+
+###############################################################################
+
+Project: "CDiff"=.\CDiff\CDiff.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+}}}
+
+###############################################################################
+
+Project: "Cap"=.\Cap\Cap.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+    Begin Project Dependency
+    Project_Dep_Name Fwild
+    End Project Dependency
+}}}
+
+###############################################################################
+
+Project: "Cat"=.\Cat\Cat.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+    Begin Project Dependency
+    Project_Dep_Name Fwild
+    End Project Dependency
+}}}
+
+###############################################################################
+
+Project: "Chmod"=.\Chmod\Chmod.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+    Begin Project Dependency
+    Project_Dep_Name Fwild
+    End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name Getoptns
+    End Project Dependency
+}}}
+
+###############################################################################
+
+Project: "Cmp"=.\Cmp\Cmp.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+    Begin Project Dependency
+    Project_Dep_Name Fwild
+    End Project Dependency
+}}}
+
+###############################################################################
+
+Project: "Combine"=.\Combine\Combine.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+    Begin Project Dependency
+    Project_Dep_Name Fwild
+    End Project Dependency
+}}}
+
+###############################################################################
+
+Project: "Comm"=.\Comm\Comm.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+    Begin Project Dependency
+    Project_Dep_Name Fwild
+    End Project Dependency
+}}}
+
+###############################################################################
+
+Project: "Crypt"=.\Crypt\Crypt.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+    Begin Project Dependency
+    Project_Dep_Name Fwild
+    End Project Dependency
+}}}
+
+###############################################################################
+
+Project: "Ct"=.\Ct\Ct.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+    Begin Project Dependency
+    Project_Dep_Name Fwild
+    End Project Dependency
+}}}
+
+###############################################################################
+
+Project: "Df"=.\Df\Df.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+    Begin Project Dependency
+    Project_Dep_Name Fwild
+    End Project Dependency
+}}}
+
+###############################################################################
+
+Project: "Ds"=.\Ds\Ds.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+    Begin Project Dependency
+    Project_Dep_Name Fwild
+    End Project Dependency
+}}}
+
+###############################################################################
+
+Project: "Dump"=.\Dump\Dump.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+    Begin Project Dependency
+    Project_Dep_Name Fwild
+    End Project Dependency
+}}}
+
+###############################################################################
+
+Project: "Echo"=.\Echo\Echo.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+    Begin Project Dependency
+    Project_Dep_Name Fwild
+    End Project Dependency
+}}}
+
+###############################################################################
+
+Project: "Env"=.\Env\Env.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+    Begin Project Dependency
+    Project_Dep_Name Fwild
+    End Project Dependency
+}}}
+
+###############################################################################
+
+Project: "Exec"=.\Exec\Exec.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+    Begin Project Dependency
+    Project_Dep_Name Fwild
+    End Project Dependency
+}}}
+
+###############################################################################
+
+Project: "Extract"=.\Extract\Extract.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+    Begin Project Dependency
+    Project_Dep_Name Fwild
+    End Project Dependency
+}}}
+
+###############################################################################
+
+Project: "Fwild"=.\Fwild\Fwild.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+}}}
+
+###############################################################################
+
+Project: "Getoptns"=.\Getoptns\Getoptns.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+}}}
+
+###############################################################################
+
+Project: "Grep"=.\Grep\Grep.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+    Begin Project Dependency
+    Project_Dep_Name Fwild
+    End Project Dependency
+}}}
+
+###############################################################################
+
+Project: "Head"=.\Head\Head.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+    Begin Project Dependency
+    Project_Dep_Name Fwild
+    End Project Dependency
+}}}
+
+###############################################################################
+
+Project: "L"=.\L\L.DSP - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+    Begin Project Dependency
+    Project_Dep_Name Fwild
+    End Project Dependency
+}}}
+
+###############################################################################
+
+Project: "LX"=.\LX\LX.DSP - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+    Begin Project Dependency
+    Project_Dep_Name Fwild
+    End Project Dependency
+}}}
+
+###############################################################################
+
+Project: "Mv"=.\Mv\Mv.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+    Begin Project Dependency
+    Project_Dep_Name Fwild
+    End Project Dependency
+}}}
+
+###############################################################################
+
+Project: "Mvdir"=.\Mvdir\Mvdir.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+    Begin Project Dependency
+    Project_Dep_Name Fwild
+    End Project Dependency
+}}}
+
+###############################################################################
+
+Project: "Plot"=.\Plot\Plot.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+    Begin Project Dependency
+    Project_Dep_Name Fwild
+    End Project Dependency
+}}}
+
+###############################################################################
+
+Project: "Pr"=.\Pr\Pr.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+    Begin Project Dependency
+    Project_Dep_Name Fwild
+    End Project Dependency
+}}}
+
+###############################################################################
+
+Project: "Rm"=.\Rm\Rm.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+    Begin Project Dependency
+    Project_Dep_Name Fwild
+    End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name Getoptns
+    End Project Dependency
+}}}
+
+###############################################################################
+
+Project: "SPath"=.\SPath\SPath.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+    Begin Project Dependency
+    Project_Dep_Name Fwild
+    End Project Dependency
+}}}
+
+###############################################################################
+
+Project: "Scan"=.\Scan\Scan.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+    Begin Project Dependency
+    Project_Dep_Name Fwild
+    End Project Dependency
+}}}
+
+###############################################################################
+
+Project: "Section"=.\Section\Section.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+    Begin Project Dependency
+    Project_Dep_Name Fwild
+    End Project Dependency
+}}}
+
+###############################################################################
+
+Project: "Sed"=.\Sed\Sed.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+    Begin Project Dependency
+    Project_Dep_Name Fwild
+    End Project Dependency
+}}}
+
+###############################################################################
+
+Project: "Sort"=.\Sort\Sort.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+    Begin Project Dependency
+    Project_Dep_Name Fwild
+    End Project Dependency
+}}}
+
+###############################################################################
+
+Project: "Splice"=.\Splice\Splice.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+    Begin Project Dependency
+    Project_Dep_Name Fwild
+    End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name Getoptns
+    End Project Dependency
+}}}
+
+###############################################################################
+
+Project: "Split"=.\Split\Split.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+    Begin Project Dependency
+    Project_Dep_Name Fwild
+    End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name Getoptns
+    End Project Dependency
+}}}
+
+###############################################################################
+
+Project: "Subpath"=.\Subpath\Subpath.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+    Begin Project Dependency
+    Project_Dep_Name Fwild
+    End Project Dependency
+}}}
+
+###############################################################################
+
+Project: "Tail"=.\Tail\Tail.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+    Begin Project Dependency
+    Project_Dep_Name Fwild
+    End Project Dependency
+}}}
+
+###############################################################################
+
+Project: "Tee"=.\Tee\Tee.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+    Begin Project Dependency
+    Project_Dep_Name Fwild
+    End Project Dependency
+}}}
+
+###############################################################################
+
+Project: "Timex"=.\Timex\Timex.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+    Begin Project Dependency
+    Project_Dep_Name Fwild
+    End Project Dependency
+}}}
+
+###############################################################################
+
+Project: "Touch"=.\Touch\Touch.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+    Begin Project Dependency
+    Project_Dep_Name Fwild
+    End Project Dependency
+}}}
+
+###############################################################################
+
+Project: "Ty"=.\Ty\Ty.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+    Begin Project Dependency
+    Project_Dep_Name Fwild
+    End Project Dependency
+}}}
+
+###############################################################################
+
+Project: "Uniq"=.\Uniq\Uniq.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+    Begin Project Dependency
+    Project_Dep_Name Fwild
+    End Project Dependency
+}}}
+
+###############################################################################
+
+Project: "Vn"=.\Vn\Vn.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+    Begin Project Dependency
+    Project_Dep_Name Fwild
+    End Project Dependency
+}}}
+
+###############################################################################
+
+Project: "Wc"=.\Wc\Wc.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+    Begin Project Dependency
+    Project_Dep_Name Fwild
+    End Project Dependency
+}}}
+
+###############################################################################
+
+Project: "Xc"=.\Xc\Xc.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+    Begin Project Dependency
+    Project_Dep_Name Fwild
+    End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name Getoptns
+    End Project Dependency
+}}}
+
+###############################################################################
+
+Global:
+
+Package=<5>
+{{{
+}}}
+
+Package=<3>
+{{{
+}}}
+
+###############################################################################
+

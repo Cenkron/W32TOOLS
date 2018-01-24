@@ -1,0 +1,48 @@
+Subject: 
+        tools
+  Date: 
+        Mon, 18 May 1998 13:32:36 -0500
+  From: 
+        Mike Miller <msmiller@cyberramp.net>
+    To: 
+        Brian Johnson <bwj@cyberramp.net>
+
+
+place all these files in a temporary directory
+
+
+MD SRC
+SRC
+
+the src.bat executes the _cd.bat which executes the exec.exe
+ultimately it should end up having CD'ed to SRC
+i know this one sounds silly 
+but it is representative of a class of errors
+what happens to me is that the SRC.BAT loops on itself
+with the 16-bit exec.exe it works fine
+
+mike [;-}>
+
+-----------------------
+_cd.bat:
+
+@echo off
+
+if (%1) == () goto no_drive
+    echo %1 >%TMP%\_cd.dat
+    exec -xy %%+d0 <%TMP%\_cd.dat
+    rm -n %TMP%\_cd.dat
+:no_drive
+
+:loop
+if (%1) == () goto endloop
+    cd %1
+    shift
+    goto loop
+
+:endloop
+
+-----------------------
+src.bat:
+
+@_cd src %1 %2 %3 %4 %5 %6 %7 %8 %9

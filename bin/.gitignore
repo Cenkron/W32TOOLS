@@ -1,0 +1,4 @@
+# Ignore everything in this directory except this file
+# This a non-cleanable capture of all the Release EXE files
+# They are not intended to be version controlled.
+*.exe
