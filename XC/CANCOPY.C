@@ -63,7 +63,7 @@ can_copy (char *src, char *dst, char *path)
 	{
 	fgetsize(dst, &dstSize);
 
-	while ( (filesize - dstSize) > (UINT64)dfree(path) )
+	while ( (filesize - (INT64)(dstSize)) > dfree(path) )
 	    {
 	    error(dst, "destination disk full");
 	    if ( !azFlags.c || !ch_disk() )

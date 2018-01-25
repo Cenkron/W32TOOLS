@@ -35,11 +35,12 @@ fgetfdt (
 
 	{
 	long         fdt;					/* The returned date/time value */
-	struct stat  s;						/* The stat structure */
+	struct _stat32i64  s;					/* The stat structure */
 	TIME_ZONE_INFORMATION  TZinfo;		/* Retrieved TZ info (unused) */
 
 
-	if (stat(fnp, &s) != 0)
+	int statresult = _stat32i64(fnp, &s);
+	if (statresult != 0)
 		return (-1L);				/* Failed */
 
 	fdt = ((s.st_mtime + 1) & ~1);	/* FAT vs NTFS resolution */
