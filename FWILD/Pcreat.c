@@ -62,11 +62,15 @@ pcreat (			/* Build path and creat() a file */
 	    if ((p = strpbrk((p + 1), "/\\"))
 	    && (--SkipCount < 0))	/* Skip over the UNC part of the path */
 		{
-//printf("\npcreat: (%d) \"%s\"  \"%d\"\n", count, &temp[0], (p - &temp[0]));
+//printf("\npcreat: (%d) \"%s\"  \"%d\"\n", SkipCount, &temp[0], (p - &temp[0]));
+//printf("\npcreat: (%d) \"%s\"  \"%d\"\n", SkipCount, p, (p - &temp[0]));
 		*p = '\0';
 		if (( ! fnchkdir(&temp[0]))
 		&& ((fd = mkdir(&temp[0])) != 0))
+		    {
+//printf("\nmkdir: (%d) \"%s\"\n", fd, &temp[0]);
 		    break;	// Path building complete
+		    }
 		}
 	    } while (p);
 
