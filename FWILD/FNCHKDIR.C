@@ -81,17 +81,17 @@ _fnchkdir (s)			/* Verify the existence of a directory */
 	    ++p;
 	else if (strncmp(p, "..", 2) == 0)
 	    p += 2;
-	else if (strncmp(p, ".", 1) == 0)
+	else if ((strncmp(p, ".", 1) == 0)  &&  (! isalnum(*(p+1))))
 	    ++p;
 	else
 	    break;
 	}
 
-// printf("Check:      \"%s\"\n", pbuff);
+//printf("Check:      \"%s\"\n", pbuff);
     if (*p == '\0')			/* "X:"  "X:/"  "."  ".."  "/"  "X:." */
-	result = TRUE;			/* are all good directories */
+	result = TRUE;			/* ".git" are all good directories */
 
-    else if (result = _findf(&dta, pbuff, ATT_SUBD) == 0)	/* Test it */
+    else if (result = _findf(&dta, pbuff, ATT_SUBD | ATT_HIDDEN) == 0)	/* Test it */
         {
 	result = ((dta.dta_type & ATT_SUBD) != 0);
 	_findc(&dta);
