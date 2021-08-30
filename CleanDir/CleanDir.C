@@ -5,7 +5,9 @@
 |		      Copyright (c) 2003, all rights reserved
 |				    Brian W Johnson
 |				        8-Feb-03
-|				       23-Dec-17 Added 'a' key
+|				       23-Dec-17 Added 'a' response for uncondional mode
+|				       30-Aug-21 Added command line options
+|				       30-Aug-21 Added command line usage and help
 |
 \* ----------------------------------------------------------------------- */
 
@@ -18,11 +20,23 @@
 
 #include  "fwild.h"
 
+#ifndef TRUE
+#define FALSE	  0
+#define TRUE	  1
+#endif
+
+char	copyright [] =
+"Copyright (c) 1985, 2021 by J & M Software, Dallas TX - All Rights Reserved";
+
 static BOOL  Running = TRUE;
 static BOOL  All = FALSE;
 
 char star [2] = {'*', 0};
 char dot  [2] = {'.', 0};
+
+void usage (void);
+void help (void);
+void dprint (char **);
 
 /* ----------------------------------------------------------------------- *\
 |  GetKey () - Get the response key for Query()
@@ -92,6 +106,8 @@ Query (char *s)		// The path of the directory
 			case 'q':
 			case 'c':
 				Running = FALSE;	// and fall through to the default
+				retval  = FALSE;
+				break;
 
 			default:
 				retval  = FALSE;
@@ -245,6 +261,68 @@ Process (char *p)		// Ptr to the raw path string
 	free(s);
 	}
 
+/* ----------------------------------------------------------------------- */
+    void
+dprint (dp)			/* Print documentation text */
+    char  **dp;			/* Document array pointer */
+
+    {
+    while (*dp)
+	{
+	printf(*(dp++), '-');
+	putchar('\n');
+	}
+    }
+
+/* ----------------------------------------------------------------------- */
+    void
+usage ()			/* Display usage documentation */
+
+    {
+    static char  *udoc [] =
+	{
+	"Usage:  cleandir  [-?a]  [input_directory_list]  [>output_file]",
+	"        cleandir  -?  for help",
+	NULL
+	};
+
+    dprint(udoc);
+    exit(1);
+    }
+
+/* ----------------------------------------------------------------------- */
+    void
+help ()				/* Display help documentation */
+
+    {
+    static char  *hdoc [] =
+	{
+	"Usage:  cleandir  [-?a]  [input_directory_list]  [>output_file]",
+	"",
+	"cleandir cleans one or more directory tree(s) of all empty directories.",
+	"Trees are specified as a paramter list (or stdin).  Using the -a switch",
+	"performs the deletions unconditionally; otherwise, CleanDir asks for",
+	"delete permission for each empty directory found",
+	"",
+	"    -a  signifies deletions are to be performed unconditionally.",
+	"",
+	"    When running interactively, valid responses are:",
+	"",
+	"    y   permits the deletion,",
+	"    n   denies the deletion, and skips over the item,",
+	"    a   changes the mode to unconditional for the remainder of the scan,",
+	"    q   terminates the scan,",
+	"    c   terminates the scan,",
+	"    *   any other response denies the deletion, and skips over the item,",
+	"",
+	copyright,
+	NULL
+	};
+
+    dprint(hdoc);
+    exit(0);
+    }
+
 /* ----------------------------------------------------------------------- *\
 |  main () - main program
 \* ----------------------------------------------------------------------- */
@@ -254,6 +332,23 @@ main (
 	char  **argv)		// Argument list
 
 	{
+	char  *s;			// Parser temporary
+
+    while (--argc > 0 && (*++argv)[0] == '-')
+	for (s = argv[0] + 1; *s; s++)
+	    switch (tolower(*s))
+		{
+		case 'a':
+			All = TRUE;		// Signifies blanket acceptance of deletions
+		    break;
+
+		case '?':
+		    help();			// Terminates the program
+
+		default:
+		    usage();		// Terminates the program
+		}
+
 	if (argc == 1)
 		Process(dot);
 	else
