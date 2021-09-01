@@ -5,8 +5,8 @@
 |		      Copyright (c) 2003, all rights reserved
 |				    Brian W Johnson
 |				        8-Feb-03
-|				       23-Dec-17 Added 'a' response for uncondional mode
-|				       30-Aug-21 Added command line options
+|				       23-Dec-17 Added 'a' response for uncondional deletion mode
+|				       30-Aug-21 Added command line options -a and -l
 |				       30-Aug-21 Added command line usage and help
 |
 \* ----------------------------------------------------------------------- */
@@ -20,102 +20,84 @@
 
 #include  "fwild.h"
 
-#ifndef TRUE
-#define FALSE	  0
-#define TRUE	  1
-#endif
-
 char	copyright [] =
 "Copyright (c) 1985, 2021 by J & M Software, Dallas TX - All Rights Reserved";
 
-static BOOL  Running = TRUE;
-static BOOL  All = FALSE;
+typedef enum decision
+{
+Delete = 0,
+Keep = 1
+} Decision_t;
+
+// The state variables
+
+static BOOL			Running     = TRUE;
+static BOOL			Listing     = FALSE;
+static BOOL			Interactive = TRUE;
+static Decision_t	Decision    = Keep;
 
 char star [2] = {'*', 0};
 char dot  [2] = {'.', 0};
 
-void usage (void);
-void help (void);
-void dprint (char **);
-
 /* ----------------------------------------------------------------------- *\
-|  GetKey () - Get the response key for Query()
+|  GetKey () - Get the response key for QueryUser() (Interactive mode only)
 \* ----------------------------------------------------------------------- */
-	char		// Returns the validated keystroke
+	char		// Returns the validated keystroke in interactive mode
 GetKey (void)
 
 	{
-	char  c;
+	int  key;
 
+	do  {
+		key = _getch();
+		} while ((key < 0x20) || (key > 0x7E));
 
-	for (;;)
+	switch (key = tolower(key))
 		{
-		while (((c = (char)(_getch())) == 0)  ||  (c == (char)(0xE0)))
-			_getch();
-
-		c = tolower(c);
-
-		if ((c == 'a')
-		||  (c == 'y')
-		||  (c == 'n')
-		||  (c == 'q')
-		||  (c == 'c'))
-			break;
+		case 'a':				break;
+		case 'y':				break;
+		case 'q':				break;
+		case 'c':				break;
+		default:   key = 'n';	break;
 		}
 
-	putchar(c);
-	putchar('\n');
-	return (c);
+	printf("%c\n", key);
+	return ((char)(key));
 	}
 
 /* ----------------------------------------------------------------------- *\
-|  Query () - Query whether to remove the directory
+|  QueryUser () - Query whether to remove the directory (Interactive mode only)
 \* ----------------------------------------------------------------------- */
-	static BOOL		// Returns TRUE to remove the directory
-Query (char *s)		// The path of the directory
+	static void
+QueryUser (char *s)		// The path of the candidate directory
 
 	{
-	int   col;		// Number of columns
-	char  key;		// The current key value
-	int   retval;	// The returned value
+	printf("    ? [Y/N/A/QC]: ");	// Prompt for the keystroke
 
-
-	if (All)
-		retval = TRUE;
-	else
+	switch (GetKey())				// Get and process the response
 		{
-		col = printf("Remove  %s ", s);
+		case 'a':
+			Interactive	= FALSE;
+			Decision	= Delete;	// Make Delete sticky
+			break;
 
-		for (; (col < 32); ++col)
-		putchar(' ');
+		case 'y':
+			Decision	= Delete;
+			break;
 
-		printf("? [Y/N/A/QC]: ");
+		case 'q':
+		case 'c':
+			Running		= FALSE;
+			Interactive	= FALSE;
+			Decision	= Keep;		// Make Keep sticky (until termination)
+			break;
 
-		key = GetKey();
-		switch (tolower(key))
-			{
-			case 'a':
-				All     = TRUE;
-				retval  = TRUE;
-				break;
-
-			case 'y':
-				retval  = TRUE;
-				break;
-
-			case 'q':
-			case 'c':
-				Running = FALSE;	// and fall through to the default
-				retval  = FALSE;
-				break;
-
-			default:
-				retval  = FALSE;
-				break;
-			}
+		case 'n':
+			Decision	= Keep;
+			break;
 		}
 
-	return (retval);
+	return;
 	}
 
 /* ----------------------------------------------------------------------- *\
@@ -126,18 +108,36 @@ PathDelete(
 	char  *s)			// The pointer to the item name
 
 	{
-	long  retval = 1;		// The returned result
+	long retval = 1;		// The returned result
 
-
-	if (Running  &&  Query(s))
+	if (Running)
 		{
-printf("  Deleting \"%s\"\n", s);
-#ifdef TESTMODE
-		retval = 0;
+		if (Interactive)
+			{
+			printf("Delete  \"%s\"", s);
+			QueryUser(s);	// Ascertain the user Decision
+			}
+
+		else // (not interactive)
+			{
+			if (Decision == Delete)
+				printf("Deleting  \"%s\"\n", s);
+			else // (Keep)
+				printf("Would delete  \"%s\"\n", s);
+			}
+	
+		if (Decision == Delete)
+			{
+#ifndef TESTMODE
+			retval = (RemoveDirectory(s) ? 0 : 1);
 #else
-		retval = (RemoveDirectory(s) ? 0 : 1);
+			retval = 0;
 #endif
+			}
+		else // (Don't remove it)
+			retval = 0;
 		}
+
 	return (retval);
 	}
 
@@ -145,7 +145,7 @@ printf("  Deleting \"%s\"\n", s);
 |  PathCat () - Concatenate a suffix (directory) to a path
 \* ----------------------------------------------------------------------- */
 	static void
-PathCat(
+PathCat (
 	char  *pBase,		// The pointer to the base name
 	char  *pItem)		// The pointer to the suffix name
 
@@ -248,6 +248,9 @@ Process (char *p)		// Ptr to the raw path string
 	{
 	char  *s = fnabspth(p);	// The processed path
 
+#ifdef VERBOSE
+	printf("Path: \"%s\"\n", s);
+#endif
 
 	if (fnchkdir(s))
 		ProcessPath(s);
@@ -261,10 +264,12 @@ Process (char *p)		// Ptr to the raw path string
 	free(s);
 	}
 
-/* ----------------------------------------------------------------------- */
+/* ----------------------------------------------------------------------- *\
+|  dprint () - Print the help or usage strings
+\* ----------------------------------------------------------------------- */
     void
 dprint (dp)			/* Print documentation text */
-    char  **dp;			/* Document array pointer */
+    char  **dp;		/* Document array pointer */
 
     {
     while (*dp)
@@ -274,14 +279,16 @@ dprint (dp)			/* Print documentation text */
 	}
     }
 
-/* ----------------------------------------------------------------------- */
+/* ----------------------------------------------------------------------- *\
+|  usage () - Print the usage message and terminate
+\* ----------------------------------------------------------------------- */
     void
 usage ()			/* Display usage documentation */
 
     {
     static char  *udoc [] =
 	{
-	"Usage:  cleandir  [-?a]  [input_directory_list]  [>output_file]",
+	"Usage:  cleandir  [-?al]  [input_directory_list]  [>output_file]",
 	"        cleandir  -?  for help",
 	NULL
 	};
@@ -290,21 +297,24 @@ usage ()			/* Display usage documentation */
     exit(1);
     }
 
-/* ----------------------------------------------------------------------- */
+/* ----------------------------------------------------------------------- *\
+|  help () - Print the help message and terminate
+\* ----------------------------------------------------------------------- */
     void
 help ()				/* Display help documentation */
 
     {
     static char  *hdoc [] =
 	{
-	"Usage:  cleandir  [-?a]  [input_directory_list]  [>output_file]",
+	"Usage:  cleandir  [-?al]  [input_directory_list]  [>output_file]",
 	"",
 	"cleandir cleans one or more directory tree(s) of all empty directories.",
-	"Trees are specified as a paramter list (or stdin).  Using the -a switch",
-	"performs the deletions unconditionally; otherwise, CleanDir asks for",
-	"delete permission for each empty directory found",
+	"Trees are specified as a parameter list (or from stdin).",
+	"Using the - a switch performs the deletions unconditionally;",
+	"otherwise CleanDir asks for delete permission for each empty directory found",
 	"",
-	"    -a  signifies deletions are to be performed unconditionally.",
+	"    -a  signifies deletions are to be performed unconditionally, and listed.",
+	"    -l  signifies deletions are to be denied unconditionally, but listed.",
 	"",
 	"    When running interactively, valid responses are:",
 	"",
@@ -334,27 +344,42 @@ main (
 	{
 	char  *s;			// Parser temporary
 
-    while (--argc > 0 && (*++argv)[0] == '-')
+	while (--argc > 0 && (*++argv)[0] == '-')
 	for (s = argv[0] + 1; *s; s++)
 	    switch (tolower(*s))
 		{
-		case 'a':
-			All = TRUE;		// Signifies blanket acceptance of deletions
+		case 'a':		// Signifies blanket acceptance of deletions
+		    Running		= TRUE;
+		    Interactive	= FALSE;
+			Listing		= FALSE;
+		    Decision	= Delete;
 		    break;
 
-		case '?':
-		    help();			// Terminates the program
+		case 'l':		// Signifies blanket denial of deletions, but lists the candidates
+		    Running		= TRUE;
+		    Interactive	= FALSE;
+			Listing		= TRUE;
+		    Decision	= Keep;
+		    break;
 
-		default:
-		    usage();		// Terminates the program
+		case '?':		// Lists help, and terminates the program
+		    help();
+
+		default:		// Lists usage, and terminates the program
+		    usage();
 		}
 
-	if (argc == 1)
+#ifdef VERBOSE
+    printf("Argc: %d\n", argc);
+	printf("Path: \"%s\"\n", argv[0]);
+#endif
+
+	if (argc == 0)
 		Process(dot);
 	else
 		{
-		while (--argc > 0)
-			Process(*(++argv));
+		while (argc-- > 0)
+			Process(*(argv++));
 		}
 	return (0);
 	}
