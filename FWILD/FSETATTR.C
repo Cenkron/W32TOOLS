@@ -25,20 +25,19 @@
 /* ----------------------------------------------------------------------- *\
 |  fsetattr ()  -  Set the file attributes (via filename)
 \* ----------------------------------------------------------------------- */
-    int
+	int
 fsetattr (
-    char  *fnp,				/* Pointer to the path/filename */
-    int    FwildAttr)			/* The new file attributes */
+	char  *fnp,					/* Pointer to the path/filename */
+	int    FwildAttr)			/* The new file attributes */
 
-    {
-    int    result;			/* The success (0) fail (-1) result */
-    DWORD  Attr;			/* The WIN32 attributes */
+	{
+	int    result;			/* The success (0) fail (-1) result */
+	DWORD  Attr;			/* The WIN32 attributes */
 
+	Attr   = AttrToWin32(FwildAttr & (ATT_ARCH | ATT_HIDDEN | ATT_SYSTEM | ATT_RONLY));
+	result = (SetFileAttributes(fnp, Attr)) ? 0 : -1;
 
-    Attr   = AttrToWin32(FwildAttr & (ATT_ARCH | ATT_HIDDEN | ATT_SYSTEM | ATT_RONLY));
-    result = (SetFileAttributes(fnp, Attr)) ? 0 : -1;
-
-    return (result);
-    }
+	return (result);
+	}
 
 /* ----------------------------------------------------------------------- */

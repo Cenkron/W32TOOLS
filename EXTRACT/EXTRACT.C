@@ -95,261 +95,261 @@ NULL
 
 /* ----------------------------------------------------------------------- */
     void
-main (argc, argv)
-    int    argc;
-    char  *argv [];
+main (
+	int    argc,
+	char  *argv [])
 
-    {
-    int    option;		/* Option character */
-    int    nargs;		/* Number of arguments */
-    char  *fnpin;		/* Input file name pointer */
-    char  *fnpout;		/* Output file name pointer */
+	{
+	int    option;		/* Option character */
+	int    nargs;		/* Number of arguments */
+	char  *fnpin;		/* Input file name pointer */
+	char  *fnpout;		/* Output file name pointer */
 
 static	char   *optstring = "?e:E:d:D:s:S:v";
 
 
-    swch   = egetswch();
-    optenv = getenv("EXTRACT");
+	swch   = egetswch();
+	optenv = getenv("EXTRACT");
 
-    while ((option = getopt(argc, argv, optstring)) != EOF)
-	{
-	switch (tolower(option))
-            {
-            case 'e':
-                if (optvalue(optarg, &e_value, LONG_MIN, LONG_MAX))
-		    {
-		    printf("End parm error - %s\n", optvalerror());
-		    usage();
-		    }
-                o_flags |= E_MODE;
-                break;
+	while ((option = getopt(argc, argv, optstring)) != EOF)
+		{
+		switch (tolower(option))
+			{
+			case 'e':
+				if (optvalue(optarg, &e_value, LONG_MIN, LONG_MAX))
+					{
+					printf("End parm error - %s\n", optvalerror());
+					usage();
+					}
+				o_flags |= E_MODE;
+				break;
 
-            case 'd':
-                if (optvalue(optarg, &d_value, LONG_MIN, LONG_MAX))
-		    {
-		    printf("Distance parm error - %s\n", optvalerror());
-		    usage();
-		    }
-                o_flags |= D_MODE;
-                break;
+			case 'd':
+				if (optvalue(optarg, &d_value, LONG_MIN, LONG_MAX))
+					{
+					printf("Distance parm error - %s\n", optvalerror());
+					usage();
+					}
+				o_flags |= D_MODE;
+				break;
 
-            case 's':
-                if (optvalue(optarg, &s_value, LONG_MIN, LONG_MAX))
-		    {
-		    printf("Start parm error - %s\n", optvalerror());
-		    usage();
-		    }
-                o_flags |= S_MODE;
-                break;
+			case 's':
+				if (optvalue(optarg, &s_value, LONG_MIN, LONG_MAX))
+					{
+					printf("Start parm error - %s\n", optvalerror());
+					usage();
+					}
+				o_flags |= S_MODE;
+				break;
 
-            case 'v':
-                v_flag = ! v_flag;
-                break;
+			case 'v':
+				v_flag = ! v_flag;
+				break;
 
-            case '?':
-                help();
+			case '?':
+				help();
 
-            default:
-                usage();
-            }
-        }
+			default:
+				usage();
+			}
+		}
 
-    nargs = argc - optind;
-    if ((nargs <= 0)  ||  (nargs > 2))
-	usage();
+	nargs = argc - optind;
+	if ((nargs <= 0)  ||  (nargs > 2))
+		usage();
 
-    fnpin = fwfirst(argv[optind++]);
+	fnpin = fwfirst(argv[optind++]);
 
-    if (nargs == 2)
-	fnpout = argv[optind];
-    else
-	fnpout = "extract.out";
+	if (nargs == 2)
+		fnpout = argv[optind];
+	else
+		fnpout = "extract.out";
 
-    process(fnpin, fnpout);
+	process(fnpin, fnpout);
 
-    exit(0);
-    }
+	exit(0);
+	}
 
 /* ----------------------------------------------------------------------- */
-    static void
+	static void
 parameters (void)		/* Determine the copy parameters */
 
-    {
-    switch (o_flags)
 	{
-	case (0):
-	    start_offset = 0L;
-	    end_offset   = in_size;
-	    break;
-
-	case (S_MODE):
-	    if (s_value >= 0L)
-		start_offset = s_value;
-	    else
-		start_offset = in_size + s_value;
-	    end_offset = in_size;
-	    break;
-
-	case (S_MODE | D_MODE):
-	    if (s_value >= 0L)
-		start_offset = s_value;
-	    else
-		start_offset = in_size + s_value;
-
-	    if (d_value >= 0L)
-		end_offset = start_offset + d_value;
-	    else
+	switch (o_flags)
 		{
-		end_offset   = start_offset;
-		start_offset = end_offset + d_value;
+		case (0):
+			start_offset = 0L;
+			end_offset   = in_size;
+			break;
+
+		case (S_MODE):
+			if (s_value >= 0L)
+				start_offset = s_value;
+			else
+				start_offset = in_size + s_value;
+			end_offset = in_size;
+			break;
+
+		case (S_MODE | D_MODE):
+			if (s_value >= 0L)
+				start_offset = s_value;
+			else
+				start_offset = in_size + s_value;
+
+			if (d_value >= 0L)
+				end_offset = start_offset + d_value;
+			else
+				{
+				end_offset   = start_offset;
+				start_offset = end_offset + d_value;
+				}
+			break;
+
+		case (S_MODE | E_MODE):
+			if (s_value >= 0L)
+				start_offset = s_value;
+			else
+				start_offset = in_size + s_value;
+
+			if (e_value >= 0L)
+				end_offset = e_value;
+			else
+				end_offset = in_size + e_value;
+			break;
+
+		case (D_MODE):
+			start_offset = 0L;
+			if (d_value >= 0L)
+				end_offset = d_value;
+			else
+				end_offset = in_size + d_value;
+			break;
+
+		case (D_MODE | E_MODE):
+			if (e_value >= 0L)
+				end_offset = e_value;
+			else
+				end_offset = in_size + e_value;
+
+			if (d_value >= 0L)
+				start_offset = end_offset - d_value;
+			else
+				{
+				start_offset = end_offset;
+				end_offset   = start_offset - d_value;
+				}
+			break;
+
+		case (E_MODE):
+			start_offset = 0L;
+			if (e_value >= 0L)
+				end_offset = e_value;
+			else
+				end_offset = in_size + e_value;
+			break;
+
+		default:
+			printf("Only two offset parameters allowed\n");
+			usage();
 		}
-	    break;
 
-	case (S_MODE | E_MODE):
-	    if (s_value >= 0L)
-		start_offset = s_value;
-	    else
-		start_offset = in_size + s_value;
-
-	    if (e_value >= 0L)
-		end_offset = e_value;
-	    else
-		end_offset = in_size + e_value;
-	    break;
-
-	case (D_MODE):
-	    start_offset = 0L;
-	    if (d_value >= 0L)
-		end_offset = d_value;
-	    else
-		end_offset = in_size + d_value;
-	    break;
-
-	case (D_MODE | E_MODE):
-	    if (e_value >= 0L)
-		end_offset = e_value;
-	    else
-		end_offset = in_size + e_value;
-
-	    if (d_value >= 0L)
-		start_offset = end_offset - d_value;
-	    else
+	if ((start_offset < 0L)  ||  (start_offset > in_size))
 		{
-		start_offset = end_offset;
-		end_offset   = start_offset - d_value;
+		printf("Starting offset is invalid: %I64u (0x%04I64X); minimum 0, maximum %I64u (0x%04I64X)\n",
+			start_offset, start_offset, in_size, in_size);
+		usage();
 		}
-	    break;
 
-	case (E_MODE):
-	    start_offset = 0L;
-	    if (e_value >= 0L)
-		end_offset = e_value;
-	    else
-		end_offset = in_size + e_value;
-	    break;
+	if ((end_offset < 0L)  ||  (end_offset > in_size))
+		{
+		printf("Ending offset is invalid: %I64u (0x%04I64X); minimum 0, maximum %I64u (0x%04I64X)\n",
+			end_offset, end_offset, in_size, in_size);
+		usage();
+		}
 
-	default:
-	    printf("Only two offset parameters allowed\n");
-	    usage();
+	if (end_offset < start_offset)
+		{
+		printf("The resulting file size would be negative: %I64d (0x%04I64X)\n",
+			out_size, out_size);
+		usage();
+		}
 	}
-
-    if ((start_offset < 0L)  ||  (start_offset > in_size))
-	{
-	printf("Starting offset is invalid: %I64u (0x%04I64X); minimum 0, maximum %I64u (0x%04I64X)\n",
-	    start_offset, start_offset, in_size, in_size);
-	usage();
-	}
-
-    if ((end_offset < 0L)  ||  (end_offset > in_size))
-	{
-	printf("Ending offset is invalid: %I64u (0x%04I64X); minimum 0, maximum %I64u (0x%04I64X)\n",
-	    end_offset, end_offset, in_size, in_size);
-	usage();
-	}
-
-    if (end_offset < start_offset)
-	{
-	printf("The resulting file size would be negative: %I64d (0x%04I64X)\n",
-	    out_size, out_size);
-	usage();
-	}
-    }
 
 /* ----------------------------------------------------------------------- */
-    static void
+	static void
 process (			/* Process the input / output file */
-    char  *fnpin,		/* Input file name */ 
-    char  *fnpout)		/* Output file name */ 
+	char  *fnpin,		/* Input file name */ 
+	char  *fnpout)		/* Output file name */ 
 
-    {
-    int     fdin;		/* The input file handle */
-    int     fdout;		/* The output file handle */
-    UINT64  remaining;		/* The remaining size of the output file */
-    int     request;		/* The requested read/write size */
+	{
+	int     fdin;		/* The input file handle */
+	int     fdout;		/* The output file handle */
+	UINT64  remaining;		/* The remaining size of the output file */
+	int     request;		/* The requested read/write size */
 static char  buffer [BUFFERSIZE];
 
 
-    if ((fdin = open(fnpin, READMODE)) < 0)
-	{
-	printf("Unable to open the input file \"%s\"\n", fnpin);
-	usage();
+	if ((fdin = open(fnpin, READMODE)) < 0)
+		{
+		printf("Unable to open the input file \"%s\"\n", fnpin);
+		usage();
+		}
+
+	if (fgetsize(fnpin, &in_size) != 0)
+		{
+		printf("Cannot size the input file: \"%s\"\n", fnpin);
+		usage();
+		}
+
+	parameters();
+	out_size = end_offset - start_offset;
+
+	if ((fdout = open(fnpout, WRITEMODE, WRITEPERM)) < 0)
+		{
+		printf("Unable to open the output file \"%s\"\n", fnpout);
+		usage();
+		}
+
+	if (v_flag)
+		{
+		printf("Input  file size: %8I64u (0x%02I64X); \"%s\"\n",
+			in_size, in_size, fnpin);
+		printf("Output file size: %8I64u (0x%02I64X); \"%s\"\n",
+			out_size, out_size, fnpout);
+		printf("Starting offset:  %8I64u (0x%02I64X)\n",
+			start_offset, start_offset);
+		printf("Ending   offset:  %8I64u (0x%02I64X)\n",
+			end_offset, end_offset);
+		fflush(stdout);
+		}
+
+	current_offset = 0;
+	while (current_offset < start_offset)
+		{
+		long  dist = (long)(min((start_offset - current_offset), 0x7fffe00));
+
+		lseek(fdin, dist, 1);
+		current_offset += (UINT64)(dist);
+		}
+
+	for (remaining = out_size; (remaining > 0L); remaining -= (UINT32)(request))
+		{
+		request = (int)(min(remaining, BUFFERSIZE));
+		if (read(fdin, (char *)(buffer), request) != request)
+			{
+			printf("Error reading the input file (%d)\n", errno);
+			usage();
+			}
+
+		if (write(fdout, (char *)(buffer), request) != request)
+			{
+			printf("Error writing the output file (%d)\n", errno);
+			usage();
+			}
+		}
+
+	close(fdin);
+	close(fdout);
 	}
-
-    if (fgetsize(fnpin, &in_size) != 0)
-	{
-	printf("Cannot size the input file: \"%s\"\n", fnpin);
-	usage();
-	}
-
-    parameters();
-    out_size = end_offset - start_offset;
-
-    if ((fdout = open(fnpout, WRITEMODE, WRITEPERM)) < 0)
-	{
-	printf("Unable to open the output file \"%s\"\n", fnpout);
-	usage();
-	}
-
-    if (v_flag)
-	{
-	printf("Input  file size: %8I64u (0x%02I64X); \"%s\"\n",
-	    in_size, in_size, fnpin);
-	printf("Output file size: %8I64u (0x%02I64X); \"%s\"\n",
-	    out_size, out_size, fnpout);
-	printf("Starting offset:  %8I64u (0x%02I64X)\n",
-	    start_offset, start_offset);
-	printf("Ending   offset:  %8I64u (0x%02I64X)\n",
-	    end_offset, end_offset);
-	fflush(stdout);
-	}
-
-    current_offset = 0;
-    while (current_offset < start_offset)
-        {
-        long  dist = (long)(min((start_offset - current_offset), 0x7fffe00));
-
-        lseek(fdin, dist, 1);
-        current_offset += (UINT64)(dist);
-        }
-
-    for (remaining = out_size; (remaining > 0L); remaining -= (UINT32)(request))
-	{
-	request = (int)(min(remaining, BUFFERSIZE));
-	if (read(fdin, (char *)(buffer), request) != request)
-	    {
-	    printf("Error reading the input file (%d)\n", errno);
-	    usage();
-	    }
-
-	if (write(fdout, (char *)(buffer), request) != request)
-	    {
-	    printf("Error writing the output file (%d)\n", errno);
-	    usage();
-	    }
-	}
-
-    close(fdin);
-    close(fdout);
-    }
 
 /* ----------------------------------------------------------------------- */

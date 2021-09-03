@@ -21,52 +21,52 @@
 #define  LINLEN		(16)
 
 /* ----------------------------------------------------------------------- */
-    void
-fmemdump (fp, p, n, offset)	/* Dump n bytes of memory */
-    FILE  *fp;			/* The output file */
-    char  *p;			/* Pointer to the byte buffer */
-    int    n;			/* The number of bytes to dump */
-    long   offset;		/* The offset field value */
+	void
+fmemdump (				/* Dump n bytes of memory */
+	FILE  *fp,			/* The output file */
+	char  *p,			/* Pointer to the byte buffer */
+	int    n,			/* The number of bytes to dump */
+	long   offset)		/* The offset field value */
 
-    {
-    int    i;			/* Byte counter */
-    int    m;			/* Bytes in the current line */
-    unsigned char  *q;		/* Pointer to the current byte */
-
-
-    while (n > 0)
 	{
-	m = min(n, LINLEN);		/* Calculate the line length */
-	n -= m;				/* Update the remaining length */
+	int    i;			/* Byte counter */
+	int    m;			/* Bytes in the current line */
+	unsigned char  *q;	/* Pointer to the current byte */
 
-	fprintf(fp, "%08lX ", offset);	/* Print the byte number */
-	offset += LINLEN;		/* Update it */
 
-	q = (unsigned char *)(p);	/* Dump in hexadecimal */
-	for (i = 0; i < LINLEN; ++i)
-	    {
-	    if ((i & 0x0003) == 0)
-		fputc(' ', fp);
-	    if (i < m)
-		fprintf(fp, "%02X ", *(q++));
-	    else
-		fprintf(fp, "   ");
-	    }
+	while (n > 0)
+		{
+		m = min(n, LINLEN);			/* Calculate the line length */
+		n -= m;						/* Update the remaining length */
 
-	fputc(' ', fp);			/* Dump in ASCII */
-	for (i = 0; i < LINLEN; ++i)
-	    {
-	    if (i >= m)
-		fputc(' ', fp);
-	    else if ((*p >= ' ')  &&  (*p <= '~'))
-		fputc(*p, fp);
-	    else
-		fputc('.', fp);
-	    ++p;
-	    }
-	fputc('\n', fp);
-	fflush(fp);
-	}
+		fprintf(fp, "%08lX ", offset);	/* Print the byte number */
+		offset += LINLEN;			/* Update it */
+
+		q = (unsigned char *)(p);	/* Dump in hexadecimal */
+		for (i = 0; i < LINLEN; ++i)
+			{
+			if ((i & 0x0003) == 0)
+				fputc(' ', fp);
+			if (i < m)
+				fprintf(fp, "%02X ", *(q++));
+			else
+				fprintf(fp, "   ");
+			}
+
+		fputc(' ', fp);				/* Dump in ASCII */
+		for (i = 0; i < LINLEN; ++i)
+			{
+			if (i >= m)
+				fputc(' ', fp);
+			else if ((*p >= ' ')  &&  (*p <= '~'))
+				fputc(*p, fp);
+			else
+				fputc('.', fp);
+			++p;
+			}
+		fputc('\n', fp);
+		fflush(fp);
+		}
     }
 
 /* ----------------------------------------------------------------------- */

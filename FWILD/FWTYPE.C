@@ -23,12 +23,12 @@
 #include  "fwild.h"
 
 /* ------------------------------------------------------------------------ */
-    int				/* Return the file type byte */
-fwtype (hp)			/* Get the type of the current filename */
-    DTA_HDR  *hp;		/* Pointer to the DTA header */
+	int					/* Return the file type byte */
+fwtype (				/* Get the type of the current filename */
+	DTA_HDR  *hp)		/* Pointer to the DTA header */
 
-    {
-    return  (int)(hp->f_type);
-    }
+	{
+	return  (int)(hp->f_type);
+	}
 
 /* ------------------------------------------------------------------------ */

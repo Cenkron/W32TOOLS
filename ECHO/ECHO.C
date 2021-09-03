@@ -9,14 +9,14 @@
 
 /*--------------------------------------------------------------------*/
 
-    char * 
+	char * 
 usagedoc [] = {
-    "Usage:  echo [-c] arguments",
-    "",
-    "-c   print argument count (argc)",
-    "",
-    "Version 2.2 Copyright (c) 1993 J & M Software, Dallas TX - All Rights Reserved",
-    NULL};
+	"Usage:  echo [-c] arguments",
+	"",
+	"-c   print argument count (argc)",
+	"",
+	"Version 2.2 Copyright (c) 1993 J & M Software, Dallas TX - All Rights Reserved",
+	NULL};
 
 /*--------------------------------------------------------------------*/
 
@@ -25,38 +25,43 @@ int	c_flag	= 0;
 /*--------------------------------------------------------------------*/
 
 /*--------------------------------------------------------------------*/
-    int
-main (int argc, char *argv[])
-    {
-    int		c;
+	int
+main (
+	int   argc,
+	char *argv[])
 
-    optenv = getenv("ECHO");
+	{
+	int		c;
 
-    while ( (c=getopt(argc,argv,"cC?")) != EOF )
-	switch (tolower(c))
-	    {
-	    case 'c':
-		++c_flag;
-		break;
+	optenv = getenv("ECHO");
 
-	    case '?':
-		help();
+	while ( (c=getopt(argc,argv,"cC?")) != EOF )
+		{
+		switch (tolower(c))
+			{
+			case 'c':
+				++c_flag;
+				break;
 
-	    default:
-		fprintf(stderr, "invalid option '%c'\n", optchar);
-		usage();
-	    }
+			case '?':
+				help();
 
-    while (optind < argc)
-	printf("%s ", argv[optind++]);
+			default:
+				fprintf(stderr, "invalid option '%c'\n", optchar);
+				usage();
+			}
+		}
 
-    printf("\n");
+	while (optind < argc)
+		printf("%s ", argv[optind++]);
 
-    if (c_flag)
-	printf("%d arguments\n", argc);
+	printf("\n");
 
-    return(0);
-    }
+	if (c_flag)
+		printf("%d arguments\n", argc);
+
+	return(0);
+	}
 
 /*--------------------------------------------------------------------*/
 /*-------------------------- EOF -------------------------------------*/

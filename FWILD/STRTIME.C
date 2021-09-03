@@ -34,45 +34,45 @@ static	struct tm  *timestr;	/* Pointer to the tm structure */
 #endif
 
 /* ------------------------------------------------------------------------ */
-    char *			/* Return a pointer to a time string */
-STRTIME (dt)			/* Convert a unix timedate to a time string */
-    __time32_t  dt;		/* The unix timedate */
+	char *				/* Return a pointer to a time string */
+STRTIME (				/* Convert a unix timedate to a time string */
+    __time32_t dt)		/* The unix timedate */
 
-    {
-    char  ampm;
+	{
+	char  ampm;
 
-    timestr = _localtime32(&dt);	/* Convert to a tm structure */
+	timestr = _localtime32(&dt);	/* Convert to a tm structure */
 
-    if (timestr->tm_hour > 11)	/* Convert to 12 hour time */
-	ampm = 'p';
-    else
-	ampm = 'a';
+	if (timestr->tm_hour > 11)	/* Convert to 12 hour time */
+		ampm = 'p';
+	else
+		ampm = 'a';
 
-    if (timestr->tm_hour > 12)
-	timestr->tm_hour -= 12;
+	if (timestr->tm_hour > 12)
+		timestr->tm_hour -= 12;
 
 #if defined STRTIME_SECONDS
 
-    sprintf(			/* Build the time string */
-	&stime[0],
-	"%2d:%02d:%02d%c",
-	timestr->tm_hour,
-	timestr->tm_min, 
-	timestr->tm_sec,
-	ampm);
+	sprintf(			/* Build the time string */
+		&stime[0],
+		"%2d:%02d:%02d%c",
+		timestr->tm_hour,
+		timestr->tm_min, 
+		timestr->tm_sec,
+		ampm);
 
 #else
 
-    sprintf(			/* Build the time string */
-	&stime[0],
-	"%2d:%02d%c",
-	timestr->tm_hour,
-	timestr->tm_min, 
-	ampm);
+	sprintf(			/* Build the time string */
+		&stime[0],
+		"%2d:%02d%c",
+		timestr->tm_hour,
+		timestr->tm_min, 
+		ampm);
 
 #endif
 
-    return  (&stime[0]);	/* Return the date string */
-    }
+	return  (&stime[0]);	/* Return the date string */
+	}
 
 /* ----------------------------------------------------------------------- */

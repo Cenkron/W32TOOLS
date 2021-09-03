@@ -53,121 +53,121 @@ extern	void	process (char *infile, int argc, char **argv);
 
 /* ----------------------------------------------------------------------- */
     void
-main (argc, argv)
-    int    argc;
-    char  *argv [];
+main (
+    int    argc,
+    char  *argv [])
 
-    {
-    char  *s;				/* Parser temporary */
-
-
-    setbuf(stdout, buffer);
-    init();
-
-    while (--argc > 0 && (*++argv)[0] == swch)
 	{
-	for (s = argv[0] + 1; *s; s++)
-	    {
-	    switch (tolower(*s))
+	char  *s;				/* Parser temporary */
+
+
+	setbuf(stdout, buffer);
+	init();
+
+	while (--argc > 0 && (*++argv)[0] == swch)
 		{
-		case 'c':
-		    ++c_flag;
-		    if ((--argc > 0) && (*++argv)[0] != '-')
-			cfnp = *argv;
-		    else
+		for (s = argv[0] + 1; *s; s++)
 			{
-			fprintf(stderr, "\7Missing command filename\n");
-			usage();
+			switch (tolower(*s))
+				{
+				case 'c':
+					++c_flag;
+					if ((--argc > 0) && (*++argv)[0] != '-')
+						cfnp = *argv;
+					else
+						{
+						fprintf(stderr, "\7Missing command filename\n");
+						usage();
+						}
+					goto next;
+
+				case 'i':
+					if ((--argc > 0) && (*++argv)[0] != '-')
+						ifnp = *argv;
+					else
+						{
+						fprintf(stderr, "\7Missing input filename\n");
+						usage();
+						}
+					break;
+
+				case 'm':
+					if ((metach = *(s + 1)) == '\0')
+						usage();
+					++s;
+					break;
+
+				case 'q':
+					if (*s == 'q')
+						++q_flag;
+					else
+						Q_flag = ( ! Q_flag);
+					break;
+
+				case 's':
+					e_flag = FALSE;
+					break;
+
+				case 'w':
+					++w_flag;
+					break;
+
+				case 'x':
+					++x_flag;
+					break;
+
+				case 'y':
+					y_flag = FALSE;
+					break;
+
+				case 'z':
+					z_flag = TRUE;
+					break;
+
+				case '?':
+					help();
+
+				default:
+					usage();
+				}
 			}
-		    goto next;
-
-		case 'i':
-		    if ((--argc > 0) && (*++argv)[0] != '-')
-			ifnp = *argv;
-		    else
-			{
-			fprintf(stderr, "\7Missing input filename\n");
-			usage();
-			}
-		    break;
-
-		case 'm':
-		    if ((metach = *(s + 1)) == '\0')
-			usage();
-		    ++s;
-		    break;
-
-		case 'q':
-                    if (*s == 'q')
-                        ++q_flag;
-                    else
-                        Q_flag = ( ! Q_flag);
-		    break;
-
-		case 's':
-		    e_flag = FALSE;
-		    break;
-
-		case 'w':
-		    ++w_flag;
-		    break;
-
-		case 'x':
-		    ++x_flag;
-		    break;
-
-		case 'y':
-		    y_flag = FALSE;
-		    break;
-
-		case 'z':
-		    z_flag = TRUE;
-		    break;
-
-		case '?':
-		    help();
-
-		default:
-		    usage();
-		}
-	    }
 next:;
+		}
+
+	process(ifnp, argc, argv);		/* Perform the real work */
 	}
 
-    process(ifnp, argc, argv);		/* Perform the real work */
-    }
-
 /* ----------------------------------------------------------------------- */
-    void
-cantopen (fnp)			/* Inform user of input failure */
-    char  *fnp;			/* Input file name */
+	void
+cantopen (				/* Inform user of input failure */
+	char  *fnp)			/* Input file name */
 
-    {
-    fprintf(stderr, "\7Unable to open file: %s\n", fnp);
-    }
-
-/* ----------------------------------------------------------------------- */
-    void
-usage ()			/* Display usage documentation */
-
-    {
-    static char  *udoc [] =
 	{
-	"Usage:  exec  [%c?qswxyz]  [%cm#]  [%cc cmdfile]  [pattern]",
-	"        exec %c?  for help",
-	NULL
-	};
-
-    dprint(udoc);
-    exit(1);
-    }
+	fprintf(stderr, "\7Unable to open file: %s\n", fnp);
+	}
 
 /* ----------------------------------------------------------------------- */
-    void
-help ()				/* Display help documentation */
+	void
+usage (void)			/* Display usage documentation */
 
-    {
-    static char  *hdoc [] =
+	{
+	static char  *udoc [] =
+		{
+		"Usage:  exec  [%c?qswxyz]  [%cm#]  [%cc cmdfile]  [pattern]",
+		"        exec %c?  for help",
+		NULL
+		};
+
+	dprint(udoc);
+	exit(1);
+	}
+
+/* ----------------------------------------------------------------------- */
+	void
+help (void)				/* Display help documentation */
+
+	{
+	static char  *hdoc [] =
 	{
 	"Usage:  exec [%c?qswxyz] [%cm#] [%cc cmdfile] [%ci infile] [pattern]",
 	"",
@@ -222,21 +222,21 @@ help ()				/* Display help documentation */
 	NULL
 	};
 
-    dprint(hdoc);
-    exit(0);
-    }
+	dprint(hdoc);
+	exit(0);
+	}
 
 /* ----------------------------------------------------------------------- */
-    void
-dprint (dp)			/* Print documentation text */
-    char  **dp;			/* Document array pointer */
+	void
+dprint (				/* Print documentation text */
+	char  **dp)			/* Document array pointer */
 
-    {
-    while (*dp)
 	{
-	printf(*(dp++), swch, swch, swch, swch);
-	putchar('\n');
+	while (*dp)
+		{
+		printf(*(dp++), swch, swch, swch, swch);
+		putchar('\n');
+		}
 	}
-    }
 
 /* ----------------------------------------------------------------------- */

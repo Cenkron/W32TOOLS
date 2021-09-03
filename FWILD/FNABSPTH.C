@@ -32,78 +32,81 @@
 static	char	path [] = "/";
 
 /* ----------------------------------------------------------------------- */
+	char *
+fnabspth (					/* Convert a filename to absolute format */
+	char  *s)				/* Pointer to the source filename string */
+
+	{
+	char  *p;				/* Temporary string pointer */
+	char   drive;			/* Drive number (1 => A) */
+	char   temp [1024];		/* Temporary string buffer */
+
+
+	path[0] = strpath(s);		/* Determine the path character */
+
+	if (isalpha(*s) && (*(s + 1) == ':'))
+		{
+		drive = toupper(*s) - ('A' - 1);
+		s += 2;						/* Determine the specified drive number */
+		}
+	else
+		drive = (char)(getdrive());	/* Determine the default drive number */
+
+	if (ispath(*s))					/* If the incoming path begins with '\' */
+		{
+		if (ispath(*(s + 1)))
+			strcpy(temp, s);		/* It is an absolute UNC path */
+		else
+			{
+			temp[0] = drive + ('A' - 1);/* Place the drive letter */
+			temp[1] = ':';			/* Place the ':' */
+			strcpy(&temp[2], s);	/* Use the specified absolute path */
+			}
+		}
+
+	else							/* The path is relative */
+		{
+		getdir(drive, &temp[0]);	/* Use the default directory path... */
+		if (*s)
+			{
+			int  Length = strlen(temp);
+
+			if ( ! ispath(temp[Length - 1]))
+			strcat(temp, &path[0]);
+			strcat(temp, s);		/* ...plus the relative path */
+			}
+		}
+
+	fnreduce(&temp[0]);				/* Reduce the pathname */
+
+	p = fmalloc(strlen(&temp[0]) + 1);	/* Build the return string */
+	strcpy(p, &temp[0]);
+
+	return (p);
+	}
+
+/* ----------------------------------------------------------------------- */
 #ifdef TEST
-main (argc, argv)		/* Test program */
-    int    argc;
-    char  *argv [];
+void main (
+	argc, argv)		/* Test program */
+
+	int    argc;
+	char  *argv [];
 
     {
     char  *p;
 
     if (argc > 1)
-	{
-	p = *++argv;
-	printf("%s\n", p);
-	p = fnabspth(p);
-	printf("%s\n", p);
-	free(p);
-	}
-    else
-	printf("No pathname !\n");
+		{
+		p = *++argv;
+		printf("%s\n", p);
+		p = fnabspth(p);
+		printf("%s\n", p);
+		free(p);
+		}
+	else
+		printf("No pathname !\n");
     }
 #endif
 /* ----------------------------------------------------------------------- */
-    char *
-fnabspth (s)		/* Convert a filename to absolute format */
-    char  *s;		/* Pointer to the source filename string */
-
-    {
-    char  *p;			/* Temporary string pointer */
-    char   drive;		/* Drive number (1 => A) */
-    char   temp [1024];		/* Temporary string buffer */
-
-
-    path[0] = strpath(s);		/* Determine the path character */
-
-    if (isalpha(*s) && (*(s + 1) == ':'))
-	{
-	drive = toupper(*s) - ('A' - 1);
-	s += 2;				/* Determine the specified drive number */
-	}
-    else
-	drive = (char)(getdrive());	/* Determine the default drive number */
-
-    if (ispath(*s))			/* If the incoming path begins with '\' */
-	{
-	if (ispath(*(s + 1)))
-	    strcpy(temp, s);		/* It is an absolute UNC path */
-	else
-	    {
-	    temp[0] = drive + ('A' - 1);/* Place the drive letter */
-	    temp[1] = ':';		/* Place the ':' */
-	    strcpy(&temp[2], s);	/* Use the specified absolute path */
-	    }
-	}
-
-    else				/* The path is relative */
-	{
-	getdir(drive, &temp[0]);	/* Use the default directory path... */
-	if (*s)
-	    {
-	    int  Length = strlen(temp);
-
-	    if ( ! ispath(temp[Length - 1]))
-		strcat(temp, &path[0]);
-	    strcat(temp, s);		/* ...plus the relative path */
-	    }
-	}
-
-    fnreduce(&temp[0]);			/* Reduce the pathname */
-
-    p = fmalloc(strlen(&temp[0]) + 1);	/* Build the return string */
-    strcpy(p, &temp[0]);
-
-    return (p);
-    }
-
 /* ----------------------------------------------------------------------- */

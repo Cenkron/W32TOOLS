@@ -23,29 +23,28 @@
 /* ----------------------------------------------------------------------- *\
 |  fgetsize ()  -  Get the file size (via filename)
 \* ----------------------------------------------------------------------- */
-    int                     /* 0 for success, or nonzero for failure */
+	int						/* 0 for success, or nonzero for failure */
 fgetsize (
-    char            *pName, /* Pointer to the path/filename */
-    PUINT64          pSize) /* Pointer to the returned size, or NULL */
+	char            *pName, /* Pointer to the path/filename */
+	PUINT64          pSize) /* Pointer to the returned size, or NULL */
 
-    {
-    HANDLE           hFind; /* WIN32 file handle */
-    WIN32_FIND_DATA  wfd;   /* The Windows file information */
+	{
+	HANDLE           hFind; /* WIN32 file handle */
+	WIN32_FIND_DATA  wfd;   /* The Windows file information */
 
+	if ((hFind = FindFirstFile(pName, &wfd)) == INVALID_HANDLE_VALUE)
+		{
+		if (pSize)
+			*pSize = 0;
+		return (-1);
+		}
 
-    if ((hFind = FindFirstFile(pName, &wfd)) == INVALID_HANDLE_VALUE)
-        {
-        if (pSize)
-            *pSize = 0;
-        return (-1);
-        }
+	if (pSize)
+		*pSize  = (((UINT64)(wfd.nFileSizeHigh)) << 32)
+				|  ((UINT64)(wfd.nFileSizeLow));
 
-    if (pSize)
-        *pSize = (((UINT64)(wfd.nFileSizeHigh)) << 32)
-               |  ((UINT64)(wfd.nFileSizeLow));
-
-    FindClose(hFind);
-    return (0);
-    }
+	FindClose(hFind);
+	return (0);
+	}
 
 /* ----------------------------------------------------------------------- */

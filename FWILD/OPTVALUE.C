@@ -40,50 +40,50 @@
 /* ----------------------------------------------------------------------- */
 
 #define  ERROR_NONE		( 0)
-#define  ERROR_RANGE		(-1)
+#define  ERROR_RANGE	(-1)
 
 static	int	result;		/* The most recent returned result */
 static	char	errmsg [50] = "value too ";
 
 /* ----------------------------------------------------------------------- */
-    int
+	int
 optvalue (
-    char   *pstr,		/* Pointer to the input string */
-    long   *presult,		/* Pointer to returned result */
-    long    minvalue,		/* Minimum valid expression value */
-    long    maxvalue)		/* Maximum valid expression value */
+	char   *pstr,			/* Pointer to the input string */
+	long   *presult,		/* Pointer to returned result */
+	long    minvalue,		/* Minimum valid expression value */
+	long    maxvalue)		/* Maximum valid expression value */
 
-    {
-    long   value;               /* The determined value */
-
-
-    result = expression(pstr, &value);
-
-    if (result == ERROR_NONE)
 	{
-	if (value < minvalue)
-	    {
-	    result = ERROR_RANGE;
-	    sprintf(&errmsg[10], "small: %ld (min %ld)", value, minvalue);
-	    }
-	else if (value > maxvalue)
-	    {
-	    result = ERROR_RANGE;
-	    sprintf(&errmsg[10], "large: %ld (max %ld)", value, maxvalue);
-	    }
-	else
-	    *presult = value;
+	long   value;			/* The determined value */
+
+
+	result = expression(pstr, &value);
+
+	if (result == ERROR_NONE)
+		{
+		if (value < minvalue)
+			{
+			result = ERROR_RANGE;
+			sprintf(&errmsg[10], "small: %ld (min %ld)", value, minvalue);
+			}
+		else if (value > maxvalue)
+			{
+			result = ERROR_RANGE;
+			sprintf(&errmsg[10], "large: %ld (max %ld)", value, maxvalue);
+			}
+		else
+			*presult = value;
+		}
+
+	return (result);
 	}
 
-    return (result);
-    }
-
 /* ----------------------------------------------------------------------- */
-    char *
+	char *
 optvalerror (void)
 
-    {
-    return ((result == ERROR_RANGE) ? (errmsg) : (expression_error()));
-    }
+	{
+	return ((result == ERROR_RANGE) ? (errmsg) : (expression_error()));
+	}
 
 /* ----------------------------------------------------------------------- */

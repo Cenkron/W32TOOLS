@@ -72,27 +72,27 @@
 #ifndef  _WINDEF_
 	typedef char			BYTE, *PBYTE;
 #endif
-	typedef unsigned char	 	UBYTE;
+	typedef unsigned char	UBYTE;
 
 	typedef char			INT8;
-	typedef unsigned char		UINT8;
+	typedef unsigned char	UINT8;
 
 	/* 16 bit items */
 
 	typedef short			INT16;
-	typedef unsigned short		UINT16;
+	typedef unsigned short	UINT16;
 
 	/* 32 bit items */
 
 #ifndef  _WINDEF_
-	typedef	int			INT;
+	typedef	int				INT;
 	typedef long			LONG;
 #endif
-	typedef	unsigned int		UINT;
-	typedef unsigned long		ULONG;
+	typedef	unsigned int	UINT;
+	typedef unsigned long	ULONG;
 #ifndef _WINDEF_
 	typedef long			INT32;
-	typedef unsigned long		UINT32;
+	typedef unsigned long	UINT32;
 #endif
 
 /* ----------------------------------------------------------------------- *\

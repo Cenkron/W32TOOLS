@@ -30,40 +30,39 @@
 static	char	timeb [7];	/* The returned time string */
 
 /* ------------------------------------------------------------------------ */
-    char *			/* Return a pointer to a time string */
-fwtime (hp)			/* Get the time of the current filename */
-    DTA_HDR  *hp;		/* Pointer to the DTA header */
+	char *				/* Return a pointer to a time string */
+fwtime (				/* Get the time of the current filename */
+	DTA_HDR  *hp)		/* Pointer to the DTA header */
 
-    {
-    int    hour;		/* The corrected hour */
-    char   ampm;		/* The am/pm symbol */
-    struct tm *ptm;		/* Ptr to the struct tm */
-
-
-    if (hp->f_fdt < 0)
-	strcpy(&timeb[0], " -----");
-    else
 	{
-	ptm  = _localtime32(&hp->f_fdt);
-	hour = ptm->tm_hour;
+	int    hour;		/* The corrected hour */
+	char   ampm;		/* The am/pm symbol */
+	struct tm *ptm;		/* Ptr to the struct tm */
 
-	if (hour >= 12)
-	    {
-	    if (hour >  12)
-		hour -= 12;
-	    ampm = 'p';
-	    }
+	if (hp->f_fdt < 0)
+		strcpy(&timeb[0], " -----");
 	else
-	    {
-            if (hour ==  0)
-	        hour =  12;
-	    ampm = 'a';
-	    }
+		{
+		ptm  = _localtime32(&hp->f_fdt);
+		hour = ptm->tm_hour;
 
-	sprintf(timeb, "%2d:%02d%c", hour, ptm->tm_min, ampm);
+		if (hour >= 12)
+			{
+			if (hour >  12)
+				hour -= 12;
+			ampm = 'p';
+			}
+		else
+			{
+			if (hour ==  0)
+				hour =  12;
+			ampm = 'a';
+			}
+
+		sprintf(timeb, "%2d:%02d%c", hour, ptm->tm_min, ampm);
+		}
+
+	return  (&timeb[0]);
 	}
-
-    return  (&timeb[0]);
-    }
 
 /* ------------------------------------------------------------------------ */

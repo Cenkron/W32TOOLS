@@ -35,39 +35,39 @@
 #include  "fwild.h"
 
 /* ----------------------------------------------------------------------- */
-    int
-prename (path1, path2)		/* Build path and rename() a file */
-    char  *path1;		/* Pointer to the old path/filename */
-    char  *path2;		/* Pointer to the new path/filename */
+	int
+prename (				/* Build path and rename() a file */
+	char  *path1,		/* Pointer to the old path/filename */
+	char  *path2)		/* Pointer to the new path/filename */
 
-    {
-    int  finished = 0;		/* Finished flag */
-    int  result;		/* File number or error code */
-    char  *p;			/* Pointer into the temporary string */
-    char  temp [1024];		/* Temporary path/filename string */
-
-
-    for (;;)
 	{
-	if (((result = rename(path1, path2)) == 0) || finished++)
-	    break;
+	int  finished = 0;		/* Finished flag */
+	int  result;			/* File number or error code */
+	char  *p;				/* Pointer into the temporary string */
+	char  temp [1024];		/* Temporary path/filename string */
 
-	p = &temp[0];		/* Attempt to build the path */
-	do  {
-	    strcpy(&temp[0], path2);
-	    if (p = strpbrk((p + 1), "/\\"))
+
+	for (;;)
 		{
-		*p = '\0';
-		if ( ! fnchkdir(&temp[0]))
-		    {
-		    if ((result = mkdir(&temp[0])) != 0)
+		if (((result = rename(path1, path2)) == 0) || finished++)
 			break;
-		    }
-		}
-	    } while (p);
 
+		p = &temp[0];		/* Attempt to build the path */
+		do  {
+			strcpy(&temp[0], path2);
+			if (p = strpbrk((p + 1), "/\\"))
+				{
+				*p = '\0';
+				if ( ! fnchkdir(&temp[0]))
+					{
+					if ((result = mkdir(&temp[0])) != 0)
+						break;
+					}
+				}
+			} while (p);
+
+		}
+	return  (result);
 	}
-    return  (result);
-    }
 
 /* ----------------------------------------------------------------------- */

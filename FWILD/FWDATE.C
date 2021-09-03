@@ -39,28 +39,27 @@ static	char   *month [] =	/* The month string lookup table */
 	};
 
 /* ------------------------------------------------------------------------ */
-    char *			/* Return a pointer to a date string */
-fwdate (hp)			/* Get the date of the current filename */
-    DTA_HDR   *hp;		/* Pointer to the DTA header */
+	char *				/* Return a pointer to a date string */
+fwdate (hp)				/* Get the date of the current filename */
+	DTA_HDR   *hp;		/* Pointer to the DTA header */
 
-    {
-    int        year;		/* The year number */
-    struct tm *ptm;		/* Ptr to the struct tm */
-
-
-    if (hp->f_fdt < 0)
-	strcpy(&date[0], " --------");
-    else
 	{
-	ptm  = _localtime32(&hp->f_fdt);
-	year = ptm->tm_year;
-	if (year >= 100)
-	    year -= 100;
+	int        year;		/* The year number */
+	struct tm *ptm;			/* Ptr to the struct tm */
 
-	sprintf(date, "%d-%s-%02d", ptm->tm_mday, month[ptm->tm_mon + 1], year);
+	if (hp->f_fdt < 0)
+		strcpy(&date[0], " --------");
+	else
+		{
+		ptm  = _localtime32(&hp->f_fdt);
+		year = ptm->tm_year;
+		if (year >= 100)
+			year -= 100;
+
+		sprintf(date, "%d-%s-%02d", ptm->tm_mday, month[ptm->tm_mon + 1], year);
+		}
+
+	return  (&date[0]);
 	}
-
-    return  (&date[0]);
-    }
 
 /* ------------------------------------------------------------------------ */

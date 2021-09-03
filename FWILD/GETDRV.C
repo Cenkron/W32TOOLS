@@ -17,11 +17,11 @@
 #include  "fwild.h"
 
 /* ----------------------------------------------------------------------- */
-    int
+	int
 getdrive (void)		/* Return the number of the current drive */
 
-    {
-    return (_getdrive());
-    }
+	{
+	return (_getdrive());
+	}
 
 /* ----------------------------------------------------------------------- */

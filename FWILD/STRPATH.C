@@ -19,19 +19,19 @@
 #include  "fwild.h"
 
 /* ----------------------------------------------------------------------- */
-    char			/* Return the path character */
-strpath (s)			/* Determine the correct path character */
-    char  *s;			/* Pointer to the tested string */
+	char				/* Return the path character */
+strpath (				/* Determine the correct path character */
+	char  *s)			/* Pointer to the tested string */
 
-    {
-    char  ch;
-
-    for ( ; ch = *s; ++s)
 	{
-	if ((ch == '/') || (ch == '\\'))
-	    return (ch);
+	char  ch;
+
+	for ( ; ch = *s; ++s)
+		{
+		if ((ch == '/') || (ch == '\\'))
+			return (ch);
+		}
+	return (egetpath());
 	}
-    return (egetpath());
-    }
 
 /* ----------------------------------------------------------------------- */

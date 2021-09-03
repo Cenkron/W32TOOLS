@@ -6,13 +6,13 @@
 #endif
 
 typedef
-    struct
-	{
-	A_Z_FLAGS	flags;
-	long int	lVal  [26];
-	char *		szVal [26];
-	int (*		pProc [26]) (int c, char *optarg);
-	} GETOPT_DATA;
+	struct
+		{
+		A_Z_FLAGS	flags;
+		long int	lVal  [26];
+		char *		szVal [26];
+		int (*		pProc [26]) (int c, char *optarg);
+		} GETOPT_DATA;
 
 #define	GETOPT_A	0
 #define	GETOPT_B	1

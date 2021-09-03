@@ -24,21 +24,21 @@
 /* ----------------------------------------------------------------------- *\
 |  fgetattr ()  -  Get the file attribute word (via file pathname)
 \* ----------------------------------------------------------------------- */
-    int
-fgetattr (char *fnp)			/* Pointer to the path/filename */
+	int
+fgetattr (
+	char *fnp)			/* Pointer to the path/filename */
 
-    {
-    int    result;			/* The returned result */
-    DWORD  Attr;			/* The WIN32 attributes */
+	{
+	int    result;			/* The returned result */
+	DWORD  Attr;			/* The WIN32 attributes */
 
+	Attr = GetFileAttributes(fnp);
+	if (Attr == 0xFFFFFFFF)
+		result = -1;
+	else
+		result = AttrFromWin32(Attr);
 
-    Attr = GetFileAttributes(fnp);
-    if (Attr == 0xFFFFFFFF)
-	result = -1;
-    else
-	result = AttrFromWin32(Attr);
-
-    return (result);
-    }
+	return (result);
+	}
 
 /* ----------------------------------------------------------------------- */

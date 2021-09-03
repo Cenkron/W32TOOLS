@@ -74,70 +74,70 @@ static	TOKENCB		defaultsaveblk = {0};	// Default save block
 |			<SPACE TAB CR LF FF , ; : |
 |
 \* ----------------------------------------------------------------------- */
-    char *                      // Returns ptr to the token, or NULL         
+	char *                      // Returns ptr to the token, or NULL         
 strtoken (
-    char        *string,        // Pointer to the string to parse, or NULL
-    char        *control,       // Pointer to the control string
-    TOKENCB     *saveblk)       // Pointer to the token save block
+	char        *string,        // Pointer to the string to parse, or NULL
+	char        *control,       // Pointer to the control string
+	TOKENCB     *saveblk)       // Pointer to the token save block
 
-    {
-    char         ch;            // Temporary character
-    char        *p;             // The returned token pointer
-    CHARMASK;                   // The character mask array, macro defined
-
-
-    /*
-    If the string pointer is not NULL, we are starting a new string.
-    If the string pointer is NULL, we are continuing a previous string,
-    so restore the delimiter and use the saved pointer, unless it is
-    also NULL, in which case the old string was finished, so return NULL.
-    */
-
-    if (saveblk == NULL)
-	saveblk = &defaultsaveblk;
-
-    if (string == NULL)
-        {
-        if ((string = saveblk->ptr) == NULL)
-            return (NULL);
-        else
-            *string = saveblk->ch;
-        }
-
-    /*
-    Clear and then build the control mask array.  If the control
-    string pointer is NULL, use the default control string.
-    */
-
-    CLRMASK();
-    if (control == NULL)
-        control = DEFAULT_CONTROL;
-    while ((ch = *(control++)) != '\0')
-        SETMASK(ch);
+	{
+	char         ch;            // Temporary character
+	char        *p;             // The returned token pointer
+	CHARMASK;                   // The character mask array, macro defined
 
 
-    // Process the string
+	/*
+	If the string pointer is not NULL, we are starting a new string.
+	If the string pointer is NULL, we are continuing a previous string,
+	so restore the delimiter and use the saved pointer, unless it is
+	also NULL, in which case the old string was finished, so return NULL.
+	*/
 
-    saveblk->ptr = p = NULL;
-    while ((ch = *string) != '\0')
-        {
-        if (TESTMASK(ch))
-            {
-            if (p != NULL)
-                {
-                saveblk->ptr = string;
-                saveblk->ch  = ch;
-                *string      = '\0';
-                break;
-                }
-            }
-        else if (p == NULL)
-            p = string;
-        ++string;
-        }
+	if (saveblk == NULL)
+		saveblk = &defaultsaveblk;
 
-    return (p);
-    }
+	if (string == NULL)
+		{
+		if ((string = saveblk->ptr) == NULL)
+			return (NULL);
+		else
+			*string = saveblk->ch;
+		}
+
+	/*
+	Clear and then build the control mask array.  If the control
+	string pointer is NULL, use the default control string.
+	*/
+
+	CLRMASK();
+	if (control == NULL)
+		control = DEFAULT_CONTROL;
+	while ((ch = *(control++)) != '\0')
+		SETMASK(ch);
+
+
+	// Process the string
+
+	saveblk->ptr = p = NULL;
+	while ((ch = *string) != '\0')
+		{
+		if (TESTMASK(ch))
+			{
+			if (p != NULL)
+				{
+				saveblk->ptr = string;
+				saveblk->ch  = ch;
+				*string      = '\0';
+				break;
+				}
+			}
+		else if (p == NULL)
+			p = string;
+		++string;
+		}
+
+	return (p);
+	}
 
 /* ----------------------------------------------------------------------- */
 // strtoken.c

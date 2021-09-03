@@ -16,12 +16,12 @@
     void
 docprint (char *dp[])		/* Help documentation array pointer */
 
-    {
-    while (*dp)
 	{
-	printf(*(dp++), optswch, optswch, optswch, optswch, optswch, optswch);
-	putchar('\n');
+	while (*dp)
+		{
+		printf(*(dp++), optswch, optswch, optswch, optswch, optswch, optswch);
+		putchar('\n');
+		}
 	}
-    }
 
 /* ----------------------------------------------------------------------- */

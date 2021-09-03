@@ -6,18 +6,18 @@
 
 static  char    _case_adjust_table [CASE_TABLE_SIZE];
 
-    static void
+	static void
 build_case_table (
-    int  ignorecase)
+	int  ignorecase)
 
-    {
-    int  i;
+	{
+	int  i;
 
-    for (i = 0; i < CASE_TABLE_SIZE; ++i)
-        _case_adjust_table[i] = (ignorecase)
-	    ? (tolower((char)(i)))
-	    : (char)(i);
-    }
+	for (i = 0; i < CASE_TABLE_SIZE; ++i)
+		_case_adjust_table[i] = (ignorecase)
+			? (tolower((char)(i)))
+			: (char)(i);
+	}
 
 #undef  CASE_TABLE_SIZE
 #endif

@@ -45,179 +45,182 @@ static	void	backcopy (char *, char *);
 static	int	condense (char *, int);
 
 /* ----------------------------------------------------------------------- */
-#ifdef TEST
-main (argc, argv)		/* Test program */
-    int    argc;
-    char  *argv [];
+	void
+fnreduce (				/* Eliminate pathname redundancy */
+    char  *s)			/* Pointer to the pathname string */
 
-    {
-    char  *p;
-
-    if (argc > 1)
 	{
-	p = *++argv;
-	printf("%s\n", p);
-	fnreduce(p);
-	printf("%s\n", p);
-	}
-    else
-	printf("No pathname !\n");
-    }
-#endif
-/* ----------------------------------------------------------------------- */
-    void
-fnreduce (s)			/* Eliminate pathname redundancy */
-    char  *s;			/* Pointer to the pathname string */
-
-    {
-    int    n;
-    char  *p;			/* Temporary string pointer */
-    char  *rp;			/* Pointer to the path root */
-    char  *pp;			/* Pointer to the path */
+	int    n;
+	char  *p;			/* Temporary string pointer */
+	char  *rp;			/* Pointer to the path root */
+	char  *pp;			/* Pointer to the path */
 
 
-    path[0] = strpath(s);		/* Determine the path character */
-    strsetp(s, path[0]);		/* Set the path character */
+	path[0] = strpath(s);		/* Determine the path character */
+	strsetp(s, path[0]);		/* Set the path character */
 
-    if (isalpha(*s)			/* Point the path root */
-    &&  (*(s + 1) == ':'))
-	rp = s + 2;
-    else
-	rp = s;
-
-    if ( ! ispath(*rp))			/* Point the path proper */
-	pp = rp;			/* It's a relative path */
-    else if ( ! ispath(*(rp + 1)))	/* Check for the UNC form */
-	pp = rp + 1;			/* No, skip over the leading slash */
-    else
-	pp = rp + 2;			/* Yes, skip over the UNC prefix */
-
-    condense(pp, 0);			/* Condense the pathname */
-
-    if (n = strlen(pp))			/* Delete any trailing pathchar */
-	{
-	p = pp + n - 1;
-	if (ispath(*p))
-	    *p = '\0';
-	}
-
-//    strupr(s);			/* Convert to all upper case */
-    }
-
-/* ----------------------------------------------------------------------- */
-    static int			/* Return the condensation count */
-condense (s, m)			/* Condense '.' and '..' from the path name */
-    char  *s;			/* Pointer to the condensable string */
-    int    m;			/* Pathname prefix component counter */
-
-    {
-    char  *p;			/* Pointer to next path component */
-    char  *q;			/* Pointer to next path component + 1 */
-    int    n;			/* Return ".." condensation counter */
-    int    k;			/* Return ".." condensation counter */
-
-
-#if 1			// New version, handles ".xxxx" filenames
-    n = 0;
-    while (*s)
-	{
-	p = s + 1;
-	q = s + 2;
-	while (ispath(*s))
-	    backcopy(s, p);		// Condense multiple pathchars
-	if (*s != '.')
-	    break;			// Skip over non-dot elements
-
-	if (ispath(*p)  ||  (*p == '\0'))
-	    backcopy(s, nextpath(s));	// Condense "." directories
-
-	else if ((*p != '.')
-	     ||  ( ! ispath(*q)  &&  (*q != '\0')))
-	     break;			// Skip over ".xxxx" filenames
-
+	if (isalpha(*s)				/* Point the path root */
+	&&  (*(s + 1) == ':'))
+		rp = s + 2;
 	else
-	    {
-	    p = nextpath(++p);		// Process ".." directories
-	    if (m > 0)
+		rp = s;
+
+	if ( ! ispath(*rp))			/* Point the path proper */
+		pp = rp;				/* It's a relative path */
+	else if ( ! ispath(*(rp + 1)))	/* Check for the UNC form */
+		pp = rp + 1;			/* No, skip over the leading slash */
+	else
+		pp = rp + 2;			/* Yes, skip over the UNC prefix */
+
+	condense(pp, 0);			/* Condense the pathname */
+
+	if (n = strlen(pp))			/* Delete any trailing pathchar */
 		{
-		backcopy(s, p);		// Delete intermediate ones,
-		--m;
-		++n;			//   but count them
+		p = pp + n - 1;
+		if (ispath(*p))
+			*p = '\0';
 		}
-	    else
-		s = p;			// Leave initial ones in place
-	    }
+
+//	strupr(s);					/* Convert to all upper case */
 	}
+
+/* ----------------------------------------------------------------------- */
+    static int				/* Return the condensation count */
+condense (					/* Condense '.' and '..' from the path name */
+    char  *s,				/* Pointer to the condensable string */
+    int    m)				/* Pathname prefix component counter */
+
+    {
+    char  *p;				/* Pointer to next path component */
+    char  *q;				/* Pointer to next path component + 1 */
+    int    n;				/* Return ".." condensation counter */
+    int    k;				/* Return ".." condensation counter */
+
+#if 1					// New version, handles ".xxxx" filenames
+
+	n = 0;
+	while (*s)
+		{
+		p = s + 1;
+		q = s + 2;
+		while (ispath(*s))
+			backcopy(s, p);			// Condense multiple pathchars
+		if (*s != '.')
+			break;					// Skip over non-dot elements
+
+		if (ispath(*p)  ||  (*p == '\0'))
+			backcopy(s, nextpath(s));	// Condense "." directories
+
+		else if ((*p != '.')
+			 ||  ( ! ispath(*q)  &&  (*q != '\0')))
+			break;					// Skip over ".xxxx" filenames
+
+		else
+			{
+			p = nextpath(++p);		// Process ".." directories
+			if (m > 0)
+				{
+				backcopy(s, p);		// Delete intermediate ones,
+				--m;
+				++n;				//   but count them
+				}
+			else
+				s = p;				// Leave initial ones in place
+			}
+		}
 
 #else			// Old version, doesn't handle ".xxxx" filenames
 	
-    n = 0;
-    while (*s)
-	{
-	p = s + 1;
-	while (ispath(*s))
-	    backcopy(s, p);		/* Condense multiple pathchars */
-	if (*s != '.')
-	    break;
-	if (*p == '.')			/* Point past ".." directories */
-	    {
-	    p = nextpath(++p);
-	    if (m > 0)
+	n = 0;
+	while (*s)
 		{
-		backcopy(s, p);		/* Delete intermediate ones, */
-		--m;
-		++n;			/*   but count them */
+		p = s + 1;
+		while (ispath(*s))
+			backcopy(s, p);		/* Condense multiple pathchars */
+		if (*s != '.')
+			break;
+		if (*p == '.')			/* Point past ".." directories */
+			{
+			p = nextpath(++p);
+			if (m > 0)
+				{
+				backcopy(s, p);		/* Delete intermediate ones, */
+				--m;
+				++n;			/*   but count them */
+				}
+			else
+				s = p;			/* Leave initial ones in place */
+			}
+		else
+			backcopy(s, nextpath(p));	/* Condense "." directories */
 		}
-	    else
-		s = p;			/* Leave initial ones in place */
-	    }
-	else
-	    backcopy(s, nextpath(p));	/* Condense "." directories */
+
 #endif
 
-    if (*s == '\0')
+	if (*s == '\0')
+		return (n);
+
+	/*
+	** At this point, the path string s points a non-NULL path component
+	** which is not a "." or ".." directory.
+	*/
+
+	p = nextpath(s);			/* Point the next component */
+	if (*p)
+		{
+		if (k = condense(p, (m + 1)))	/* Recursively call condense */
+			{
+			backcopy(s, p);		/* Strip one directory */
+			n += k - 1;
+			}
+		}
+
 	return (n);
-
-    /*
-    ** At this point, the path string s points a non-NULL path component
-    ** which is not a "." or ".." directory.
-    */
-
-    p = nextpath(s);			/* Point the next component */
-    if (*p)
-	{
-	if (k = condense(p, (m + 1)))	/* Recursively call condense */
-	    {
-	    backcopy(s, p);		/* Strip one directory */
-	    n += k - 1;
-	    }
 	}
 
-    return (n);
-    }
+/* ----------------------------------------------------------------------- */
+	static void
+backcopy (				/* Copy string from p2 to p1 */
+	char  *p1,			/* Destination pointer */
+	char  *p2)			/* Source pointer */
+
+	{
+	while (*(p1++) = *(p2++))
+		;
+	}
 
 /* ----------------------------------------------------------------------- */
-    static void
-backcopy (p1, p2)		/* Copy string from p2 to p1 */
-    char  *p1;			/* Destination pointer */
-    char  *p2;			/* Source pointer */
+	static char *
+nextpath (				/* Point the next component */
+	char  *s)			/* Pointer to the current component */
 
-    {
-    while (*(p1++) = *(p2++))
-	;
-    }
+	{
+	while (*s && ( ! ispath(*s)))
+		++s;
+	if (*s)
+		++s;
+	return (s);
+	}
 
 /* ----------------------------------------------------------------------- */
-    static char *
-nextpath (s)			/* Point the next component */
-    char  *s;			/* Pointer to the current component */
+#ifdef TEST
+main (					/* Test main program */
+    int    argc,
+    char  *argv [])
 
-    {
-    while (*s && ( ! ispath(*s)))
-	++s;
-    if (*s)
-	++s;
-    return (s);
-    }
+	{
+	char  *p;
 
+	if (argc > 1)
+		{
+		p = *++argv;
+		printf("%s\n", p);
+		fnreduce(p);
+		printf("%s\n", p);
+		}
+	else
+		printf("No pathname !\n");
+	}
+#endif
+/* ----------------------------------------------------------------------- */
 /* ----------------------------------------------------------------------- */

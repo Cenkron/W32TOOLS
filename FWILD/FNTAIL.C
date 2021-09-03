@@ -22,22 +22,22 @@
 #include  "fwild.h"
 
 /* ----------------------------------------------------------------------- */
-    char *
-fntail (s)		/* Return pointer to the last component of path s */
-    char  *s;		/* Pointer to the path string */
+	char *
+fntail (				/* Return pointer to the last component of path s */
+    char  *s)			/* Pointer to the path string */
 
-    {
-    char  *p;		/* Temporary pointer into the path string */
+	{
+	char  *p;			/* Temporary pointer into the path string */
 
-    if (p = strchr(s, ':'))	/* Skip over the drive spec */
-	s = p + 1;
+	if (p = strchr(s, ':'))	/* Skip over the drive spec */
+		s = p + 1;
 
 				/* Skip over all path delimiters */
 
-    while ((p = strchr(s, '/')) || (p = strchr(s, '\\')))
-	s = p + 1;
+	while ((p = strchr(s, '/')) || (p = strchr(s, '\\')))
+		s = p + 1;
 
-    return (s);
-    }
+	return (s);
+	}
 
 /* ----------------------------------------------------------------------- */

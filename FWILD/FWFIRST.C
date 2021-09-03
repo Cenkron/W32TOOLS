@@ -29,23 +29,23 @@ static  char    buffer [1024] = {0};      /* The filename buffer */
 /* ----------------------------------------------------------------------- *\
 |  fwfirst () - Find the first filename matching the supplied fwild string
 \* ----------------------------------------------------------------------- */
-    char  *			/* Return pointer to matching string */
+	char  *				/* Return pointer to matching string */
 fwfirst (
-    char  *s)   		/* Pointer to the time/date search filename */
+	char  *s)   		/* Pointer to the time/date search filename */
 
-    {
-    void  *hp;  		/* Pointer to the wild file data block */
-    char  *p;	  		/* Pointer to the found matching string */
-
-    hp = fwinit(s, FW_FILE);
-    if ((p = fwild(hp)) != NULL)
 	{
-	strncpy(buffer, p, min(strlen(p), (sizeof(buffer) - 1)));
-	p = buffer;
-	fwfree(hp);
-	}
+	void  *hp;  		/* Pointer to the wild file data block */
+	char  *p;	  		/* Pointer to the found matching string */
 
-    return (p);
-    }
+	hp = fwinit(s, FW_FILE);
+	if ((p = fwild(hp)) != NULL)
+		{
+		strncpy(buffer, p, min(strlen(p), (sizeof(buffer) - 1)));
+		p = buffer;
+		fwfree(hp);
+		}
+
+	return (p);
+	}
 
 /* ----------------------------------------------------------------------- */

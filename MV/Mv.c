@@ -100,484 +100,515 @@ int		attrib		= FW_FILE;
 /* ----------------------------------------------------------------------- */
 
 /* ----------------------------------------------------------------------- */
-    int
-special_options (int c, char *arg) /*lint -esym(715,arg)  */
-    {
+	int
+special_options (
+	int c,
+	char *arg) /*lint -esym(715,arg)  */
 
-    switch (c)
 	{
-	case 'X':
-	    optdata.flags.x = !optdata.flags.x;
-
-	    if (fexclude(arg))
+	switch (c)
 		{
-		fprintf(stderr, "Error excluding '%s'\n", arg);
-		exit(1);
+		case 'X':
+			optdata.flags.x = !optdata.flags.x;
+
+			if (fexclude(arg))
+				{
+				fprintf(stderr, "Error excluding '%s'\n", arg);
+				exit(1);
+				}
+			break;
+
+		default:;
 		}
-	    break;
 
-	default:;
+	return (0);
 	}
-
-    return (0);
-    }
 
 /* ----------------------------------------------------------------------- */
 
 /* ----------------------------------------------------------------------- */
-    int
-main (int argc, char *argv[])
-    {
-    int		iResult;	// = 0;
-    int         lastarg;
-    int		c;
-    char *      dst;
-    char        src [1024];
+	int
+main (
+	int   argc,
+	char *argv[])
 
-    optdata.pProc[GETOPT_X] = special_options;
+	{
+	int		iResult;	// = 0;
+	int         lastarg;
+	int		c;
+	char *      dst;
+	char        src [1024];
 
-    if ((iResult=GetOptions("MV", argc, argv, optstring)) != 0)
-    	return (iResult);
+	optdata.pProc[GETOPT_X] = special_options;
 
-    if (optdata.flags.s)	attrib |= FW_SYSTEM;
-    if (optdata.flags.h)	attrib |= FW_HIDDEN;
+	if ((iResult=GetOptions("MV", argc, argv, optstring)) != 0)
+		return (iResult);
 
-    /* adjust screen output for actual screen size */
-    if (isatty(fileno(stdout))
-    &&  ((c=getcols()) > 80))
-        cols = c / 2;
+	if (optdata.flags.s)	attrib |= FW_SYSTEM;
+	if (optdata.flags.h)	attrib |= FW_HIDDEN;
 
-    if (optind < argc)
-        {
-        if (optind == (argc-1))
-            {
-            dst = ".";
-            lastarg = argc;
-            }
-        else
-            {
-            dst = argv[argc-1];
-            lastarg = argc-1;
-            }
+	/* adjust screen output for actual screen size */
+	if (isatty(fileno(stdout))
+	&&  ((c=getcols()) > 80))
+		cols = c / 2;
 
-        if (fwvalid(dst) != FWERR_NONE)
-            fatal(dst, "Invalid destination path specification");
-        else if (fnchkfil(dst))
-//      else if ( ! fnchkdir(dst))
-            fatal(dst, "Destination is not a directory");
-        else if (iswild(dst))
-            fatal(dst, "Cannot have wildcards in the destination");
+	if (optind < argc)
+		{
+		if (optind == (argc-1))
+			{
+			dst = ".";
+			lastarg = argc;
+			}
+		else
+			{
+			dst = argv[argc-1];
+			lastarg = argc-1;
+			}
 
-	dst = fnabspth(dst);
+		if (fwvalid(dst) != FWERR_NONE)
+			fatal(dst, "Invalid destination path specification");
+		else if (fnchkfil(dst))
+//		else if ( ! fnchkdir(dst))
+			fatal(dst, "Destination is not a directory");
+		else if (iswild(dst))
+			fatal(dst, "Cannot have wildcards in the destination");
 
-        while (optind < lastarg)
-            {
-            strcpy(src, argv[optind]);
+		dst = fnabspth(dst);
 
-            if (fwvalid(src) != FWERR_NONE)
-                fatal(src, "Invalid source file specification");
-            else if ((fnchkdir(src))			// if src is a directory,    assume *.*
-                 ||  (strcmp(fntail(src), "**") == 0))	// if src is recurse wild,   assume *.*
-                catpth(src, "*.*");
-            else if (strchr(fntail(src), '.') == NULL)	// if src specifies no type, assume  .*     */
-                strcat(src, ".*");
+		while (optind < lastarg)
+			{
+			strcpy(src, argv[optind]);
+
+			if (fwvalid(src) != FWERR_NONE)
+				fatal(src, "Invalid source file specification");
+			else if ((fnchkdir(src))			// if src is a directory,    assume *.*
+				 ||  (strcmp(fntail(src), "**") == 0))	// if src is recurse wild,   assume *.*
+				catpth(src, "*.*");
+			else if (strchr(fntail(src), '.') == NULL)	// if src specifies no type, assume  .*     */
+				strcat(src, ".*");
 
 //debug(("before filepair('%s', '%s')\n", src, dst));
 
-	    if (SameDisk(src, dst))
-		filepair(src, dst);
-	    else
-		XCprocess(src, dst);
+			if (SameDisk(src, dst))
+				filepair(src, dst);
+			else
+				XCprocess(src, dst);
 
-            ++optind;
-            }
-        if (dst)
-	    free(dst);
-        }
+			++optind;
+			}
+		if (dst)
+			free(dst);
+		}
 
-    else if (optind == (argc-1))
-        fatal("?", "Must specify destination pathname");
+	else if (optind == (argc-1))
+		fatal("?", "Must specify destination pathname");
 
-    else
-        usage();
+	else
+		usage();
 
-    return(0);
-    }
+	return(0);
+	}
 
 /* ----------------------------------------------------------------------- */
 
 /* ----------------------------------------------------------------------- */
-    void
+	void
 filepair (		/* Process the pathnames */
-    char  *s1,			/* Pointer to the pathname1 string */
-    char  *dstpath		/* Pointer to the pathname2 string */
-    )
-    {
-    char  *srcname;		/* Pointer to the path1 pathname */
-    char  *dstname;		/* Pointer to the path2 pathname */
+	char  *s1,			/* Pointer to the pathname1 string */
+	char  *dstpath)		/* Pointer to the pathname2 string */
 
-    const int index = suffix(s1);			/* Set pointer to construct path2 */
+	{
+	char  *srcname;		/* Pointer to the path1 pathname */
+	char  *dstname;		/* Pointer to the path2 pathname */
 
-    char *hp = fwinit(s1, attrib);		/* Find the first path1 file */
-    if ((srcname = fwildexcl(hp)) == NULL)
-	notfound(s1);
+	const int index = suffix(s1);			/* Set pointer to construct path2 */
 
-    else do
-	{				/* Process all path1 files */
-	if (optdata.flags.f)
-	    dstname = fncatpth(dstpath, fntail(srcname));
-	else
-	    dstname = fncatpth(dstpath, (srcname + index));
+	char *hp = fwinit(s1, attrib);		/* Find the first path1 file */
+	if ((srcname = fwildexcl(hp)) == NULL)
+		notfound(s1);
+
+	else do
+		{				/* Process all path1 files */
+		if (optdata.flags.f)
+			dstname = fncatpth(dstpath, fntail(srcname));
+		else
+			dstname = fncatpth(dstpath, (srcname + index));
 
 //debug(("before process('%s', '%s', '%s')\n", srcname, dstname, dstpath));
 
-	MVprocess(srcname, dstname, dstpath);
+		MVprocess(srcname, dstname, dstpath);
 
-        if (dstname)
-	    free(dstname);
-	}  while ((srcname = fwildexcl(hp)) != NULL);
-    }
+		if (dstname)
+			free(dstname);
+		}  while ((srcname = fwildexcl(hp)) != NULL);
+	}
 
 /* ----------------------------------------------------------------------- *\
 |  Quote a path
 \* ----------------------------------------------------------------------- */
-    static void
+	static void
 quote_path (		// Print a file/directory name in normal mode
-    char  *unquoted,	// Pointer to the unquoted path string
-    char  *quoted)	// Pointer to the quoted path string
+	char  *unquoted,	// Pointer to the unquoted path string
+	char  *quoted)	// Pointer to the quoted path string
 
-    {
-    int  quotes = 0;	// Number of quotes to be added
-
-
-    for (char *p = unquoted; (*p != '\0'); ++p)
 	{
-	if (isspace(*p))
-	    {
-	    quotes = 2;	// Quotes are needed
-	    break;
-	    }
-	}
+	int  quotes = 0;	// Number of quotes to be added
 
-    if (quotes != 0)
-	*(quoted++) = '\"';
-    strcpy(quoted, unquoted);
-    quoted += strlen(unquoted);
-    if (quotes != 0)
-	{
-	*(quoted++) = '\"';
-	*quoted     = '\0';
+
+	for (char *p = unquoted; (*p != '\0'); ++p)
+		{
+		if (isspace(*p))
+			{
+			quotes = 2;	// Quotes are needed
+			break;
+			}
+		}
+
+	if (quotes != 0)
+		*(quoted++) = '\"';
+	strcpy(quoted, unquoted);
+	quoted += strlen(unquoted);
+	if (quotes != 0)
+		{
+		*(quoted++) = '\"';
+		*quoted     = '\0';
+		}
 	}
-    }
 
 /* ----------------------------------------------------------------------- *\
 |  Perform a same disk move
 \* ----------------------------------------------------------------------- */
-    void
+	void
 MVprocess (
-    char *	src,	/* source file name */
-    char *	dst,	/* desination file name */
-    char *	path)	/* destination path name */
+	char *	src,	/* source file name */
+	char *	dst,	/* desination file name */
+	char *	path)	/* destination path name */
 
-    {
-    fnreduce(src);
-    fnreduce(dst);
-    fnreduce(path);
+	{
+	fnreduce(src);
+	fnreduce(dst);
+	fnreduce(path);
 
 //debug(("inside process(): src ='%s'\n", src));
 //debug(("inside process(): dst ='%s'\n", dst));
 //debug(("inside process(): path='%s'\n", path));
 
-    if (query(src, path))
-	move(src, dst);
-    }
+	if (query(src, path))
+		move(src, dst);
+	}
 
 /* ----------------------------------------------------------------------- *\
 |  Perform a different disk move using spawned XC
 \* ----------------------------------------------------------------------- */
-    void
+	void
 XCprocess (
-    char *	src,	/* source file name */
-    char *	dst	/* desination path name */
-	)
-    {
-    if (optdata.flags.c)	/* if src drive =/= dst drive understood */
+	char *	src,	/* source file name */
+	char *	dst)	/* desination path name */
+
 	{
-	char  xcflags [8] = "-vk";
-	char  qsrc [1027];
-	char  qdst [1027];
+	if (optdata.flags.c)	/* if src drive =/= dst drive understood */
+		{
+		char  xcflags [8] = "-vk";
+		char  qsrc [1027];
+		char  qdst [1027];
 
-	fnreduce(src);
-	fnreduce(dst);
+		fnreduce(src);
+		fnreduce(dst);
 
-	quote_path(src, qsrc);
-	quote_path(dst, qdst);
+		quote_path(src, qsrc);
+		quote_path(dst, qdst);
 
 //debug(("inside process(): src ='%s'\n", qsrc));
 //debug(("inside process(): dst ='%s'\n", qdst));
 
-	if (optdata.flags.f)
-	    strcat(xcflags, "f");
-	if (optdata.flags.q)
-	    strcat(xcflags, "q");
+		if (optdata.flags.f)
+			strcat(xcflags, "f");
+		if (optdata.flags.q)
+			strcat(xcflags, "q");
 
-	const int rc = spawnlp(P_WAIT, "xc", "xc", xcflags, qsrc, qdst, NULL);
-	if (rc)
-	    fatal(src, "copy/delete process failed");
-	}
+		const int rc = spawnlp(P_WAIT, "xc", "xc", xcflags, qsrc, qdst, NULL);
+		if (rc)
+			fatal(src, "copy/delete process failed");
+		}
 
-    else
-	fatal(src, "cannot move to a different drive:  use -c");
+	else
+		fatal(src, "cannot move to a different drive:  use -c");
     }
 
 /* ----------------------------------------------------------------------- *\
 |  Determine whether the requested move is same disk or not
 \* ----------------------------------------------------------------------- */
-    int			// Returns TRUE if a same disk move is requested
+	int			// Returns TRUE if a same disk move is requested
 SameDisk (
-    char *	src,	/* source file name */
-    char *	dst	/* desination path name */
-    )
-    {
-    fnreduce(src);
-    char *	xsrc = fnabspth(src);
+	char *	src,	/* source file name */
+	char *	dst)	/* desination path name */
 
-    // Note: also returns FALSE if UNC paths are specified
+	{
+	fnreduce(src);
+	char *	xsrc = fnabspth(src);
 
-    const int result = (tolower(xsrc[0]) == tolower(dst[0]))
-	    && (xsrc[1] == ':')
-	    && ( dst[1] == ':');
+	// Note: also returns FALSE if UNC paths are specified
 
-    if (xsrc)
-	free(xsrc);
+	const int result = (tolower(xsrc[0]) == tolower(dst[0]))
+		&& (xsrc[1] == ':')
+		&& ( dst[1] == ':');
 
-    return result;
-    }
+	if (xsrc)
+		free(xsrc);
+
+	return result;
+	}
 
 /* ----------------------------------------------------------------------- */
 
 /* ----------------------------------------------------------------------- */
-    void
+	void
 move (char *src, char *dst)
-    {
+	{
 	    //debug(("inside move('%s', '%s')\n", src, dst));
     
-    if (!optdata.flags.l && !optdata.flags.q)
-	{
-	printf("Moving     %s", src);
-	InterSpace(src, dst);
-	printf("  to  %s", dst /*path*/);
-	}
-
-    const long dstdate = fgetfdt(dst);
-
-    if (dstdate != -1L)
-	{
-	if (!optdata.flags.o)
-	    {
-	    error(dst, "target file exists: use -o switch");
-	    goto err_exit;
-	    }
-
-	if (is_readonly(dst))
-	    {
-	    if ( !optdata.flags.r )
+	if (!optdata.flags.l && !optdata.flags.q)
 		{
-		error(dst, "target file exists and is read-only: use -ro switches");
-		goto err_exit;
+		printf("Moving     %s", src);
+		InterSpace(src, dst);
+		printf("  to  %s", dst /*path*/);
 		}
-	    else
+
+	const long dstdate = fgetfdt(dst);
+
+	if (dstdate != -1L)
 		{
-		if (!optdata.flags.n)
-		    clr_readonly(dst);
+		if (!optdata.flags.o)
+			{
+			error(dst, "target file exists: use -o switch");
+			goto err_exit;
+			}
+
+		if (is_readonly(dst))
+			{
+			if ( !optdata.flags.r )
+				{
+				error(dst, "target file exists and is read-only: use -ro switches");
+				goto err_exit;
+				}
+			else
+				{
+				if (!optdata.flags.n)
+					clr_readonly(dst);
+				}
+			}
+    
+		if ((!optdata.flags.n)
+		&&  (unlink(dst) != 0))
+			{
+			error(dst, "Unable to delete existing file");
+			goto err_exit;
+			}
 		}
-	    }
     
 	if ((!optdata.flags.n)
-	&&  (unlink(dst) != 0))
-	    {
-	    error(dst, "Unable to delete existing file");
-	    goto err_exit;
-	    }
-	}
-    
-    if ((!optdata.flags.n)
-    &&  (prename(src, dst) != 0))
-	error(src, "Unable to rename file");
+	&&  (prename(src, dst) != 0))
+		error(src, "Unable to rename file");
 
 err_exit:
-    if (!optdata.flags.l && !optdata.flags.q)
-	putchar('\n');
-    }
+	if (!optdata.flags.l && !optdata.flags.q)
+		putchar('\n');
+	}
 
 /* ----------------------------------------------------------------------- */
 
 /* ----------------------------------------------------------------------- */
-    int				/* Return the index to the filename part */
-suffix (char  *s)		/* Point the non-directory tail of path s */
-    {
-    int    index = 0;		/* Index to filename part of path s */
-    char   ch;			/* Temporary character variable */
-    char  *temp;		/* Pointer to a temporary string buffer */
-    char  *p;			/* Pointer to a temporary string buffer */
-
-    if ((p = temp = strdup(s)) != NULL)
+	int				/* Return the index to the filename part */
+suffix (
+	char  *s)		/* Point the non-directory tail of path s */
 	{
-	fnreduce(temp);
+	int    index = 0;		/* Index to filename part of path s */
+	char   ch;			/* Temporary character variable */
+	char  *temp;		/* Pointer to a temporary string buffer */
+	char  *p;			/* Pointer to a temporary string buffer */
 
-	do  {
-	    if ((ch = *p) != '\0')
-		++p;
-	    if ((ch == '\0') || (ch == ':') || (ch == '/') || (ch == '\\'))
+	if ((p = temp = strdup(s)) != NULL)
 		{
-		const char cs = *p;
-		*p = '\0';
-		if (fnchkdir(temp))
-		    index = (p - temp);
-		else
-		    break;
-		*p = cs;
+		fnreduce(temp);
+
+		do  {
+			if ((ch = *p) != '\0')
+				++p;
+			if ((ch == '\0') || (ch == ':') || (ch == '/') || (ch == '\\'))
+				{
+				const char cs = *p;
+				*p = '\0';
+				if (fnchkdir(temp))
+					index = (p - temp);
+				else
+					break;
+				*p = cs;
+				}
+			} while (ch);
+
+		free(temp);
 		}
-	    } while (ch);
 
-	free(temp);
+	return (index);
 	}
-
-    return (index);
-    }
 
 /*--------------------------------------------------------------------*/
-    void
-catpth (char *s, char *t)
-    {
-    char * p;
+	void
+catpth (
+	char *s,
+	char *t)
 
-    if ((p=fncatpth(s,t)) != NULL)
 	{
-	strcpy(s,p);
-	free(p);
+	char * p;
+
+	if ((p=fncatpth(s,t)) != NULL)
+		{
+		strcpy(s,p);
+		free(p);
+		}
 	}
-    }
 
 /*--------------------------------------------------------------------*/
     int
-query (char *src, char *dst)
+query (
+	char *src,
+	char *dst)
+
     {
-    int		retval		= TRUE;
+	int		retval		= TRUE;
 
-    if (optdata.flags.q)
-        {
-        printf("Move    %s", src);
-	InterSpace(src, dst);
-        printf("  to  %s?  [Y/N/R/QC] : ", dst);
+	if (optdata.flags.q)
+		{
+		printf("Move    %s", src);
+		InterSpace(src, dst);
+		printf("  to  %s?  [Y/N/R/QC] : ", dst);
 
-	const char key = get_key(FALSE, TRUE);
+		const char key = get_key(FALSE, TRUE);
 	
-	switch (tolower(key))
-	    {
-	    case 'y':
-		retval = TRUE;
-		break;
+		switch (tolower(key))
+			{
+			case 'y':
+				retval = TRUE;
+				break;
 
-	    case 'r':
-		optdata.flags.q = FALSE;
-		retval = TRUE;
-		break;
+			case 'r':
+				optdata.flags.q = FALSE;
+				retval = TRUE;
+				break;
 
-	    case 'q':
-	    case 'c':
-		printf("Move terminated\n");
-		exit(0);
+			case 'q':
+			case 'c':
+				printf("Move terminated\n");
+				exit(0);
 
-	    default:
-		retval = FALSE;
-		break;
-	    }
-        }
+			default:
+				retval = FALSE;
+				break;
+			}
+		}
 
-    return (retval);
-    }
-
-/*--------------------------------------------------------------------*/
-    int
-is_readonly (char *filename)
-    {
-    int	    attrib;	    // = -1;
-
-    if ((attrib=fgetattr(filename)) < 0)
-	return (0);
-
-    return (attrib & ATT_RONLY);
-    }
-
-/*--------------------------------------------------------------------*/
-    int
-clr_readonly (char *filename)
-    {
-    int	    attrib;	    // = -1;
-
-    if ((attrib=fgetattr(filename)) >= 0)
-	if (fsetattr(filename, attrib & ~ATT_RONLY) < 0)
-	    if (!optdata.flags.z)
-		printf("\n\aUnable to change attributes: %s\n",filename);
-
-    return (0);
-    }
-
-/*--------------------------------------------------------------------*/
-    int
-set_readonly (char *filename)
-    {
-    int	    attrib;	    // = -1;
-
-    if ((attrib=fgetattr(filename)) >= 0)
-	if (fsetattr(filename, attrib | ATT_RONLY) < 0)
-	    if (!optdata.flags.z)
-		printf("\n\aUnable to change attributes: %s\n",filename);
-
-    return (0);
-    }
-
-/*--------------------------------------------------------------------*/
-    void
-notfound (char *fn)
-    {
-    
-    if (!optdata.flags.z)
-	printf("\n\aFile not found: %s\n",fn);
-
-    if (optdata.flags.x)
-	if (optdata.flags.z)
-	    exit(0);
-	else
-	    exit(1);
-    }
-
-/*--------------------------------------------------------------------*/
-    void
-error (char *filename, char *message)
-    {
-
-    if (!optdata.flags.z)
-	printf("\n\aFile error: %s - %s\n", filename, message);
-
-    if (optdata.flags.x)
-	exit(optdata.flags.z ? 0 : 1);
-    }
-
-/*--------------------------------------------------------------------*/
-    void
-fatal (char *file, char *text)
-    {
-
-    if (optdata.flags.z)
-	exit(0);
-    else
-	{
-	printf("\n\aFatal error: ('%s') %s\n", file, text);
-	exit(1);
+	return (retval);
 	}
+
+/*--------------------------------------------------------------------*/
+	int
+is_readonly (
+	char *filename)
+
+	{
+    int	    attrib;	    // = -1;
+
+	if ((attrib=fgetattr(filename)) < 0)
+		return (0);
+
+	return (attrib & ATT_RONLY);
+	}
+
+/*--------------------------------------------------------------------*/
+	int
+clr_readonly (
+	char *filename)
+
+	{
+	int	    attrib;	    // = -1;
+
+	if ((attrib=fgetattr(filename)) >= 0)
+		{
+		if (fsetattr(filename, attrib & ~ATT_RONLY) < 0)
+			{
+			if (!optdata.flags.z)
+				printf("\n\aUnable to change attributes: %s\n",filename);
+			}
+		}
+	return (0);
+	}
+
+/*--------------------------------------------------------------------*/
+	int
+set_readonly (
+	char *filename)
+
+	{
+	int	    attrib;	    // = -1;
+
+    if ((attrib=fgetattr(filename)) >= 0)
+		{
+		if (fsetattr(filename, attrib | ATT_RONLY) < 0)
+			{
+			if (!optdata.flags.z)
+				printf("\n\aUnable to change attributes: %s\n",filename);
+			}
+		}
+	return (0);
+	}
+
+/*--------------------------------------------------------------------*/
+	void
+notfound (
+	char *fn)
+    
+	{
+	if (!optdata.flags.z)
+		printf("\n\aFile not found: %s\n",fn);
+
+	if (optdata.flags.x)
+		{
+		if (optdata.flags.z)
+			exit(0);
+		else
+			exit(1);
+		}
     }
+
+/*--------------------------------------------------------------------*/
+	void
+error (
+	char *filename,
+	char *message)
+
+	{
+	if (!optdata.flags.z)
+		printf("\n\aFile error: %s - %s\n", filename, message);
+
+	if (optdata.flags.x)
+		exit(optdata.flags.z ? 0 : 1);
+	}
+
+/*--------------------------------------------------------------------*/
+	void
+fatal (
+	char *file,
+	char *text)
+
+	{
+	if (optdata.flags.z)
+		exit(0);
+	else
+		{
+		printf("\n\aFatal error: ('%s') %s\n", file, text);
+		exit(1);
+		}
+	}
 
 /*--------------------------------------------------------------------*/
 
@@ -588,33 +619,33 @@ fatal (char *file, char *text)
 	Moving_____    %s    __to__    %s   ?[Y/N/R/QC]_:_  %c<ret>
 
 \*--------------------------------------------------------------------*/
-    void
+	void
 InterSpace (char *src, char *dst)
-    {
-    int		spacing;
-    const int	left	= 11;
-    const int	middle	= 6;
-    int		right;
+	{
+	int		spacing;
+	const int	left	= 11;
+	const int	middle	= 6;
+	int		right;
 
-         if (azFlags.q)	right = 18;
-    else if (azFlags.v)	right = 4;
-    else		right = 1;
+		 if (azFlags.q)	right = 18;
+	else if (azFlags.v)	right = 4;
+	else		right = 1;
 
-    const int srclen = strlen(src);
-    const int dstlen = strlen(dst);
+	const int srclen = strlen(src);
+	const int dstlen = strlen(dst);
 
 // Note that 'cols' is half the screen width (40 on 80x25 screen)
 
-    if ((srclen+dstlen+left+middle+right) > (2*cols))
-	spacing = 0;
-    else if ((dstlen+middle+right) > cols)
-	spacing = 2*cols - srclen - dstlen - left - middle - right;
-    else
-	spacing = cols - srclen - left;
+	if ((srclen+dstlen+left+middle+right) > (2*cols))
+		spacing = 0;
+	else if ((dstlen+middle+right) > cols)
+		spacing = 2*cols - srclen - dstlen - left - middle - right;
+	else
+		spacing = cols - srclen - left;
 
-    while (spacing--  >  0)	// takes care of negative case too
-	putchar(' ');
-    }
+	while (spacing--  >  0)	// takes care of negative case too
+		putchar(' ');
+	}
 
 /*--------------------------------------------------------------------*/
 /*--------------------------------------------------------------------*/

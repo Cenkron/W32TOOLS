@@ -14,14 +14,14 @@
 #include  "fwild.h"
 
 /* ----------------------------------------------------------------------- */
-    void
+	void
 usage (void)
 
-    {
-    printf(usagedoc[0],
+	{
+	printf(usagedoc[0],
 	optswch, optswch, optswch, optswch, optswch, optswch);
-    putchar('\n');
-    exit(2);
-    }
+	putchar('\n');
+	exit(2);
+	}
 
 /* ----------------------------------------------------------------------- */

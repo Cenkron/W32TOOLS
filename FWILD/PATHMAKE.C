@@ -31,28 +31,28 @@
 #define  PATHLIMIT	1024
 
 /* ----------------------------------------------------------------------- */
-    int				/* Build path and open() a file */
-pathmake (char *s)		/* Pointer to the directory pathname */
+	int				/* Build path and open() a file */
+pathmake (
+	char *s)		/* Pointer to the directory pathname */
 
-    {
-    int  result = 0;		/* Returned result */
-    char  *p;			/* Pointer into the temporary string */
-    char  temp [PATHLIMIT + 1];	/* Temporary path/filename string */
+	{
+	int  result = 0;		/* Returned result */
+	char  *p;			/* Pointer into the temporary string */
+	char  temp [PATHLIMIT + 1];	/* Temporary path/filename string */
 
+	p = &temp[0];		/* Attempt to build the path */
+	do  {
+		strncpy(&temp[0], s, PATHLIMIT);
+		if (p = strpbrk((p + 1), "/\\"))
+			{
+			*p = '\0';
+			if (( ! fnchkdir(&temp[0]))
+			&& ((result = mkdir(&temp[0])) != 0))
+				break;
+			}
+		} while (p);
 
-    p = &temp[0];		/* Attempt to build the path */
-    do  {
-	strncpy(&temp[0], s, PATHLIMIT);
-	if (p = strpbrk((p + 1), "/\\"))
-	    {
-	    *p = '\0';
-	    if (( ! fnchkdir(&temp[0]))
-	    && ((result = mkdir(&temp[0])) != 0))
-		break;
-	    }
-	} while (p);
-
-    return  (result);
-    }
+	return  (result);
+	}
 
 /* ----------------------------------------------------------------------- */

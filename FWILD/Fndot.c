@@ -20,24 +20,24 @@
 #include  "fwild.h"
 
 /* ------------------------------------------------------------------------ */
-    int
-fndot (s)		/* Return TRUE if a dot or dotdot directory name */
-    char  *s;		/* Pointer to the filename string */
+	int
+fndot (					/* Return TRUE if a dot or dotdot directory name */
+	char  *s)			/* Pointer to the filename string */
 
-    {
-    char   ch;
-    char  *p = s;
-
-    for (p = s; ch = *p; )  /* Point the last component */
 	{
-	++p;
-	if ((ch == ':')
-	||  (ch == '/')
-	||  (ch == '\\'))
-	    s = p;
-	}
+	char   ch;
+	char  *p = s;
 
-    return ((strcmp(s, ".") == 0)  ||  (strcmp(s, "..") == 0));
-    }
+	for (p = s; ch = *p; )  /* Point the last component */
+		{
+		++p;
+		if ((ch == ':')
+		||  (ch == '/')
+		||  (ch == '\\'))
+			s = p;
+		}
+
+	return ((strcmp(s, ".") == 0)  ||  (strcmp(s, "..") == 0));
+	}
 
 /* ------------------------------------------------------------------------ */

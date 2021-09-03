@@ -49,150 +49,150 @@ void dprint (char **);
 static void process (FILE *, char *);
 
 /* ----------------------------------------------------------------------- */
-    void
-main (argc, argv)
-    int    argc;
-    char  *argv [];
+	void
+main (
+    int    argc,
+    char  *argv [])
 
-    {
-    int    smode = FW_FILE;		/* File search mode attributes */
-    char   sw;				/* Parser temporary */
-    char  *s;				/* Parser temporary */
-    void  *hp  = NULL;			/* Pointer to wild file data block */
-    char  *fnp = NULL;			/* Input file name pointer */
-    FILE  *fp  = NULL;			/* Input file descriptor */
-
-
-    setbuf(stdout, buffer);
-    swch = egetswch();
-
-    while (--argc > 0)
 	{
-	sw = **(++argv);
-	if ((sw != swch)
-	&&  (sw != '-')
-	&&  (sw != '+'))
-	    break;
+	int    smode = FW_FILE;		/* File search mode attributes */
+	char   sw;				/* Parser temporary */
+	char  *s;				/* Parser temporary */
+	void  *hp  = NULL;			/* Pointer to wild file data block */
+	char  *fnp = NULL;			/* Input file name pointer */
+	FILE  *fp  = NULL;			/* Input file descriptor */
 
-	for (s = *argv + 1; *s; ++s)
-	    {
-	    if (isdigit(*s))
+
+	setbuf(stdout, buffer);
+	swch = egetswch();
+
+	while (--argc > 0)
 		{
-		if (sw == '-')
-		    {
-		    w_cnt = atoi(s);
-		    break;
-		    }
-		else if (sw == '+')
-		    {
-		    c_cnt = atoi(s);
-		    break;
-		    }
-		else
-		    usage();
-		}
-	    else if (sw == swch)
-		{
-		switch (tolower(*s))
-		    {
-		    case 'c':
-			++c_flag;
-			++d_flag;
-			++u_flag;
-			defflg = FALSE;
+		sw = **(++argv);
+		if ((sw != swch)
+		&&  (sw != '-')
+		&&  (sw != '+'))
 			break;
 
-		    case 'd':
-			++d_flag;
-			defflg = FALSE;
-			break;
-
-		    case 'i':
-			i_flag = !i_flag;
-			break;
-
-		    case 'l':
-			++l_flag;
-			break;
-
-		    case 'u':
-			++u_flag;
-			defflg = FALSE;
-			break;
-
-		    case '?':
-			help();
-
-		    default:
-			usage();
-		    }
-		}
-	    else
-		usage();
-	    }
-	}
-
-    if (defflg)
-	{
-	d_flag = TRUE;
-	u_flag = TRUE;
-	}
-
-    if (argc == 0)
-	process(stdin, "<stdin>");
-    else
-	{
-	do  {
-	    hp = fwinit(*argv, smode);		/* Process the input list */
-	    if ((fnp = fwild(hp)) == NULL)
-		cantopen(*argv);
-	    else
-		{
-		do  {				/* Process one filespec */
-		    if (fp = fopen(fnp, "r"))
+		for (s = *argv + 1; *s; ++s)
 			{
-			process(fp, fnp);
-			fclose(fp);
+			if (isdigit(*s))
+				{
+				if (sw == '-')
+					{
+					w_cnt = atoi(s);
+					break;
+					}
+				else if (sw == '+')
+					{
+					c_cnt = atoi(s);
+					break;
+					}
+				else
+					usage();
+				}
+			else if (sw == swch)
+				{
+				switch (tolower(*s))
+					{
+					case 'c':
+						++c_flag;
+						++d_flag;
+						++u_flag;
+						defflg = FALSE;
+						break;
+
+					case 'd':
+						++d_flag;
+						defflg = FALSE;
+						break;
+
+					case 'i':
+						i_flag = !i_flag;
+						break;
+
+					case 'l':
+						++l_flag;
+						break;
+
+					case 'u':
+						++u_flag;
+						defflg = FALSE;
+						break;
+
+					case '?':
+						help();
+
+					default:
+						usage();
+					}
+				}
+			else
+				usage();
 			}
-		    else
-			cantopen(fnp);
-		    } while ((fnp = fwild(hp)));
 		}
-	    } while (*++argv);
+
+	if (defflg)
+		{
+		d_flag = TRUE;
+		u_flag = TRUE;
+		}
+
+	if (argc == 0)
+		process(stdin, "<stdin>");
+	else
+		{
+		do  {
+			hp = fwinit(*argv, smode);		/* Process the input list */
+			if ((fnp = fwild(hp)) == NULL)
+				cantopen(*argv);
+			else
+				{
+				do  {				/* Process one filespec */
+					if (fp = fopen(fnp, "r"))
+						{
+						process(fp, fnp);
+						fclose(fp);
+						}
+					else
+						cantopen(fnp);
+					} while ((fnp = fwild(hp)));
+				}
+			} while (*++argv);
+		}
 	}
-    }
 
 /* ----------------------------------------------------------------------- */
-    static void
-cantopen (fnp)			/* Inform user of input failure */
-    char  *fnp;			/* Input file name */
+	static void
+cantopen (				/* Inform user of input failure */
+	char  *fnp)			/* Input file name */
 
-    {
-    fprintf(stderr, "\7Unable to open input file: %s\n", fnp);
-    }
+	{
+	fprintf(stderr, "\7Unable to open input file: %s\n", fnp);
+	}
 
 /* ----------------------------------------------------------------------- */
     void
-usage ()			/* Display usage documentation */
+usage (void)		/* Display usage documentation */
 
-    {
-    static char  *udoc [] =
+	{
+	static char  *udoc [] =
 	{
 	"Usage:  uniq  [%c?clnu]  [+NNN]  [-NNN]  [input_file_list]",
 	"        uniq  %c?  for help",
 	NULL
 	};
 
-    dprint(udoc);
-    exit(1);
-    }
+	dprint(udoc);
+	exit(1);
+	}
 
 /* ----------------------------------------------------------------------- */
-    void
-help ()				/* Display help documentation */
+	void
+help (void)			/* Display help documentation */
 
-    {
-    static char  *hdoc [] =
+	{
+	static char  *hdoc [] =
 	{
 	"Usage:  uniq  [%c?clnu]  [+NNN]  [-NNN]  [input_file_list]",
 	"",
@@ -213,96 +213,96 @@ help ()				/* Display help documentation */
 	NULL
 	};
 
-    dprint(hdoc);
-    exit(0);
-    }
-
-/* ----------------------------------------------------------------------- */
-    void
-dprint (dp)			/* Print documentation text */
-    char  **dp;			/* Document array pointer */
-
-    {
-    while (*dp)
-	{
-	printf(*(dp++), swch, swch);
-	putchar('\n');
+	dprint(hdoc);
+	exit(0);
 	}
-    }
 
 /* ----------------------------------------------------------------------- */
-    static void
-process (fp, fnp)		/* Process one input file */
-    FILE  *fp;			/* Input file descriptor */
-    char  *fnp;			/* Input file name */ 
+	void
+dprint (				/* Print documentation text */
+    char  **dp)			/* Document array pointer */
 
-    {
-    int    i;			/* Temporary field/character counter */
-    int    count;		/* Line match count */
-    char  *oldp;		/* Pointer to compare point */
-    char  *newp;		/* Pointer to compare point */
-    char   old [512];		/* Buffer for previous line */
-    char   new [512];		/* Buffer for current line */
-
-
-    if (l_flag)
-	printf("\nProcessing file: %s\n", fnp);
-
-    count = 0;				/* Zero until successful read */
-
-    while (fgets(&new[0], sizeof new, fp))
 	{
-	newp = &new[0];			/* Skip words and/or characters */
-	if (w_cnt)
-	    {
-	    newp = stpblk(newp);
-	    for (i = w_cnt; ((i > 0) && (*newp)); --i)
+	while (*dp)
 		{
-		while ((*newp) && ( ! isspace(*newp)))
-		    ++newp;
-		newp = stpblk(newp);
+		printf(*(dp++), swch, swch);
+		putchar('\n');
 		}
-	    }
-	for (i = c_cnt; ((i > 0) && (*newp)); --i)
-	    ++newp;
+	}
+
+/* ----------------------------------------------------------------------- */
+	static void
+process (				/* Process one input file */
+	FILE  *fp,			/* Input file descriptor */
+	char  *fnp)			/* Input file name */ 
+
+	{
+	int    i;			/* Temporary field/character counter */
+	int    count;		/* Line match count */
+	char  *oldp;		/* Pointer to compare point */
+	char  *newp;		/* Pointer to compare point */
+	char   old [512];		/* Buffer for previous line */
+	char   new [512];		/* Buffer for current line */
 
 
-	if (count == 0)			/* If the first line... */
-	    {
-	    strcpy(&old[0], &new[0]);
-	    oldp  = &old[0] + (newp - &new[0]);
-	    count = 1;
-	    }
-	else				/* Not the first line */
-	    {
-	    if (((i_flag)  &&  (stricmp(newp, oldp) == MATCH))
-	    ||                 (strcmp (newp, oldp) == MATCH))
-		++count;		/* Increment the match count */
-	    else
+	if (l_flag)
+		printf("\nProcessing file: %s\n", fnp);
+
+	count = 0;				/* Zero until successful read */
+
+	while (fgets(&new[0], sizeof new, fp))
 		{
-		if ((u_flag && (count == 1)) || (d_flag && (count > 1)))
-		    {
-		    if (c_flag)
+		newp = &new[0];			/* Skip words and/or characters */
+		if (w_cnt)
+			{
+			newp = stpblk(newp);
+			for (i = w_cnt; ((i > 0) && (*newp)); --i)
+				{
+				while ((*newp) && ( ! isspace(*newp)))
+					++newp;
+				newp = stpblk(newp);
+				}
+			}
+		for (i = c_cnt; ((i > 0) && (*newp)); --i)
+			++newp;
+
+
+		if (count == 0)			/* If the first line... */
+			{
+			strcpy(&old[0], &new[0]);
+			oldp  = &old[0] + (newp - &new[0]);
+			count = 1;
+			}
+		else				/* Not the first line */
+			{
+			if (((i_flag)  &&  (stricmp(newp, oldp) == MATCH))
+			||                 (strcmp (newp, oldp) == MATCH))
+				++count;		/* Increment the match count */
+			else
+				{
+				if ((u_flag && (count == 1)) || (d_flag && (count > 1)))
+					{
+					if (c_flag)
+						fprintf(stdout, "%6d\t", count);
+					fputs(&old[0], stdout);
+					fflush(stdout);
+					}
+				strcpy(&old[0], &new[0]);
+				oldp  = &old[0] + (newp - &new[0]);
+				count = 1;
+				}
+			}
+		}
+
+	/* Process the last line, if any */
+
+	if ((u_flag && (count == 1)) || (d_flag && (count > 1)))
+		{
+		if (c_flag)
 			fprintf(stdout, "%6d\t", count);
-		    fputs(&old[0], stdout);
-		    fflush(stdout);
-		    }
-		strcpy(&old[0], &new[0]);
-		oldp  = &old[0] + (newp - &new[0]);
-		count = 1;
+		fputs(&old[0], stdout);
+		fflush(stdout);
 		}
-	    }
 	}
-
-					/* Process the last line, if any */
-
-    if ((u_flag && (count == 1)) || (d_flag && (count > 1)))
-	{
-	if (c_flag)
-	    fprintf(stdout, "%6d\t", count);
-	fputs(&old[0], stdout);
-	fflush(stdout);
-	}
-    }
 
 /* ----------------------------------------------------------------------- */

@@ -35,47 +35,47 @@
 #include  "fwild.h"
 
 /* ----------------------------------------------------------------------- */
-    int
-pcreat (			/* Build path and creat() a file */
-    char  *s,			/* Pointer to the path/filename */
-    int    perm)		/* Create permission */
+	int
+pcreat (				/* Build path and creat() a file */
+	char  *s,			/* Pointer to the path/filename */
+	int    perm)		/* Create permission */
 
-    {
-    int    finished = 0;	/* Finished flag */
-    int    fd;			/* File number or error code */
-    int    SkipCount;		/* Ignore counter for the do loop */
-    char  *p;			/* Pointer into the temporary string */
-    char   temp [1024];		/* Temporary path/filename string */
+	{
+	int    finished = 0;	/* Finished flag */
+	int    fd;				/* File number or error code */
+	int    SkipCount;		/* Ignore counter for the do loop */
+	char  *p;				/* Pointer into the temporary string */
+	char   temp [1024];		/* Temporary path/filename string */
 
 
 				/* Allow for possible UNC path */
-    SkipCount = (strncmp("\\\\", s, 2) == 0) ? (2) : (0);
+	SkipCount = (strncmp("\\\\", s, 2) == 0) ? (2) : (0);
 
-    for (;;)
-	{
-	if (((fd = creat(s, perm)) >= 0) || finished++)
-	    break;		// File successfully opened
-
-	p = &temp[0];		// Attempt to build the path
-	do  {
-	    strcpy(&temp[0], s);
-	    if ((p = strpbrk((p + 1), "/\\"))
-	    && (--SkipCount < 0))	/* Skip over the UNC part of the path */
+	for (;;)
 		{
+		if (((fd = creat(s, perm)) >= 0) || finished++)
+			break;		// File successfully opened
+
+		p = &temp[0];		// Attempt to build the path
+		do  {
+			strcpy(&temp[0], s);
+			if ((p = strpbrk((p + 1), "/\\"))
+			&& (--SkipCount < 0))	/* Skip over the UNC part of the path */
+				{
 //printf("\npcreat: (%d) \"%s\"  \"%d\"\n", SkipCount, &temp[0], (p - &temp[0]));
 //printf("\npcreat: (%d) \"%s\"  \"%d\"\n", SkipCount, p, (p - &temp[0]));
-		*p = '\0';
-		if ((!fnchkdir(&temp[0]))
-		&& ((fd = mkdir(&temp[0])) != 0))
-		    {
+				*p = '\0';
+				if ((!fnchkdir(&temp[0]))
+				&& ((fd = mkdir(&temp[0])) != 0))
+					{
 //printf("\nmkdir: (%d) \"%s\"\n", fd, &temp[0]);
-		    break;	// Path building complete
-		    }
-		}
-	    } while (p);
+					break;	// Path building complete
+					}
+				}
+			} while (p);
 
+		}
+		return  (fd);
 	}
-    return  (fd);
-    }
 
 /* ----------------------------------------------------------------------- */

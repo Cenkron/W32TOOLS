@@ -18,23 +18,24 @@
 /**********************************************************************/
 #define VERSION "940602.092145"
 /**********************************************************************/
-    EXPORT void
-kill (char *src)
-    {
+	EXPORT void
+kill (
+	char *src)
 
-    if (azFlags.k && !azFlags.n)
 	{
-	if (azFlags.r && is_readonly(src))
-	    clr_readonly(src);
+	if (azFlags.k && !azFlags.n)
+		{
+		if (azFlags.r && is_readonly(src))
+			clr_readonly(src);
 
-	if (!azFlags.l)
-	    notify(DELETING, src, NULL, NULL);
+		if (!azFlags.l)
+			notify(DELETING, src, NULL, NULL);
 
-	if (unlink(src) == 0)
-	    printf(" OK\n");
-	else
-	    printf(" failed\n");
-	}
+		if (unlink(src) == 0)
+			printf(" OK\n");
+		else
+			printf(" failed\n");
+		}
     }
 
 /*--------------------------------------------------------------------*/

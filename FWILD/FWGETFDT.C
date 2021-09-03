@@ -23,12 +23,12 @@
 #include  "fwild.h"
 
 /* ------------------------------------------------------------------------ */
-    long			/* Return the long UNIX timedate word */
+	long				/* Return the long UNIX timedate word */
 fwgetfdt (hp)			/* Get the UNIX timedate of the current file */
-    DTA_HDR  *hp;		/* Pointer to the DTA header */
+	DTA_HDR  *hp;		/* Pointer to the DTA header */
 
-    {
-    return (hp->link->fdt);
-    }
+	{
+	return (hp->link->fdt);
+	}
 
 /* ------------------------------------------------------------------------ */

@@ -37,79 +37,81 @@
 /* ------------------------------------------------------------------------ *\
 |  Return the volume name of the disk, based on drive number
 \* ------------------------------------------------------------------------ */
-    char *
-_volname (int n)		/* The drive number (0 for current drive) */
+	char *
+_volname (
+	int n)		/* The drive number (0 for current drive) */
 
-    {
+	{
 static char  volname  [MAX_PATH_X];	/* The recovered volume name */
 static char  rootname [] = "X:\\";	/* The constructed root directory name */
 
-    DWORD    dummy;
-    char    *s;				/* The returned ptr to the volume name */
+	DWORD    dummy;
+	char    *s;				/* The returned ptr to the volume name */
 
-    if ((n < 0)  ||  (n > 26))
-	return (NULL);
+	if ((n < 0)  ||  (n > 26))
+		return (NULL);
 
-    rootname[0] = 'A' + n - 1;
-    if (GetVolumeInformation(
-	    (n == 0) ? NULL : rootname,
-	    volname,
-	    MAX_PATH_X,
-	    &dummy,
-	    &dummy,
-	    &dummy,
-	    NULL,
-	    0))
-	s = volname;
-    else
-	s = NULL;
+	rootname[0] = 'A' + n - 1;
+	if (GetVolumeInformation(
+			(n == 0) ? NULL : rootname,
+			volname,
+			MAX_PATH_X,
+			&dummy,
+			&dummy,
+			&dummy,
+			NULL,
+			0))
+		s = volname;
+	else
+		s = NULL;
 
-    return (s);
-    }
+	return (s);
+	}
 
 /* ------------------------------------------------------------------------ *\
 |  Return the volume name of the disk, based on pathname
 \* ------------------------------------------------------------------------ */
-    char *
-vol_name (char *s)		/* Drive listed in this string (or *.*) */
+	char *
+vol_name (
+	char *s)		/* Drive listed in this string (or *.*) */
 
-    {
-    int  n;			/* The drive number (0 for current drive) */
+	{
+	int  n;			/* The drive number (0 for current drive) */
 
 
-    if (isalpha(s[0])  &&  (s[1] == ':'))
-	n = toupper(s[0]) - ('A' - 1);
-    else
-	n = 0;
+	if (isalpha(s[0])  &&  (s[1] == ':'))
+		n = toupper(s[0]) - ('A' - 1);
+	else
+		n = 0;
 
-    return (_volname(n));
-    }
+	return (_volname(n));
+	}
 
 /* ------------------------------------------------------------------------ */
 #ifdef  VOLNAMETEST
-    void
-main (argc, argv)
-    int    argc;
-    char  *argv [];
+	void
+main (
+    int    argc,
+    char  *argv [])
 
-    {
-    char  *p;
-    char  *s;
+	{
+	char  *p;
+	char  *s;
 
-    if (argc >= 2)
-	p = argv[1];
-    else
-	p = "\\*.*";
-    printf("Scan string = %s\n", p);
+	if (argc >= 2)
+		p = argv[1];
+	else
+		p = "\\*.*";
+	printf("Scan string = %s\n", p);
 
-    if (isdigit(*p))
-	s = _volname(atoi(p));
-    else
-	s = vol_name(p);
-    printf("Pointer = %04x\n", s);
-    if (s)
-	printf("Volume name = %s\n", s);
-    }
+	if (isdigit(*p))
+		s = _volname(atoi(p));
+	else
+		s = vol_name(p);
+	printf("Pointer = %04x\n", s);
+	if (s)
+		printf("Volume name = %s\n", s);
+	}
 
 #endif
 /* ------------------------------------------------------------------------ */

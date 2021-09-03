@@ -35,60 +35,64 @@ Copyright (c) 2007-2010 by Brian Johnson, TX - All Rights Reserved
 #define ARCHIVE(x)      (x&ATT_ARCH)
 
 /**********************************************************************/
-    EXPORT int
-should_copy (char *src, char *hp, char *dst)
-    {
-    BOOL        copy_flag = FALSE;
-    int         attrib	    = 0;
-    long        dst_dt;
-    long        src_dt;
-    UINT64      dst_size;
-    UINT64      src_size;
-    char       *abssrc = fnabspth(src);
+	EXPORT int
+should_copy (
+	char *src,
+	char *hp,
+	char *dst)
 
-    if (stricmp(abssrc, dst) == 0)
-        {
-        free(abssrc);
-        fatal("Cannot copy file to self");
-        }
-    free(abssrc);
+	{
+	BOOL        copy_flag = FALSE;
+	int         attrib	    = 0;
+	long        dst_dt;
+	long        src_dt;
+	UINT64      dst_size;
+	UINT64      src_size;
+	char       *abssrc = fnabspth(src);
 
-    if (azFlags.o || azFlags.y)
-        azFlags.e = FALSE;
+	if (stricmp(abssrc, dst) == 0)
+		{
+		free(abssrc);
+		fatal("Cannot copy file to self");
+		}
+	free(abssrc);
 
-    if (! (azFlags.m|azFlags.y|azFlags.o|AZ_Flags.y|AZ_Flags.o|azFlags.e|azFlags.d|AZ_Flags.d|azFlags.u) )
-        {
-        copy_flag = TRUE;
-        goto exit;
-        }
+	if (azFlags.o || azFlags.y)
+		azFlags.e = FALSE;
+
+	if (! (azFlags.m|azFlags.y|azFlags.o|AZ_Flags.y|AZ_Flags.o|azFlags.e|azFlags.d|AZ_Flags.d|azFlags.u) )
+		{
+		copy_flag = TRUE;
+		goto exit;
+		}
 
 
-    if (azFlags.u)
-        attrib = fwtype(hp);
+	if (azFlags.u)
+		attrib = fwtype(hp);
 
-    src_dt   = fgetfdt(src);
-    dst_dt   = fgetfdt(dst);
-    fgetsize(src, &src_size);
-    fgetsize(dst, &dst_size);
-//  printf("%%ld %ld %ld %ld\n", src_dt, dst_dt, src_size, dst_size);
+	src_dt   = fgetfdt(src);
+	dst_dt   = fgetfdt(dst);
+	fgetsize(src, &src_size);
+	fgetsize(dst, &dst_size);
+//	printf("%%ld %ld %ld %ld\n", src_dt, dst_dt, src_size, dst_size);
 
-    if ((azFlags.m  && MISSING(dst_dt) )
-    ||  (azFlags.e  && EXIST(dst_dt) )
-    ||  (azFlags.y  && EXIST(dst_dt) && NEWER(src_dt, dst_dt) )
-    ||  (azFlags.o  && EXIST(dst_dt) && OLDER(src_dt, dst_dt) )
-    ||  (azFlags.d  && EXIST(dst_dt) && DIFFERENT(src_dt, dst_dt) )
-    ||  (AZ_Flags.d && EXIST(dst_dt) && DIFFERENT(src_size, dst_size) )
-    ||  (azFlags.u  && ARCHIVE(attrib) )
-    ||  (AZ_Flags.y && NEWERDT(src_dt) )
-    ||  (AZ_Flags.o && OLDERDT(src_dt) ) )
-        {
-        copy_flag = TRUE;
-        }
+	if ((azFlags.m  && MISSING(dst_dt) )
+	||  (azFlags.e  && EXIST(dst_dt) )
+	||  (azFlags.y  && EXIST(dst_dt) && NEWER(src_dt, dst_dt) )
+	||  (azFlags.o  && EXIST(dst_dt) && OLDER(src_dt, dst_dt) )
+	||  (azFlags.d  && EXIST(dst_dt) && DIFFERENT(src_dt, dst_dt) )
+	||  (AZ_Flags.d && EXIST(dst_dt) && DIFFERENT(src_size, dst_size) )
+	||  (azFlags.u  && ARCHIVE(attrib) )
+	||  (AZ_Flags.y && NEWERDT(src_dt) )
+	||  (AZ_Flags.o && OLDERDT(src_dt) ) )
+		{
+		copy_flag = TRUE;
+		}
 
 exit:
 
-    return (copy_flag);
-    }
+	return (copy_flag);
+	}
 
 /*--------------------------------------------------------------------*/
 /*--------------------------------------------------------------------*/

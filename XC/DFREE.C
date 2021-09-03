@@ -17,7 +17,9 @@ Copyright (c) 1986-2018 by J & M Software, Dallas TX - All Rights Reserved
 #define VERSION "940602.092145"
 /**********************************************************************/
 	INT64
-dfree (char *path)
+dfree (
+	char *path)
+
 	{
 	INT64    retval  = (-1);
 	INT64    dummy;
@@ -66,9 +68,11 @@ dfree (char *path)
 #if defined(TEST_MAIN)
 
 	int
-main (int argc, char *argv[])
-	{
+main (
+	int   argc,
+	char *argv[])
 
+	{
 	printf("dfree(%s) returned %ld\n", argv[1], dfree(argv[1]));
 	}
 

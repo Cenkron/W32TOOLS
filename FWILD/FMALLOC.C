@@ -18,16 +18,16 @@
 #include  "fwild.h"
 
 /* ----------------------------------------------------------------------- */
-    char *
-fmalloc (n)			/* Get a string buffer, of length n */
-    unsigned int  n;		/* Call for a fatal error on failure */
+	char *
+fmalloc (					/* Get a string buffer, of length n */
+	unsigned int n)			/* Call for a fatal error on failure */
 
-    {
-    char  *s;
+	{
+	char  *s;
 
-    if ((s = malloc(n)) == NULL)
-	fatalerr("Memory allocation failure");
-    return (s);
-    }
+	if ((s = malloc(n)) == NULL)
+		fatalerr("Memory allocation failure");
+	return (s);
+	}
 
 /* ----------------------------------------------------------------------- */

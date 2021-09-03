@@ -80,180 +80,179 @@ static	char	chsave	= NUL;		/* The saved env character */
 static	char   *ap	= NULL;		/* Pointer to the current option */
 
 /* ----------------------------------------------------------------------- */
-    int
-getopt (argc, argv, optstring)
-    int    argc;		/* argc passed from main() */
-    char  *argv [];		/* argv passed from main() */
-    char  *optstring;		/* Pointer to the option selector string */
+	int
+getopt (
+	int    argc,			/* argc passed from main() */
+	char  *argv [],			/* argv passed from main() */
+	char  *optstring)		/* Pointer to the option selector string */
 
-    {
-    int    result;		/* The returned result */
-    char  *sp;			/* Pointer into selector string */
-
-
-    if (chsave != NUL)
 	{
-	*ap = chsave;
-	chsave = NUL;
+	int    result;		/* The returned result */
+	char  *sp;			/* Pointer into selector string */
+
+	if (chsave != NUL)
+		{
+		*ap = chsave;
+		chsave = NUL;
+		}
+
+	for (result = LOOPING; result == LOOPING; )
+		{
+		switch (state)
+			{
+			case ST_INITIAL:			/* Initial execution */
+				if (optenv != NULL)
+					{
+					ap     = stpblk(optenv);
+					optenv = NULL;
+					state  = ST_ENV1;
+					}
+				else
+					state  = ST_ARGV0;
+				break;
+
+
+			case ST_ENV1:
+				if ((*ap++ == optswch)
+				&&  (*ap != optswch)		/* Check for "--" */
+				&&  (*ap != NUL))		/* Check for "-NUL" */
+					state = ST_ENV2;		/* Candidate option char */
+				else
+					state = ST_ARGV0;
+				break;
+
+
+			case ST_ENV2:
+				optchar = *ap++;
+				if ((sp = strchr(optstring, optchar)) == NULL)
+					{
+					state = ST_ERROR;
+					break;
+					}
+				else if (*(sp + 1) != ':')	/* Check if parm required */
+					{
+					optarg = NULL;
+					result = optchar;
+					}
+				else if (*(ap = stpblk(ap)) != NUL)
+					{
+					optarg = ap;		/* Argument */
+					result = optchar;
+					while (isgraph(*ap))
+						++ap;
+					chsave = *ap;		/* Temporary arg term */
+					*ap = NUL;
+					}
+				else
+					{
+					state = ST_ERROR;		/* No argument */
+					break;
+					}
+				state = ST_ENV3;		/* Defer next state choice */
+				break;
+
+
+			case ST_ENV3:
+				if (*ap == NUL)			/* Select the next state */
+					state = ST_ARGV0;		/* End of env string */
+				else if (*ap == optswch)
+					state = ST_ENV1;		/* Allow "-x-y" */
+				else if ( ! isspace(*ap))
+					state = ST_ENV2;		/* Allow "-xy" */
+				else if (*(ap = stpblk(ap)) == optswch)
+					state = ST_ENV1;		/* Allow "-x -y" */
+				else
+					state = ST_ERROR;		/* "-x y" */
+				break;
+
+
+			case ST_ARGV0:			/* Checking for new string */
+				if ((++optind < argc)		/* Ensure no argument overflow */
+				&& ((ap = argv[optind])) != NULL)
+					state = ST_ARGV1;
+				else
+					state = ST_DONE;
+				break;
+
+
+			case ST_ARGV1:			/* Starting new string */
+				ap = stpblk(ap);
+				if (*ap++ != optswch)		/* Check for switch char */
+					state = ST_DONE;		/* No, terminate scan */
+				else if ((*ap == optswch)	/* Check for "--" */
+					 ||  (*ap == NUL))		/* Check for "-NUL" */
+					{
+					++optind;			/* Yes, terminate scan */
+					state = ST_DONE;
+					}
+				else
+					state = ST_ARGV2;		/* Candidate option char */
+				break;
+
+
+			case ST_ARGV2:			/* Validating option char */
+				optchar = *ap++;
+				if ((sp = strchr(optstring, optchar)) == NULL)
+					{
+					++optind;
+					state = ST_ERROR;
+					}
+				else if (*(sp + 1) != ':')	/* Check if parm required */
+					state = ST_ARGV3;		/* No */
+				else
+					state = ST_ARGV4;		/* Yes */
+				break;
+
+
+			case ST_ARGV3:			/* Processing simple option */
+				optarg = NULL;
+				result = optchar;
+
+				if (*ap == NUL)			/* Select the next state */
+					state = ST_ARGV0;		/* End of string */
+				else if (*ap == optswch)
+					state = ST_ARGV1;		/* Allow "-x-y" */
+				else
+					state = ST_ARGV2;		/* Allow "-xy" */
+				break;
+
+
+			case ST_ARGV4:			/* Processing complex option */
+				if (*(ap = stpblk(ap)) != NUL)
+					{
+					optarg = ap;		/* Concatenated argument */
+					result = optchar;
+					state  = ST_ARGV0;
+					}
+				else if ((++optind < argc)	/* Ensure no arg overflow */
+					 && ((ap = argv[optind]) != NULL)
+					 && (*(ap = stpblk(ap)) != NUL))
+					{
+					optarg = ap;		/* Next string argument */
+					result = optchar;
+					state  = ST_ARGV0;
+					}
+				else
+					state = ST_ERROR;		/* No argument */
+				break;
+
+
+			case ST_DONE:			/* Finished, return EOF */
+				optchar = NUL;
+				optarg  = NULL;
+				result  = EOF;
+				break;
+
+
+			case ST_ERROR:			/* Error, return NUL */
+			default:	
+				optarg  = NULL;
+				result  = NUL;
+				state   = ST_DONE;		/* Report finished next time */
+				break;
+			}
+		}
+	return (result);
 	}
-
-    for (result = LOOPING; result == LOOPING; )
-	{
-	switch (state)
-	    {
-	    case ST_INITIAL:			/* Initial execution */
-		if (optenv != NULL)
-		    {
-		    ap     = stpblk(optenv);
-		    optenv = NULL;
-		    state  = ST_ENV1;
-		    }
-		else
-		    state  = ST_ARGV0;
-		break;
-
-
-	    case ST_ENV1:
-		if ((*ap++ == optswch)
-		&&  (*ap != optswch)		/* Check for "--" */
-		&&  (*ap != NUL))		/* Check for "-NUL" */
-		    state = ST_ENV2;		/* Candidate option char */
-		else
-		    state = ST_ARGV0;
-		break;
-
-
-	    case ST_ENV2:
-		optchar = *ap++;
-		if ((sp = strchr(optstring, optchar)) == NULL)
-		    {
-		    state = ST_ERROR;
-		    break;
-		    }
-		else if (*(sp + 1) != ':')	/* Check if parm required */
-		    {
-		    optarg = NULL;
-		    result = optchar;
-		    }
-		else if (*(ap = stpblk(ap)) != NUL)
-		    {
-		    optarg = ap;		/* Argument */
-		    result = optchar;
-		    while (isgraph(*ap))
-			++ap;
-		    chsave = *ap;		/* Temporary arg term */
-		    *ap = NUL;
-		    }
-		else
-		    {
-		    state = ST_ERROR;		/* No argument */
-		    break;
-		    }
-		state = ST_ENV3;		/* Defer next state choice */
-		break;
-
-
-	    case ST_ENV3:
-		if (*ap == NUL)			/* Select the next state */
-		    state = ST_ARGV0;		/* End of env string */
-		else if (*ap == optswch)
-		    state = ST_ENV1;		/* Allow "-x-y" */
-		else if ( ! isspace(*ap))
-		    state = ST_ENV2;		/* Allow "-xy" */
-		else if (*(ap = stpblk(ap)) == optswch)
-		    state = ST_ENV1;		/* Allow "-x -y" */
-		else
-		    state = ST_ERROR;		/* "-x y" */
-		break;
-
-
-	    case ST_ARGV0:			/* Checking for new string */
-		if ((++optind < argc)		/* Ensure no argument overflow */
-		&& ((ap = argv[optind])) != NULL)
-		    state = ST_ARGV1;
-		else
-		    state = ST_DONE;
-		break;
-
-
-	    case ST_ARGV1:			/* Starting new string */
-		ap = stpblk(ap);
-		if (*ap++ != optswch)		/* Check for switch char */
-		    state = ST_DONE;		/* No, terminate scan */
-		else if ((*ap == optswch)	/* Check for "--" */
-		     ||  (*ap == NUL))		/* Check for "-NUL" */
-		    {
-		    ++optind;			/* Yes, terminate scan */
-		    state = ST_DONE;
-		    }
-		else
-		    state = ST_ARGV2;		/* Candidate option char */
-		break;
-
-
-	    case ST_ARGV2:			/* Validating option char */
-		optchar = *ap++;
-		if ((sp = strchr(optstring, optchar)) == NULL)
-		    {
-		    ++optind;
-		    state = ST_ERROR;
-		    }
-		else if (*(sp + 1) != ':')	/* Check if parm required */
-		    state = ST_ARGV3;		/* No */
-		else
-		    state = ST_ARGV4;		/* Yes */
-		break;
-
-
-	    case ST_ARGV3:			/* Processing simple option */
-		optarg = NULL;
-		result = optchar;
-
-		if (*ap == NUL)			/* Select the next state */
-		    state = ST_ARGV0;		/* End of string */
-		else if (*ap == optswch)
-		    state = ST_ARGV1;		/* Allow "-x-y" */
-		else
-		    state = ST_ARGV2;		/* Allow "-xy" */
-		break;
-
-
-	    case ST_ARGV4:			/* Processing complex option */
-		if (*(ap = stpblk(ap)) != NUL)
-		    {
-		    optarg = ap;		/* Concatenated argument */
-		    result = optchar;
-		    state  = ST_ARGV0;
-		    }
-		else if ((++optind < argc)	/* Ensure no arg overflow */
-		     && ((ap = argv[optind]) != NULL)
-		     && (*(ap = stpblk(ap)) != NUL))
-		    {
-		    optarg = ap;		/* Next string argument */
-		    result = optchar;
-		    state  = ST_ARGV0;
-		    }
-		else
-		    state = ST_ERROR;		/* No argument */
-		break;
-
-
-	    case ST_DONE:			/* Finished, return EOF */
-		optchar = NUL;
-		optarg  = NULL;
-		result  = EOF;
-		break;
-
-
-	    case ST_ERROR:			/* Error, return NUL */
-	    default:	
-		optarg  = NULL;
-		result  = NUL;
-		state   = ST_DONE;		/* Report finished next time */
-		break;
-	    }
-	}
-    return (result);
-    }
 
 /* ----------------------------------------------------------------------- */

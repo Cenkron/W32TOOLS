@@ -24,20 +24,21 @@
 /* ----------------------------------------------------------------------- *\
 |  hgetfdt ()  -  Get the file time/date (via open file handle)
 \* ----------------------------------------------------------------------- */
-    long
-hgetfdt (int  fh)			/* The open file handle */
+	long
+hgetfdt (
+	int  fh)				/* The open file handle */
 
-    {
-    long         result;		/* The returned time */
-    struct stat  s;			/* The stat structure */
+	{
+	long         result;	/* The returned time */
+	struct stat  s;			/* The stat structure */
 
 
-    if (fstat(fh, &s) == 0)
-	result = ((s.st_mtime + 1) & ~1);  /* FAT vs NTFS resolution */
-    else
-	result = -1L;
+	if (fstat(fh, &s) == 0)
+		result = ((s.st_mtime + 1) & ~1);  /* FAT vs NTFS resolution */
+	else
+		result = -1L;
 
-    return (result);
-    }
+	return (result);
+	}
 
 /* ----------------------------------------------------------------------- */

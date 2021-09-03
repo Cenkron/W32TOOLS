@@ -14,11 +14,11 @@
 #include  "fwild.h"
 
 /* ----------------------------------------------------------------------- */
-    char			/* Return the program path character */
-egetpath ()			/* Determine the correct path character */
+	char			/* Return the program path character */
+egetpath (void)		/* Determine the correct path character */
 
-    {
-    return ('\\');
-    }
+	{
+	return ('\\');
+	}
 
 /* ----------------------------------------------------------------------- */

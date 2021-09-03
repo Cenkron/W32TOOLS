@@ -65,57 +65,57 @@ typedef unsigned __int64  UINT64, *PUINT64;
 #define  f_size  link->dta.dta_size	/* File attribute, size */
 
 typedef				/* The DTA used by findf/finfn/findc */
-    struct
-	{
-	char      dta_type;		/* File attribute, type */
-	UINT64    dta_size;		/* File attribute, size */
-	char      dta_name [_MAX_PATH];	/* The found filename */
+	struct
+		{
+		char      dta_type;		/* File attribute, type */
+		UINT64    dta_size;		/* File attribute, size */
+		char      dta_name [_MAX_PATH];	/* The found filename */
 
-	/* NT support */
+		/* NT support */
 
-	int       result;		/* The returned result */
-	int       SearchAttr;		/* The original search attributes */
-	HANDLE    sh;			/* The WIN32 search handle */
-	WIN32_FIND_DATA	 wfd;		/* The WIN32 FIND_DATA structure */
-	}  DTA_BLK;
+		int       result;		/* The returned result */
+		int       SearchAttr;		/* The original search attributes */
+		HANDLE    sh;			/* The WIN32 search handle */
+		WIN32_FIND_DATA	 wfd;		/* The WIN32 FIND_DATA structure */
+		}  DTA_BLK;
 
 
 typedef				/* Recursive DTA list element */
-    struct dtaele
-	{
-	struct dtaele  *link;	/* Link to the next (inactive) DTA_ELE */
-	int       wild;		/* Current wild search mode */
-	int       state;	/* Current state */
-	long      fdt;		/* The file timestamp */
-	char     *proto;	/* Pointer to prototype string, first char */
-	char     *last;		/* Pointer to prototype string, last delim */
-	char     *next;		/* Pointer to prototype string, next char */
-	char     *search;	/* Pointer to current search filename */
-	char     *pattern;	/* Pointer to current pattern filename */
-	char     *found;	/* Pointer to current found filename */
-	DTA_BLK   dta;		/* The DTA used by findf/findn/findc */
-	}  DTA_ELE;
+	struct dtaele
+		{
+		struct dtaele  *link;	/* Link to the next (inactive) DTA_ELE */
+		int       wild;		/* Current wild search mode */
+		int       state;	/* Current state */
+		long      fdt;		/* The file timestamp */
+		char     *proto;	/* Pointer to prototype string, first char */
+		char     *last;		/* Pointer to prototype string, last delim */
+		char     *next;		/* Pointer to prototype string, next char */
+		char     *search;	/* Pointer to current search filename */
+		char     *pattern;	/* Pointer to current pattern filename */
+		char     *found;	/* Pointer to current found filename */
+		DTA_BLK   dta;		/* The DTA used by findf/findn/findc */
+		}  DTA_ELE;
 
 
 typedef				/* DTA list header */
     struct
-	{
-	DTA_ELE  *link;		/* Link to active DTA_ELE element */
-	int       mode;		/* Search file attribute */
-	}  DTA_HDR;
+		{
+		DTA_ELE  *link;		/* Link to active DTA_ELE element */
+		int       mode;		/* Search file attribute */
+		}  DTA_HDR;
 
 
 typedef				/* File Pair (FP) structure */
-    struct
-	{
-	int       sentinel;	/* Sentinel to detect free() error */
-	int       index;	/* Index into fnp1 for tail part */
-	int       dflag;	/* TRUE if fnp2 should be constructed */ 
-	DTA_HDR  *hp;		/* Pointer to fwild structure */
-	char     *s2;		/* Pointer to dest path */
-	char     *fnp1;		/* Pointer to first filename */
-	char     *fnp2;		/* Pointer to second filename */
-	}  FP;
+	struct
+		{
+		int       sentinel;	/* Sentinel to detect free() error */
+		int       index;	/* Index into fnp1 for tail part */
+		int       dflag;	/* TRUE if fnp2 should be constructed */ 
+		DTA_HDR  *hp;		/* Pointer to fwild structure */
+		char     *s2;		/* Pointer to dest path */
+		char     *fnp1;		/* Pointer to first filename */
+		char     *fnp2;		/* Pointer to second filename */
+		}  FP;
 
 
 #define  DHV	DTA_HDR
@@ -150,11 +150,11 @@ typedef long time_t;
 #endif
 
 typedef					/* strtoken() support */
-    struct
-        {
-        char  *ptr;     	/* Pointer for search resumption */
-        char   ch;      	/* Saved delimiter character */
-        }  TOKENCB;
+	struct
+		{
+		char  *ptr;     	/* Pointer for search resumption */
+		char   ch;      	/* Saved delimiter character */
+		}  TOKENCB;
 
 /* ------------------------------------------------------------------------ *\
 |  Function prototypes

@@ -18,27 +18,27 @@
 #include  "fwild.h"
 
 /* ----------------------------------------------------------------------- */
-    char
-egetswch ()				/* Get the switch character */
+	char
+egetswch (void)				/* Get the switch character */
 
-    {
-    char  *p;
-    char   ch = '-';
-
-    if (p = getenv("SWCH"))
 	{
-	while (*p)
-	    {
-	    if ( ! isspace(*p))
-		{
-		ch = *p;
-		break;
-		}
-	    ++p;
-	    }
-	}
+	char  *p;
+	char   ch = '-';
 
-    return (ch);
-    }
+	if (p = getenv("SWCH"))
+		{
+		while (*p)
+			{
+			if ( ! isspace(*p))
+				{
+				ch = *p;
+				break;
+				}
+			++p;
+			}
+		}
+
+	return (ch);
+	}
 
 /* ------------------------------------------------------------------------ */

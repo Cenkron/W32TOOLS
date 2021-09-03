@@ -65,136 +65,136 @@ extern	int	nextstate  (void);
 extern	void	translate  (void);
 
 /* ----------------------------------------------------------------------- */
-    void
+	void
 main (
-    int    argc,			// Argument count
-    char  *argv [])			// Argument list pointer
+	int    argc,			// Argument count
+	char  *argv [])			// Argument list pointer
 
-    {
-    int    smode = FW_FILE;		// File search mode attributes
-    int    option;			// Option character
-    char  *ap;				// Argument pointer
-    char  *fnp = NULL;			// Input file name pointer
-    FILE  *fp  = NULL;			// Input file descriptor
-
-
-    optenv = getenv("PLOT");
-
-    while ((option = getopt(argc, argv, "?d:D:lLrR")) != EOF)
 	{
-	switch (tolower(option))
-	    {
-	    case 'd':
-		if (optarg == NULL)
-		    usage();
-		strncpy(&device[0], optarg, 80);
-		break;
-
-	    case 'l':
-		++l_flag;
-		break;
-
-	    case 'r':
-		++r_flag;
-		break;
-
-	    case '?':
-		help();
-
-	    default:
-		usage();
-	    }
-	}
+	int    smode = FW_FILE;		// File search mode attributes
+	int    option;			// Option character
+	char  *ap;				// Argument pointer
+	char  *fnp = NULL;			// Input file name pointer
+	FILE  *fp  = NULL;			// Input file descriptor
 
 
-    if ( ! (prfp = fopen(&device[0], "w")))
-	{
-	printf("Unable to access printer: %s\n", &device[0]);
-	exit(1);
-	}
+	optenv = getenv("PLOT");
 
-    if (r_flag)
-	goto done;
-
-    if (optind >= argc)
-	process(stdin, "<stdin>");
-    else
-	{
-	while (optind < argc)
-	    {
-	    ap = argv[optind++];
-	    hp = finit(ap, smode);		// Process the input list
-	    if ((fnp = fwild(hp)) == NULL)
-		cantopen(ap);
-	    else
+	while ((option = getopt(argc, argv, "?d:D:lLrR")) != EOF)
 		{
-		do  {				// Process one filespec
-		    if (fp = fopen(fnp, "r"))
+		switch (tolower(option))
 			{
-			lj_set();
-			set_flag = FALSE;
-			process(fp, fnp);
-			fclose(fp);
+			case 'd':
+				if (optarg == NULL)
+					usage();
+				strncpy(&device[0], optarg, 80);
+				break;
+
+			case 'l':
+				++l_flag;
+				break;
+
+			case 'r':
+				++r_flag;
+				break;
+
+			case '?':
+				help();
+
+			default:
+				usage();
 			}
-		    else
-			cantopen(fnp);
-		    } while ((fnp = fwild(hp)));
 		}
-	    }
-	}
+
+
+	if ( ! (prfp = fopen(&device[0], "w")))
+		{
+		printf("Unable to access printer: %s\n", &device[0]);
+		exit(1);
+		}
+
+	if (r_flag)
+		goto done;
+
+	if (optind >= argc)
+		process(stdin, "<stdin>");
+	else
+		{
+		while (optind < argc)
+			{
+			ap = argv[optind++];
+			hp = finit(ap, smode);		// Process the input list
+			if ((fnp = fwild(hp)) == NULL)
+				cantopen(ap);
+			else
+				{
+				do  {				// Process one filespec
+					if (fp = fopen(fnp, "r"))
+						{
+						lj_set();
+						set_flag = FALSE;
+						process(fp, fnp);
+						fclose(fp);
+						}
+					else
+						cantopen(fnp);
+					} while ((fnp = fwild(hp)));
+				}
+			}
+		}
 
 done:
-    lj_reset();
+	lj_reset();
 
-    fflush(prfp);
-    fclose(prfp);
-    }
+	fflush(prfp);
+	fclose(prfp);
+	}
 
 /* ----------------------------------------------------------------------- *\
 |  Perform HP LaserJet Setup
 \* ----------------------------------------------------------------------- */
-    void
+	void
 lj_set (void)
 
-    {
-    lj_reset();			// Do reset
+	{
+	lj_reset();			// Do reset
 
-    fputs(ESC "&l1O", prfp);	// Set landscape mode
-    fputs(ESC "%0B",  prfp);	// Set HPGL mode
-    }
+	fputs(ESC "&l1O", prfp);	// Set landscape mode
+	fputs(ESC "%0B",  prfp);	// Set HPGL mode
+	}
 
 /* ----------------------------------------------------------------------- *\
 |  Perform HP LaserJet Reset
 \* ----------------------------------------------------------------------- */
-    void
+	void
 lj_reset (void)
 
-    {
-    fputs(ESC "E",     prfp);	// Reset LaserJet
-    fputs(ESC "(10U",  prfp);	// Select IBM symbol set
-    }
+	{
+	fputs(ESC "E",     prfp);	// Reset LaserJet
+	fputs(ESC "(10U",  prfp);	// Select IBM symbol set
+	}
 
 /* ----------------------------------------------------------------------- *\
 |  Process one file
 \* ----------------------------------------------------------------------- */
-    static void
+	static void
 process (			// Process one input file
-    FILE  *fp,			// Input file descriptor
-    char  *fnp)			// Input file name
+	FILE  *fp,			// Input file descriptor
+	char  *fnp)			// Input file name
 
-    {
-    int   ch;			// Input character
+	{
+	int   ch;			// Input character
 
 
-    if (l_flag)
-	printf("Plotting: %s\n", fnp);
+	if (l_flag)
+		printf("Plotting: %s\n", fnp);
 
-    do  {
-	ch = fgetc(fp);
-	parse(ch);
-	} while (ch != EOF);
-    fputc(';', prfp);
-    }
+	do  {
+		ch = fgetc(fp);
+		parse(ch);
+		} while (ch != EOF);
+	fputc(';', prfp);
+	}
 
 /* ----------------------------------------------------------------------- *\
 |  Global translator data
@@ -219,147 +219,148 @@ char	lblterm    = '\3';	// Label terminator character
 /* ----------------------------------------------------------------------- *\
 |  parse ()  -  Parse HPGL commands
 \* ----------------------------------------------------------------------- */
-    void
-parse (int ch)
+	void
+parse (
+	int ch)
 
-    {
-    switch (state)
 	{
-	case FIRST:
-	    if (ch == EOF)
-		fputs(";\n", prfp);
-	    else if (isalpha(ch))
+	switch (state)
 		{
-		cmd[0] = (char)(tolower(ch));
-		state  = SECOND;
-		}
-	    else
-		fputc((char)(ch), prfp);
-	    break;
+		case FIRST:
+			if (ch == EOF)
+				fputs(";\n", prfp);
+			else if (isalpha(ch))
+				{
+				cmd[0] = (char)(tolower(ch));
+				state  = SECOND;
+				}
+			else
+				fputc((char)(ch), prfp);
+			break;
 
-	case SECOND:
-	    if (ch == EOF)
-		fputs(";\n", prfp);
-	    else
-		{
-		cmd[1] = (char)(tolower(ch));
-		dp     = &data[0];
-		state  = nextstate();
-		}
-	    break;
+		case SECOND:
+			if (ch == EOF)
+				fputs(";\n", prfp);
+			else
+				{
+				cmd[1] = (char)(tolower(ch));
+				dp     = &data[0];
+				state  = nextstate();
+				}
+			break;
 
-	case STRING:
-	    if (ch == EOF)
-		{
-		fputc(lblterm, prfp);
-		fputs(";\n", prfp);
-		}
-	    else
-		{
-		fputc(ch, prfp);
-		if (ch == lblterm)
-		    {
-		    state = FIRST;
-		    fputc('\n', prfp);
-		    }
-		}
-	    break;
+		case STRING:
+			if (ch == EOF)
+				{
+				fputc(lblterm, prfp);
+				fputs(";\n", prfp);
+				}
+			else
+				{
+				fputc(ch, prfp);
+				if (ch == lblterm)
+					{
+					state = FIRST;
+					fputc('\n', prfp);
+					}
+				}
+			break;
 
-	case COPY:
-	    if (ch == EOF)
-		fputs(";\n", prfp);
-	    else if (isalpha(ch))
-		{
-		cmd[0] = (char)(tolower(ch));
-		state  = SECOND;
-		}
-	    else
-		{
-		fputc(ch, prfp);
-		if (ch == ';')
-		    state = FIRST;
-		}
-	    break;
+		case COPY:
+			if (ch == EOF)
+				fputs(";\n", prfp);
+			else if (isalpha(ch))
+				{
+				cmd[0] = (char)(tolower(ch));
+				state  = SECOND;
+				}
+			else
+				{
+				fputc(ch, prfp);
+				if (ch == ';')
+					state = FIRST;
+				}
+			break;
 
-	case DATA:
-	    if (ch == EOF)
-		{
-		translate();
-		fputs(";\n", prfp);
-		}
-	    else if (isalpha(ch))
-		{
-		translate();
-		cmd[0] = (char)(tolower(ch));
-		state  = SECOND;
-		}
-	    else if (ch == ';')
-		{
-		translate();
-		state = FIRST;
-		}
-	    else
-		*dp++ = (char)(ch);
-	    break;
+		case DATA:
+			if (ch == EOF)
+				{
+				translate();
+				fputs(";\n", prfp);
+				}
+			else if (isalpha(ch))
+				{
+				translate();
+				cmd[0] = (char)(tolower(ch));
+				state  = SECOND;
+				}
+			else if (ch == ';')
+				{
+				translate();
+				state = FIRST;
+				}
+			else
+				*dp++ = (char)(ch);
+			break;
 
-	case SKIP:
-	    if (ch == EOF)
-		fputs(";\n", prfp);
-	    else if (isalpha(ch))
-		{
-		cmd[0] = (char)(tolower(ch));
-		state  = SECOND;
+		case SKIP:
+			if (ch == EOF)
+				fputs(";\n", prfp);
+			else if (isalpha(ch))
+				{
+				cmd[0] = (char)(tolower(ch));
+				state  = SECOND;
+				}
+			else if (ch == ';')
+				state = FIRST;
+			break;
 		}
-	    else if (ch == ';')
-		state = FIRST;
-	    break;
 	}
-    }
 
 /* ----------------------------------------------------------------------- *\
 |  nextstate ()  -  Test the command to determine the operand category
 \* ----------------------------------------------------------------------- */
-    int
+	int
 nextstate (void)
 
-    {
-    int  result;
+	{
+	int  result;
 
 
-    if (strncmp(&cmd[0], "in", 2) == MATCH)
-	{
-	if (set_flag)
-	    lj_set();
-	set_flag = TRUE;
-	fputs(&cmd[0], prfp);
-	result = COPY;
-	}
-    else if (strncmp(&cmd[0], "lb", 2) == MATCH)
-	{
-	fputs(&cmd[0], prfp);
-	result = STRING;
-	}
-    else if (strncmp(&cmd[0], "sp", 2) == MATCH)
-	{
-	fputs(&cmd[0], prfp);
-	fputs("1;\n", prfp);
-	result = SKIP;
-	}
-    else if (strncmp(&cmd[0], "vs", 2) == MATCH)
-	result = SKIP;
-    else
-	{
-	fputs(&cmd[0], prfp);
-	result = COPY;
-	}
+	if (strncmp(&cmd[0], "in", 2) == MATCH)
+		{
+		if (set_flag)
+			lj_set();
+		set_flag = TRUE;
+		fputs(&cmd[0], prfp);
+		result = COPY;
+		}
+	else if (strncmp(&cmd[0], "lb", 2) == MATCH)
+		{
+		fputs(&cmd[0], prfp);
+		result = STRING;
+		}
+	else if (strncmp(&cmd[0], "sp", 2) == MATCH)
+		{
+		fputs(&cmd[0], prfp);
+		fputs("1;\n", prfp);
+		result = SKIP;
+		}
+	else if (strncmp(&cmd[0], "vs", 2) == MATCH)
+		result = SKIP;
+	else
+		{
+		fputs(&cmd[0], prfp);
+		result = COPY;
+		}
 
-    return (result);
-    }
+	return (result);
+	}
 
 /* ----------------------------------------------------------------------- *\
 |  translate ()  -  Translate an HPGL command
 \* ----------------------------------------------------------------------- */
-    void
+	void
 translate (void)
 
     {

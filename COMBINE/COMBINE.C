@@ -38,11 +38,11 @@ void	ProcessFile   (void);
 |  Private variables
 \* ----------------------------------------------------------------------- */
 
-int	l_flag       = 0;	// TRUE to list the file only
-int	s_flag       = 0;	// TRUE to list the search paths
-char	delimiter;		// The filename delimiter
-char   *pfn;			// Pointer to the prospective file name
-int	nesting      = 0;	// The nesting level
+int		l_flag       = 0;	// TRUE to list the file only
+int		s_flag       = 0;	// TRUE to list the search paths
+char	delimiter;			// The filename delimiter
+char   *pfn;				// Pointer to the prospective file name
+int		nesting      = 0;	// The nesting level
 
 FILE   *fpArray [64];		// The filename array
 FILE  **pfp = &fpArray[0];	// Stack pointer into the path array
@@ -58,104 +58,108 @@ char	copyright [] =
 /* ----------------------------------------------------------------------- *\
 |  main () - The main program
 \* ----------------------------------------------------------------------- */
-    void
+	void
 main (
-    int    argc,
-    char  *argv [])
+	int    argc,
+	char  *argv [])
 
-    {
-    char   ch;			// Parser temporary
-    char  *s;			// Parser temporary
-    char  *s1;			// Parser temporary
+	{
+	char   ch;			// Parser temporary
+	char  *s;			// Parser temporary
+	char  *s1;			// Parser temporary
 
 
-    while (--argc > 0 && (*++argv)[0] == SWCH)
-	for (s = argv[0] + 1; ch = *(s++); )
-	    switch (tolower(ch))
+	while (--argc > 0 && (*++argv)[0] == SWCH)
 		{
-		case 'i':
-		    s1 = s;
-		    while (isgraph(*s))
+		for (s = argv[0] + 1; ch = *(s++); )
 			{
-			*(pSearchEntry++) = s;
-			while (isgraph(*s))
-			    {
-			    if (*s == ';')
+			switch (tolower(ch))
 				{
-				*(s++) = '\0';
-				break;
+				case 'i':
+					s1 = s;
+					while (isgraph(*s))
+						{
+						*(pSearchEntry++) = s;
+						while (isgraph(*s))
+							{
+							if (*s == ';')
+								{
+								*(s++) = '\0';
+								break;
+								}
+							++s;
+							}
+						}
+					if (s == s1)
+						{
+						fprintf(stderr, "Missing search path\n");
+						usagei(1);
+						}
+					break;
+
+				case 'l':
+					++l_flag;
+					break;
+
+				case 's':
+					++s_flag;
+					break;
+
+				default:
+					if (ch != '?')
+						fprintf(stderr, "Invalid switch '%c'\n", ch);
+					usagei(ch != '?');
+					break;
 				}
-			    ++s;
-			    }
 			}
-		    if (s == s1)
-			{
-			fprintf(stderr, "Missing search path\n");
-			usagei(1);
-			}
-		    break;
-
-		case 'l':
-		    ++l_flag;
-		    break;
-
-		case 's':
-		    ++s_flag;
-		    break;
-
-		default:
-		    if (ch != '?')
-			fprintf(stderr, "Invalid switch '%c'\n", ch);
-		    usagei(ch != '?');
-		    break;
 		}
 
-    FixPaths();
+	FixPaths();
 
-    if (argc == 0)
-	{
-	fprintf(stderr, "A primary input file name is required\n");
-	usagei(1);
-	}
-    else if (argc > 1)
-	{
-	fprintf(stderr, "Excess arguments on the command line\n");
-	usagei(1);
-	}
+	if (argc == 0)
+		{
+		fprintf(stderr, "A primary input file name is required\n");
+		usagei(1);
+		}
+	else if (argc > 1)
+		{
+		fprintf(stderr, "Excess arguments on the command line\n");
+		usagei(1);
+		}
 
-    if (s_flag)
-	{
-	char **p;
+	if (s_flag)
+		{
+		char **p;
 
-	if (&SearchList[0] == pSearchEntry)
-	    printf("\nNo search paths\n");
+		if (&SearchList[0] == pSearchEntry)
+			printf("\nNo search paths\n");
+		else
+			{
+			printf("\nSearch paths:\n");
+			for (p = &SearchList[0]; (p < pSearchEntry); ++p)
+				printf("    %s\n", *p);
+			}
+		}
+
 	else
-	    {
-	    printf("\nSearch paths:\n");
-	    for (p = &SearchList[0]; (p < pSearchEntry); ++p)
-		printf("    %s\n", *p);
-	    }
-	}
+		{
+		pfn = *argv;
+		delimiter = '\0';
+		FileOpen();
+		ProcessFile();
+		}
 
-    else
-	{
-	pfn = *argv;
-	delimiter = '\0';
-	FileOpen();
-	ProcessFile();
+	exit(0);
 	}
-
-    exit(0);
-    }
 
 /* ----------------------------------------------------------------------- *\
 |  usagei () - Display usage information and exit
 \* ----------------------------------------------------------------------- */
-    void
+	void
 usagei (int value)		// Display help documentation
 
-    {
-    static char  *hdoc [] =
+	{
+	static char  *hdoc [] =
 	{
 	"usage:  combine  [-?ls] [-i<path>]  infile  >outfile]",
 	"",
@@ -175,173 +179,173 @@ usagei (int value)		// Display help documentation
 	NULL
 	};
 
-    dprint(hdoc);
-    exit(value);
-    }
+	dprint(hdoc);
+	exit(value);
+	}
 
 /* ----------------------------------------------------------------------- *\
 |  dprint () - Display usage data
 \* ----------------------------------------------------------------------- */
-    void
-dprint (dp)			// Print documentation text
-    char  **dp;			// Document array pointer
+	void
+dprint (dp)				// Print documentation text
+	char  **dp;			// Document array pointer
 
-    {
-    while (*dp)
 	{
-	printf(*(dp++));
-	putchar('\n');
+	while (*dp)
+		{
+		printf(*(dp++));
+		putchar('\n');
+		}
 	}
-    }
 
 /* ----------------------------------------------------------------------- *\
 |  FixPaths () - Delete any trailing "\" characters from the search paths
 \* ----------------------------------------------------------------------- */
-    void
+	void
 FixPaths (void)
 
-    {
-    char  **p;			// Pointer to the current search path
-
-    for (p = &SearchList[1]; (p < pSearchEntry); ++p)
 	{
-	int     n = strlen(*p);		// Length of the search path
-	char  *px = *p + (n - 1);	// Pointer to the possible '\'
+	char  **p;			// Pointer to the current search path
 
-	if ((n > 0)  &&  (*px == '\\'))	// Check for it...
-	    *px = '\0';			// ...yes, truncate it
+	for (p = &SearchList[1]; (p < pSearchEntry); ++p)
+		{
+		int     n = strlen(*p);		// Length of the search path
+		char  *px = *p + (n - 1);	// Pointer to the possible '\'
+
+		if ((n > 0)  &&  (*px == '\\'))	// Check for it...
+			*px = '\0';			// ...yes, truncate it
+		}
 	}
-    }
 
 /* ----------------------------------------------------------------------- *\
 |  FileOpen () - Attempt to open the file
 \* ----------------------------------------------------------------------- */
-    void
+	void
 FileOpen (void)
 
-    {
-    int     a_flag;			// Absolute filename flag
-    char  **p;				// Pointer into the search array
-    FILE   *fp;				// The file pointer
-    char    filename [1024];		// The filename buffer
-
-
-    a_flag = ((*pfn == '\\')  ||  (*(pfn+1) == ':'));
-
-    if (delimiter == '<')
-	p = &SearchList[1];
-    else
-	p = &SearchList[0];
-
-    for ( ; (p < pSearchEntry); ++p)
 	{
-	if (a_flag)
-	    strcpy(filename, pfn);	// Use the filename
+	int     a_flag;			// Absolute filename flag
+	char  **p;				// Pointer into the search array
+	FILE   *fp;				// The file pointer
+	char    filename [1024];		// The filename buffer
+
+
+	a_flag = ((*pfn == '\\')  ||  (*(pfn+1) == ':'));
+
+	if (delimiter == '<')
+		p = &SearchList[1];
 	else
-	    {
-	    strcpy(filename, *p);	// Construct the filename
-	    strcat(filename, "\\");
-	    strcat(filename, pfn);
-	    }
+		p = &SearchList[0];
+
+	for ( ; (p < pSearchEntry); ++p)
+		{
+		if (a_flag)
+			strcpy(filename, pfn);	// Use the filename
+		else
+			{
+			strcpy(filename, *p);	// Construct the filename
+			strcat(filename, "\\");
+			strcat(filename, pfn);
+			}
 
 // printf("Trying \"%s\"\n", filename);
 
-	if ((fp = fopen(filename, "r")) != NULL)
-	    {
-	    *(++pfp) = fp;		// Stack the file entry
-	    if (l_flag)
-		{
-		int n = 2 * (++nesting);
-		printf("    %d%*c%s\n", nesting, n, ' ', filename);
-		}
-	    return;
-	    }
+		if ((fp = fopen(filename, "r")) != NULL)
+			{
+			*(++pfp) = fp;		// Stack the file entry
+			if (l_flag)
+				{
+				int n = 2 * (++nesting);
+				printf("    %d%*c%s\n", nesting, n, ' ', filename);
+				}
+			return;
+			}
 
 	if (a_flag)
-	    break;
+		break;
 	}
 
-    fprintf(stderr, "Unable to open file \"%s\"\n", pfn);
-    exit(1);
-    }
+	fprintf(stderr, "Unable to open file \"%s\"\n", pfn);
+	exit(1);
+	}
 
 /* ----------------------------------------------------------------------- *\
 |  CheckInclude () - Check for an included file
 \* ----------------------------------------------------------------------- */
-    int
+	int
 CheckInclude (void)
 
-    {
-    char  *p = buffer;		// Point the buffer
+	{
+	char  *p = buffer;		// Point the buffer
 
 // printf("Checking \"%s\"\n", p);
 
-    while (isspace(*p))		// Skip leading white space
-	++p;
+	while (isspace(*p))		// Skip leading white space
+		++p;
 
-    if ((*p != '$')  ||  (strncmp(p, "$include", 8) != 0))
-	return (0);		// Not a "$include" request
+	if ((*p != '$')  ||  (strncmp(p, "$include", 8) != 0))
+		return (0);		// Not a "$include" request
 
-    while (isgraph(*p))		// Skip over the "$include"
-	++p;
+	while (isgraph(*p))		// Skip over the "$include"
+		++p;
 
-    while (isspace(*p))		// Skip intermediate white space
-	++p;
+	while (isspace(*p))		// Skip intermediate white space
+		++p;
 
-    if ((*p == '"')  ||  (*p == '<'))
-	{
-	delimiter = *p;
-	++p;
+	if ((*p == '"')  ||  (*p == '<'))
+		{
+		delimiter = *p;
+		++p;
+		}
+	else
+		delimiter = '\0';
+
+	pfn = p;			// Point the filename portion
+
+	while (isgraph(*p))		// Skip over the filename
+		++p;
+
+	if (pfn == p)
+		{
+		fprintf(stderr, "No file name in \"%s\"", buffer);
+		exit(1);
+		}
+
+	if (delimiter != '\0')
+		{
+		--p;
+		if (((delimiter == '"')  &&  (*p != '"'))
+		||  ((delimiter == '<')  &&  (*p != '>')))
+			{
+			fprintf(stderr, "Delimiter pair error in \"%s\"", buffer);
+			exit(1);
+			}
+		}
+
+	*p = '\0';			// NUL terminate the filename
+
+	return (1);
 	}
-    else
-	delimiter = '\0';
-
-    pfn = p;			// Point the filename portion
-
-    while (isgraph(*p))		// Skip over the filename
-	++p;
-
-    if (pfn == p)
-	{
-	fprintf(stderr, "No file name in \"%s\"", buffer);
-	exit(1);
-	}
-
-    if (delimiter != '\0')
-	{
-	--p;
-	if (((delimiter == '"')  &&  (*p != '"'))
-	||  ((delimiter == '<')  &&  (*p != '>')))
-	    {
-	    fprintf(stderr, "Delimiter pair error in \"%s\"", buffer);
-	    exit(1);
-	    }
-	}
-
-    *p = '\0';			// NUL terminate the filename
-
-    return (1);
-    }
 
 /* ----------------------------------------------------------------------- *\
 |  ProcessFile () - Process a file
 \* ----------------------------------------------------------------------- */
-    void
+	void
 ProcessFile (void)
 
-    {
-    while (fgets(buffer, sizeof(buffer), *pfp) != NULL)
 	{
-	if (CheckInclude())
-	    {
-	    FileOpen();
-	    ProcessFile();
-	    --pfp;
-	    --nesting;
-	    }
-	else if ( ! l_flag)
-	    fputs(buffer, stdout);
+	while (fgets(buffer, sizeof(buffer), *pfp) != NULL)
+		{
+		if (CheckInclude())
+			{
+			FileOpen();
+			ProcessFile();
+			--pfp;
+			--nesting;
+			}
+		else if ( ! l_flag)
+			fputs(buffer, stdout);
+		}
 	}
-    }
 
 /* --------------------------------- EOF --------------------------------- */

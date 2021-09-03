@@ -100,7 +100,7 @@ extern	void	delay			(void);
 |  Initialize to print the directory
 \* ----------------------------------------------------------------------- */
 	void
-fdpr_init ()			/* Initialize for printing file/directory lines */
+fdpr_init (void)		/* Initialize for printing file/directory lines */
 
 	{
 	spaces	 = 0;
@@ -155,7 +155,7 @@ fdpr (
 |  Complete the directory listing (used mostly for wide mode)
 \* ----------------------------------------------------------------------- */
 	void
-fdpr_complete ()		/* Complete printing file/directory lines */
+fdpr_complete (void)	/* Complete printing file/directory lines */
 
 	{
 	if (lineopen)

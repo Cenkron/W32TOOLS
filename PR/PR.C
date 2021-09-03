@@ -129,26 +129,26 @@ char   *ifilename  = NULL;	// The initialization file name
 #define  CHR_UL_CORNER	'+'
 
 typedef
-    struct
-	{
-	char  v;
-	char  ur;
-	char  ll;
-	char  h;
-	char  lr;
-	char  ul;
-	}  BOXC;
+	struct
+		{
+		char  v;
+		char  ur;
+		char  ll;
+		char  h;
+		char  lr;
+		char  ul;
+		}  BOXC;
 
 BOXC	boxchar [2] =
     {
-	{
-	IBM_VER_LINE,	IBM_UR_CORNER,	IBM_LL_CORNER,
-	IBM_HOR_LINE,	IBM_LR_CORNER,	IBM_UL_CORNER
-	},
-	{
-	CHR_VER_LINE,	CHR_UR_CORNER,	CHR_LL_CORNER,
-	CHR_HOR_LINE,	CHR_LR_CORNER,	CHR_UL_CORNER
-	}
+		{
+		IBM_VER_LINE,	IBM_UR_CORNER,	IBM_LL_CORNER,
+		IBM_HOR_LINE,	IBM_LR_CORNER,	IBM_UL_CORNER
+		},
+		{
+		CHR_VER_LINE,	CHR_UR_CORNER,	CHR_LL_CORNER,
+		CHR_HOR_LINE,	CHR_LR_CORNER,	CHR_UL_CORNER
+		}
     };
 
 BOXC   *boxp = &boxchar[0];		// Pointer to the box set
@@ -173,548 +173,549 @@ extern	void	copyinit   (void);
 extern	void	sides      (char *s);
 
 /* ----------------------------------------------------------------------- */
-    void
+	void
 main (
-    int    argc,			// Argument count
-    char  *argv [])			// Argument list pointer
+	int    argc,			// Argument count
+	char  *argv [])			// Argument list pointer
 
-    {
-    int    smode = FW_FILE;		// File search mode attributes
-    int    option;			// Option character
-    long   ltemp;			// Used for optvalue()
-    char  *ap;				// Argument pointer
-    char  *fnp = NULL;			// Input file name pointer
-    FILE  *fp  = NULL;			// Input file descriptor
-
-
-    optenv = getenv("PR");
-
-    while ((option = getopt(argc, argv,
-		"?aAbBcCd:D:e:E:f:F:gGh:H:i:I:lLm:M:n:N:oOpPrRs:S:t:T:")) != EOF)
 	{
-	switch (tolower(option))
-	    {
-	    case 'a':
-		c_flag   = FALSE;	// Compress flag
-		r_flag   = FALSE;	// Reset LaserJet flag
-		pcl_flag = FALSE;	// PCL flag
-		break;
-
-	    case 'b':
-		p_flag = TRUE;
-		b_flag = TRUE;
-		break;
-
-	    case 'c':
-		++c_flag;
-		break;
-
-	    case 'd':
-		if (optarg == NULL)
-		    {
-		    printf("Missing device name\n");
-		    usage();
-		    }
-		strncpy(&device[0], optarg, 80);
-		break;
-
-	    case 'e':
-		if (optvalue(optarg, &ltemp, 0L, (long)(unsigned int)(INT_MAX)))
-		    {
-		    printf("Invalid ending page number: %s\n", optarg);
-		    usage();
-		    }
-		endpage = (int)(ltemp);
-		break;
-
-	    case 'f':
-		if (optvalue(optarg, &ltemp, 0L, (long)(unsigned int)(INT_MAX)))
-		    {
-		    printf("Invalid starting page number: %s\n", optarg);
-		    usage();
-		    }
-		firstpage = (int)(ltemp);
-		break;
-
-	    case 'g':
-		boxp = &boxchar[1];
-		break;
-
-	    case 'h':
-		if (optarg == NULL)
-		    {
-		    printf("Missing header name\n");
-		    usage();
-		    }
-		strncpy(&hdrname[0], optarg, 80);
-		h_flag = TRUE;
-		break;
-
-	    case 'i':
-		ifilename = optarg;
-		break;
-
-	    case 'l':
-		++l_flag;
-		break;
-
-	    case 'm':
-		if (optvalue(optarg, &ltemp, 0L, 256L))
-		    {
-		    printf("Invalid left margin spec: %s\n", optarg);
-		    usage();
-		    }
-		lmargin = (int)(ltemp);
-		break;
-
-	    case 'n':
-		if (optvalue(optarg, &ltemp, 0L, 256L))
-		    {
-		    printf("Invalid copies spec: %s\n", optarg);
-		    usage();
-		    }
-		copies = (int)(ltemp);
-		break;
-
-	    case 'o':
-		p_flag = FALSE;
-		b_flag = FALSE;
-		break;
-
-	    case 'p':
-		p_flag = TRUE;
-		b_flag = FALSE;
-		break;
-
-	    case 'r':
-		++r_flag;
-		break;
-
-	    case 's':
-		if (option == 'S')
-		    sides(optarg);
-		else
-		    {
-		    if (optvalue(optarg, &ltemp, 0L, 256L))
-			{
-			printf("Invalid right margin spec: %s\n", optarg);
-			usage();
-			}
-		    rmargin = (int)(ltemp);
-		    }
-		break;
-
-	    case 't':
-		if (optvalue(optarg, &ltemp, 1L, 16L))
-		    {
-		    printf("Invalid tab size spec: %s\n", optarg);
-		    usage();
-		    }
-		tabwidth = (int)(ltemp);
-		break;
-
-	    case '?':
-		help();
-
-	    default:
-		usage();
-	    }
-	}
+	int    smode = FW_FILE;		// File search mode attributes
+	int    option;			// Option character
+	long   ltemp;			// Used for optvalue()
+	char  *ap;				// Argument pointer
+	char  *fnp = NULL;			// Input file name pointer
+	FILE  *fp  = NULL;			// Input file descriptor
 
 
-    if ( ! (prfp = fopen(&device[0], "w")))
-	{
-	printf("Unable to access printer: %s\n", &device[0]);
-	exit(1);
-	}
+	optenv = getenv("PR");
 
-    if (r_flag)
-	goto done;
-
-    if (c_flag)
-	{
-	maxcol  = C_COLS;
-	maxline = C_LINES;
-	lj_set(COMPRESSED);
-	}
-    else
-	{
-	maxcol  = N_COLS;
-	maxline = N_LINES;
-	lj_set(NORMAL);
-	}
-
-    textcol  = maxcol - lmargin - rmargin - 1;
-    barcount = textcol - 2;
-    spccount = textcol - 16;
-
-    if (optind >= argc)
-	process(stdin, "<stdin>");
-    else
-	{
-	while (optind < argc)
-	    {
-	    ap = argv[optind++];
-	    hp = finit(ap, smode);		// Process the input list
-	    if ((fnp = fwild(hp)) == NULL)
-		cantopen(ap);
-	    else
+	while ((option = getopt(argc, argv,
+			"?aAbBcCd:D:e:E:f:F:gGh:H:i:I:lLm:M:n:N:oOpPrRs:S:t:T:")) != EOF)
 		{
-		do  {				// Process one filespec
-		    if (fp = fopen(fnp, "r"))
+		switch (tolower(option))
 			{
-			process(fp, fnp);
-			fclose(fp);
+			case 'a':
+				c_flag   = FALSE;	// Compress flag
+				r_flag   = FALSE;	// Reset LaserJet flag
+				pcl_flag = FALSE;	// PCL flag
+				break;
+
+			case 'b':
+				p_flag = TRUE;
+				b_flag = TRUE;
+				break;
+
+			case 'c':
+				++c_flag;
+				break;
+
+			case 'd':
+				if (optarg == NULL)
+					{
+					printf("Missing device name\n");
+					usage();
+					}
+				strncpy(&device[0], optarg, 80);
+				break;
+
+			case 'e':
+				if (optvalue(optarg, &ltemp, 0L, (long)(unsigned int)(INT_MAX)))
+					{
+					printf("Invalid ending page number: %s\n", optarg);
+					usage();
+					}
+				endpage = (int)(ltemp);
+				break;
+
+			case 'f':
+				if (optvalue(optarg, &ltemp, 0L, (long)(unsigned int)(INT_MAX)))
+					{
+					printf("Invalid starting page number: %s\n", optarg);
+					usage();
+					}
+				firstpage = (int)(ltemp);
+				break;
+
+			case 'g':
+				boxp = &boxchar[1];
+				break;
+
+			case 'h':
+				if (optarg == NULL)
+					{
+					printf("Missing header name\n");
+					usage();
+					}
+				strncpy(&hdrname[0], optarg, 80);
+				h_flag = TRUE;
+				break;
+
+			case 'i':
+				ifilename = optarg;
+				break;
+
+			case 'l':
+				++l_flag;
+				break;
+
+			case 'm':
+				if (optvalue(optarg, &ltemp, 0L, 256L))
+					{
+					printf("Invalid left margin spec: %s\n", optarg);
+					usage();
+					}
+				lmargin = (int)(ltemp);
+				break;
+
+			case 'n':
+				if (optvalue(optarg, &ltemp, 0L, 256L))
+					{
+					printf("Invalid copies spec: %s\n", optarg);
+					usage();
+					}
+				copies = (int)(ltemp);
+				break;
+
+			case 'o':
+				p_flag = FALSE;
+				b_flag = FALSE;
+				break;
+
+			case 'p':
+				p_flag = TRUE;
+				b_flag = FALSE;
+				break;
+
+			case 'r':
+				++r_flag;
+				break;
+
+			case 's':
+				if (option == 'S')
+					sides(optarg);
+				else
+					{
+					if (optvalue(optarg, &ltemp, 0L, 256L))
+						{
+						printf("Invalid right margin spec: %s\n", optarg);
+						usage();
+						}
+					rmargin = (int)(ltemp);
+					}
+				break;
+
+			case 't':
+				if (optvalue(optarg, &ltemp, 1L, 16L))
+					{
+					printf("Invalid tab size spec: %s\n", optarg);
+					usage();
+					}
+				tabwidth = (int)(ltemp);
+				break;
+
+			case '?':
+				help();
+
+			default:
+				usage();
 			}
-		    else
-			cantopen(fnp);
-		    } while ((fnp = fwild(hp)));
 		}
-	    }
-	}
+
+
+	if ( ! (prfp = fopen(&device[0], "w")))
+		{
+		printf("Unable to access printer: %s\n", &device[0]);
+		exit(1);
+		}
+
+	if (r_flag)
+		goto done;
+
+	if (c_flag)
+		{
+		maxcol  = C_COLS;
+		maxline = C_LINES;
+		lj_set(COMPRESSED);
+		}
+	else
+		{
+		maxcol  = N_COLS;
+		maxline = N_LINES;
+		lj_set(NORMAL);
+		}
+
+	textcol  = maxcol - lmargin - rmargin - 1;
+	barcount = textcol - 2;
+	spccount = textcol - 16;
+
+	if (optind >= argc)
+		process(stdin, "<stdin>");
+	else
+		{
+		while (optind < argc)
+			{
+			ap = argv[optind++];
+			hp = finit(ap, smode);		// Process the input list
+			if ((fnp = fwild(hp)) == NULL)
+				cantopen(ap);
+			else
+				{
+				do  {				// Process one filespec
+					if (fp = fopen(fnp, "r"))
+						{
+						process(fp, fnp);
+						fclose(fp);
+						}
+					else
+						cantopen(fnp);
+					} while ((fnp = fwild(hp)));
+				}
+			}
+		}
 
 done:
-    if (form_flag)
-	ff();
+	if (form_flag)
+		ff();
 
-    lj_reset();
+	lj_reset();
 
-    fflush(prfp);
-    fclose(prfp);
-    }
+	fflush(prfp);
+	fclose(prfp);
+	}
 
 /* ----------------------------------------------------------------------- *\
 |  Process one file
 \* ----------------------------------------------------------------------- */
-    static void
+	static void
 process (			// Process one input file
-    FILE  *fp,			// Input file descriptor
-    char  *fnp)			// Input file name
+	FILE  *fp,			// Input file descriptor
+	char  *fnp)			// Input file name
 
-    {
-    int   n;			// Copy counter
-    char  title [255];		// Title string
-
-
-    if (h_flag)				// Build the title line
-	strcpy(&title[0], &hdrname[0]);
-    else
-	strcpy(&title[0], fnp);
-    strcat(&title[0], "    ");
-    strcat(&title[0], fwdate(hp));
-    strcat(&title[0], "  ");
-    strcat(&title[0], fwtime(hp));
-
-    for (n = 0; n < copies; ++n)
 	{
-	fseek(fp, 0L, SEEK_SET);	// Rewind the print file
-	print_file(fp, fnp, &title[0]);	// Print the file
+	int   n;			// Copy counter
+	char  title [255];		// Title string
+
+
+	if (h_flag)				// Build the title line
+		strcpy(&title[0], &hdrname[0]);
+	else
+		strcpy(&title[0], fnp);
+	strcat(&title[0], "    ");
+	strcat(&title[0], fwdate(hp));
+	strcat(&title[0], "  ");
+	strcat(&title[0], fwtime(hp));
+	
+	for (n = 0; n < copies; ++n)
+		{
+		fseek(fp, 0L, SEEK_SET);	// Rewind the print file
+		print_file(fp, fnp, &title[0]);	// Print the file
+		}
 	}
-    }
 
 /* ----------------------------------------------------------------------- *\
 |  Print one file
 \* ----------------------------------------------------------------------- */
-    void
+	void
 print_file (
-    FILE  *fp,			// The FILE pointer
-    char  *fnp,			// The file name
-    char  *titlep)		// The title string
+	FILE  *fp,			// The FILE pointer
+	char  *fnp,			// The file name
+	char  *titlep)		// The title string
 
-    {
-    int    ch;
-    char  *p;
-    char   buffer [1024];
-
-
-    if (l_flag)
-	printf("Printing: %s\n", fnp);
-
-    line = 0;
-    page = (form_flag) ? (0) : (1);
-    PRINTFLAG();
-    title_flag = p_flag;
-
-    while (fgets(&buffer[0], sizeof(buffer), fp))
 	{
-	p         = &buffer[0];
-	col       = 0;
-	left_marg = TRUE;
+	int    ch;
+	char  *p;
+	char   buffer [1024];
 
-	while ((ch = *(p++)) != '\0')
-	    {
-	    if (ch == '\f')
+
+	if (l_flag)
+		printf("Printing: %s\n", fnp);
+
+	line = 0;
+	page = (form_flag) ? (0) : (1);
+	PRINTFLAG();
+	title_flag = p_flag;
+
+	while (fgets(&buffer[0], sizeof(buffer), fp))
 		{
-		form_flag = TRUE;
-		continue;	/* Avoid double FF at end */
-		}
+		p         = &buffer[0];
+		col       = 0;
+		left_marg = TRUE;
 
-	    /* At this point, we have something to print */
+		while ((ch = *(p++)) != '\0')
+			{
+			if (ch == '\f')
+				{
+				form_flag = TRUE;
+				continue;	/* Avoid double FF at end */
+				}
 
-	    if (p_flag  &&  (line >= maxline))
-//	    if (line >= maxline)
-		form_flag = TRUE;
+			/* At this point, we have something to print */
 
-	    if (form_flag)
-		ff();
+			if (p_flag  &&  (line >= maxline))
+//			if (line >= maxline)
+			form_flag = TRUE;
 
-	    if (title_flag)
-		put_title(titlep);
+			if (form_flag)
+				ff();
 
-	    if (ch == '\n')
-		{
+			if (title_flag)
+				put_title(titlep);
+
+			if (ch == '\n')
+				{
 // printf("Line %d, Page %d, flag = %d\n", line, page, printing);
 // fflush(stdout);
-		PRINTCH(ch);
-		col       = 0;
-		left_marg = TRUE;
-		++line;
-		continue;
-		}
+				PRINTCH(ch);
+				col       = 0;
+				left_marg = TRUE;
+				++line;
+				continue;
+				}
 
-	    if (ch == '\r')
-		{
-		PRINTCH(ch);
-		col       = 0;
-		left_marg = TRUE;
-		continue;
-		}
+			if (ch == '\r')
+				{
+				PRINTCH(ch);
+				col       = 0;
+				left_marg = TRUE;
+				continue;
+				}
 
-	    if (ch == BACKSPACE)
-		{
-		PRINTCH(ch);
-		if (col > 0)
-		    --col;
-		continue;
-		}
+			if (ch == BACKSPACE)
+				{
+				PRINTCH(ch);
+				if (col > 0)
+					--col;
+				continue;
+				}
 
-	    if (left_marg  &&  (lmargin != 0))
-		margin();
+			if (left_marg  &&  (lmargin != 0))
+				margin();
 
-	    if (ch == '\t')
-		{
-		do  {
-		    if (col >= textcol)
-			{
-			PRINTCH('\n');
-			col       = 0;
-			left_marg = TRUE;
-			++line;
-			--p;
-			break;
+			if (ch == '\t')
+				{
+				do  {
+					if (col >= textcol)
+						{
+						PRINTCH('\n');
+						col       = 0;
+						left_marg = TRUE;
+						++line;
+						--p;
+						break;
+						}
+					else
+						PRINTCH(' ');
+					}  while ((++col % tabwidth) != 0);
+				}
+				else if (col >= textcol)
+				{
+				PRINTCH('\n');
+				col       = 0;
+				left_marg = TRUE;
+				++line;
+				--p;
+				continue;
+				}
+			else
+				{
+				PRINTCH(ch);
+				++col;
+				}
 			}
-		    else
-			PRINTCH(' ');
-		    }  while ((++col % tabwidth) != 0);
 		}
-	    else if (col >= textcol)
-		{
-		PRINTCH('\n');
-		col       = 0;
-		left_marg = TRUE;
-		++line;
-		--p;
-		continue;
-		}
-	    else
-		{
-		PRINTCH(ch);
-		++col;
-		}
-	    }
+	form_flag = TRUE;			// Terminal form feed
 	}
-    form_flag = TRUE;			// Terminal form feed
-    }
 
 /* ----------------------------------------------------------------------- *\
 |  Print the left margin
 \* ----------------------------------------------------------------------- */
-    void
+	void
 margin (void)
 
-    {
-    int  i;
+	{
+	int  i;
 
-    for (i = lmargin; i; --i)
-	PRINTCH(' ');
-    left_marg = FALSE;
-    }
+	for (i = lmargin; i; --i)
+		PRINTCH(' ');
+	left_marg = FALSE;
+	}
 
 /* ----------------------------------------------------------------------- *\
 |  Skip the printer to a new page
 \* ----------------------------------------------------------------------- */
-    void
+	void
 ff (void)
 
-    {
-    PRINTCH('\f');
-    PRINTCH('\r');
-    fflush(prfp);
-    col       = 0;
-    left_marg = TRUE;
-    line      = 0;
-    ++page;
-    PRINTFLAG();
-    title_flag = p_flag;
-    form_flag  = FALSE;
+	{
+	PRINTCH('\f');
+	PRINTCH('\r');
+	fflush(prfp);
+	col       = 0;
+	left_marg = TRUE;
+	line      = 0;
+	++page;
+	PRINTFLAG();
+	title_flag = p_flag;
+	form_flag  = FALSE;
 // printf("Page %d, flag = %d\n", page, printing);
 // fflush(stdout);
-    }
+	}
 
 /* ----------------------------------------------------------------------- *\
 |  Print the title block on a new page
 \* ----------------------------------------------------------------------- */
-    void
-put_title (char *titlep)	// Pointer to the title string
+	void
+put_title (
+	char *titlep)	// Pointer to the title string
 
-    {
-    int  col;			// Column counter
-
-    if (p_flag)
 	{
-	if (b_flag)
-	    {
-	    if (margin != 0)
-		margin();
-	    PRINTCH(UL_CORNER);
-	    for (col = barcount; col; --col)
-		PRINTCH(HOR_LINE);
-	    PRINTCH(UR_CORNER);
-	    PRINTCH('\n');
-	    ++line;
-	    }
+	int  col;			// Column counter
 
-	if (lmargin != 0)
-	    margin();
+	if (p_flag)
+		{
+		if (b_flag)
+			{
+			if (margin != 0)
+				margin();
+			PRINTCH(UL_CORNER);
+			for (col = barcount; col; --col)
+				PRINTCH(HOR_LINE);
+			PRINTCH(UR_CORNER);
+			PRINTCH('\n');
+			++line;
+			}
 
-	if (b_flag)
-	    PRINTCH(VER_LINE);
+		if (lmargin != 0)
+			margin();
 
-	if (printing)
-	    fprintf(prfp, "  %-*s Page %-3d   ", spccount, titlep, page);
+		if (b_flag)
+			PRINTCH(VER_LINE);
 
-	if (b_flag)
-	    PRINTCH(VER_LINE);
+		if (printing)
+			fprintf(prfp, "  %-*s Page %-3d   ", spccount, titlep, page);
 
-	PRINTCH('\n');
-	++line;
+		if (b_flag)
+			PRINTCH(VER_LINE);
 
-	if (b_flag)
-	    {
-	    if (lmargin != 0)
-		margin();
-	    PRINTCH(LL_CORNER);
-	    for (col = barcount; col; --col)
-		PRINTCH(HOR_LINE);
-	    PRINTCH(LR_CORNER);
-	    PRINTCH('\n');
-	    ++line;
-	    }
+		PRINTCH('\n');
+			++line;
 
-	PRINTCH('\n');
-	++line;
-	left_marg = TRUE;
+		if (b_flag)
+			{
+			if (lmargin != 0)
+				margin();
+			PRINTCH(LL_CORNER);
+			for (col = barcount; col; --col)
+				PRINTCH(HOR_LINE);
+			PRINTCH(LR_CORNER);
+			PRINTCH('\n');
+			++line;
+			}
+
+		PRINTCH('\n');
+		++line;
+		left_marg = TRUE;
+		}
+
+	title_flag = FALSE;
 	}
-
-    title_flag = FALSE;
-    }
 
 /* ----------------------------------------------------------------------- *\
 |  Perform HP LaserJet Setup
 \* ----------------------------------------------------------------------- */
-    void
+	void
 lj_set (int flag)
 
-    {
-    lj_reset();					// Reset the LaserJet
-
-    if (pcl_flag)
 	{
-	if (flag == COMPRESSED)
-	    {
-	    fputs(ESC "(10U",  prfp);		// Set compressed LP, PC-8
-	    fputs(ESC "(s0p16.67h8.5v0s0b0T",  prfp);
-	    fputs(ESC "&l8D",  prfp);		// Set 8 lines per inch
-	    }
-	else  // (flag == NORMAL)
-	    {
-	    fputs(ESC "(10U",  prfp);		// Set normal Courier, PC-8
-	    fputs(ESC "(s0p10.00h12.0v0s0b3T",  prfp);
-	    fputs(ESC "&l6D",  prfp);		// Set 6 lines per inch
-	    }
-	fputs(ESC "&k0G",  prfp);		// Disable CR, LF, FF translation
-	}
+	lj_reset();					// Reset the LaserJet
 
-    if (ifilename != NULL)
-	copyinit();
-    }
+	if (pcl_flag)
+		{
+		if (flag == COMPRESSED)
+			{
+			fputs(ESC "(10U",  prfp);		// Set compressed LP, PC-8
+			fputs(ESC "(s0p16.67h8.5v0s0b0T",  prfp);
+			fputs(ESC "&l8D",  prfp);		// Set 8 lines per inch
+			}
+		else  // (flag == NORMAL)
+			{
+			fputs(ESC "(10U",  prfp);		// Set normal Courier, PC-8
+			fputs(ESC "(s0p10.00h12.0v0s0b3T",  prfp);
+			fputs(ESC "&l6D",  prfp);		// Set 6 lines per inch
+			}
+		fputs(ESC "&k0G",  prfp);		// Disable CR, LF, FF translation
+		}
+
+	if (ifilename != NULL)
+		copyinit();
+	}
 
 /* ----------------------------------------------------------------------- *\
 |  Perform HP LaserJet Reset
 \* ----------------------------------------------------------------------- */
-    void
+	void
 lj_reset (void)
 
-    {
-    if (pcl_flag)
+	{
+	if (pcl_flag)
 	fputs(ESC "E",  prfp);			// Reset the LaserJet
-    }
+	}
 
 /* ----------------------------------------------------------------------- *\
 |  Process "sides" argument
 \* ----------------------------------------------------------------------- */
-    void
+	void
 sides (
-    char  *arg)			// Pointer to the option string
+	char  *arg)			// Pointer to the option string
 
-    {
-    char  *p = arg;
-
-    odd_side  = FALSE;
-    even_side = FALSE;
-    while (*p)
 	{
-	if (tolower(*p) == 'e')
-	    even_side = TRUE;
-	else if (tolower(*p) == 'o')
-	    odd_side  = TRUE;
-	else
-	    {
-	    printf("Unexpected \"sides\" arguments: %s\n", arg);
-	    usage();
-	    }
-	++p;
+	char  *p = arg;
+
+	odd_side  = FALSE;
+	even_side = FALSE;
+	while (*p)
+		{
+		if (tolower(*p) == 'e')
+			even_side = TRUE;
+		else if (tolower(*p) == 'o')
+			odd_side  = TRUE;
+		else
+			{
+			printf("Unexpected \"sides\" arguments: %s\n", arg);
+			usage();
+			}
+		++p;
+		}
 	}
-    }
 
 /* ----------------------------------------------------------------------- *\
 |  Copy any optional initialization file to the printer
 \* ----------------------------------------------------------------------- */
-    void
+	void
 copyinit (void)
 
-    {
-    int    ch;
-    char  *ifnp;
-    FILE  *fp;
-
-
-    if ((ifnp = fwfirst(ifilename)) == NULL)
 	{
-	printf("Unable to find initialization file: %s\n", ifilename);
-	usage();
+	int    ch;
+	char  *ifnp;
+	FILE  *fp;
+
+
+	if ((ifnp = fwfirst(ifilename)) == NULL)
+		{
+		printf("Unable to find initialization file: %s\n", ifilename);
+		usage();
+		}
+
+	if ((fp = fopen(ifnp, "r")) == NULL)
+		{
+		printf("Unable to open initialization file: %s\n", ifnp);
+		usage();
+		}
+
+	while ((ch = fgetc(fp)) != EOF)
+		fputc((ch), prfp);
+
+	fclose(fp);
 	}
-
-    if ((fp = fopen(ifnp, "r")) == NULL)
-	{
-	printf("Unable to open initialization file: %s\n", ifnp);
-	usage();
-	}
-
-    while ((ch = fgetc(fp)) != EOF)
-	fputc((ch), prfp);
-
-    fclose(fp);
-    }
 
 /* ----------------------------------------------------------------------- */

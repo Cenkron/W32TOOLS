@@ -13,11 +13,12 @@
 #include  "fwild.h"
 
 /* ----------------------------------------------------------------------- */
-    void
-cantopen (char *fnp)			/* Input file name */
+	void
+cantopen (
+	char *fnp)			/* Input file name */
 
-    {
-    printf("Unable to open input file: %s\n", fnp);
-    }
+	{
+	printf("Unable to open input file: %s\n", fnp);
+	}
 
 /* ----------------------------------------------------------------------- */

@@ -13,11 +13,12 @@
 #include  "fwild.h"
 
 /* ----------------------------------------------------------------------- */
-    void
-cantfind (char *fnp)			/* Input file name */
+	void
+cantfind (
+	char *fnp)			/* Input file name */
 
-    {
-    printf("Unable to find file: %s\n", fnp);
-    }
+	{
+	printf("Unable to find file: %s\n", fnp);
+	}
 
 /* ----------------------------------------------------------------------- */

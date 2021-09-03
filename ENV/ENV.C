@@ -76,104 +76,104 @@ extern	void	lj_prefix  (void);
 extern	void	lj_suffix  (void);
 
 /* ----------------------------------------------------------------------- */
-    void
+	void
 main (
-    int    argc,			// Argument count
-    char  *argv [])			// Argument list pointer
+	int    argc,			// Argument count
+	char  *argv [])			// Argument list pointer
 
-    {
-    int    smode = FW_FILE;		// File search mode attributes
-    int    option;			// Option character
-    long   ltemp;			// Used by optvalue()
-    char  *ap;				// Argument pointer
-    char  *fnp = NULL;			// Input file name pointer
-    FILE  *fp  = NULL;			// Input file descriptor
-    void  *hp  = NULL;			// Pointer to the wild file data block
-
-
-    optenv = getenv("ENV");
-
-    while ((option = getopt(argc, argv, "9?d:D:lLn:N:r:R:")) != EOF)
 	{
-	switch (tolower(option))
-	    {
-	    case 'd':
-		if (optarg == NULL)
-		    usage();
-		strncpy(&device[0], optarg, 80);
-		break;
-
-	    case 'l':
-		++l_flag;
-		break;
-
-	    case '9':
-		++n9_flag;
-		break;
-
-	    case 'n':
-		if (optvalue(optarg, &ltemp, 1, 256))
-		    {
-		    printf("Invalid copies parameter: %s\n", optarg);
-		    usage();
-		    }
-		copies = (int)(ltemp);
-		break;
-
-	    case 'r':
-		if (optarg == NULL)
-		    usage();
-		strncpy(&raname[0], optarg, 80);
-		break;
-
-	    case '?':
-		help();
-
-	    default:
-		usage();
-	    }
-	}
+	int    smode = FW_FILE;		// File search mode attributes
+	int    option;			// Option character
+	long   ltemp;			// Used by optvalue()
+	char  *ap;				// Argument pointer
+	char  *fnp = NULL;			// Input file name pointer
+	FILE  *fp  = NULL;			// Input file descriptor
+	void  *hp  = NULL;			// Pointer to the wild file data block
 
 
-    if ( ! (rafp = fopen(&raname[0], "r")))
-	{
-	printf("Unable to open return address file: %s\n", &raname[0]);
-	exit(1);
-	}
+	optenv = getenv("ENV");
 
-    if ( ! (prfp = fopen(&device[0], "w")))
-	{
-	printf("Unable to access printer: %s\n", &device[0]);
-	exit(1);
-	}
-
-    if (optind >= argc)
-	{
-	copies = 1;
-	process(stdin, "<stdin>");
-	}
-    else
-	{
-	while (optind < argc)
-	    {
-	    ap = argv[optind++];
-	    hp = finit(ap, smode);		// Process the input list
-	    if ((fnp = fwild(hp)) == NULL)
-		cantopen(ap);
-	    else
+	while ((option = getopt(argc, argv, "9?d:D:lLn:N:r:R:")) != EOF)
 		{
-		do  {				// Process one filespec
-		    if (fp = fopen(fnp, "r"))
+		switch (tolower(option))
 			{
-			process(fp, fnp);
-			fclose(fp);
+			case 'd':
+				if (optarg == NULL)
+					usage();
+				strncpy(&device[0], optarg, 80);
+				break;
+
+			case 'l':
+				++l_flag;
+				break;
+
+			case '9':
+				++n9_flag;
+				break;
+
+			case 'n':
+				if (optvalue(optarg, &ltemp, 1, 256))
+					{
+					printf("Invalid copies parameter: %s\n", optarg);
+					usage();
+					}
+				copies = (int)(ltemp);
+				break;
+
+			case 'r':
+				if (optarg == NULL)
+					usage();
+				strncpy(&raname[0], optarg, 80);
+				break;
+
+			case '?':
+				help();
+
+			default:
+				usage();
 			}
-		    else
-			cantopen(fnp);
-		    } while ((fnp = fwild(hp)));
 		}
-	    }
-	}
+
+
+	if ( ! (rafp = fopen(&raname[0], "r")))
+		{
+		printf("Unable to open return address file: %s\n", &raname[0]);
+		exit(1);
+		}
+
+	if ( ! (prfp = fopen(&device[0], "w")))
+		{
+		printf("Unable to access printer: %s\n", &device[0]);
+		exit(1);
+		}
+
+	if (optind >= argc)
+		{
+		copies = 1;
+		process(stdin, "<stdin>");
+		}
+	else
+		{
+		while (optind < argc)
+			{
+			ap = argv[optind++];
+			hp = finit(ap, smode);		// Process the input list
+			if ((fnp = fwild(hp)) == NULL)
+				cantopen(ap);
+			else
+				{
+				do  {				// Process one filespec
+					if (fp = fopen(fnp, "r"))
+						{
+						process(fp, fnp);
+						fclose(fp);
+						}
+					else
+						cantopen(fnp);
+					} while ((fnp = fwild(hp)));
+				}
+			}
+		}
 
     fflush(prfp);
     fclose(prfp);

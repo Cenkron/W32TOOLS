@@ -24,64 +24,70 @@
 char get_key (void);
 
 /**********************************************************************/
-    EXPORT int
-may_copy (char *src, char *dst, char *dstpath)
-    {
-    int         c;
-    int		retval;
+	EXPORT int
+may_copy (
+	char *src,
+	char *dst,
+	char *dstpath)
 
-    if (azFlags.q)
-        {
-	notify(MAYCOPY, src, dstpath, dst);
+	{
+	int         c;
+	int		retval;
 
-        if ( (c=tolower(get_key())) == 'y' )
-	    retval = TRUE;
-        else if (c == 'r')
-            {
-            azFlags.q = AZ_Flags.q = FALSE;
-            retval = TRUE;
-            }
-        else if ( (c == 'q') || (c == 'c') )
-            {
-            printf("XCopy terminated\n");
-            exit(0);
-            }
-        else
-            retval = FALSE;
-        }
-    else
-        retval = TRUE;
+	if (azFlags.q)
+		{
+		notify(MAYCOPY, src, dstpath, dst);
 
-    return retval;
-    }
+		if ( (c=tolower(get_key())) == 'y' )
+			retval = TRUE;
+		else if (c == 'r')
+			{
+			azFlags.q = AZ_Flags.q = FALSE;
+			retval = TRUE;
+			}
+		else if ( (c == 'q') || (c == 'c') )
+			{
+			printf("XCopy terminated\n");
+			exit(0);
+			}
+		else
+			retval = FALSE;
+		}
+	else
+		retval = TRUE;
+
+	return retval;
+	}
 
 /*--------------------------------------------------------------------*/
-    char
+	char
 get_key (void)
-    {
-    char	c;
+	{
+	char	c;
 
-    if (AZ_Flags.q)
-	c = (char)(getchar());
+	if (AZ_Flags.q)
+		c = (char)(getchar());
 
-    else
-	for (;;)
-	    {
-	    while (((c = (char)(_getch())) == 0)  ||  (c == (char)(0xE0)))
-		_getch();
-	    c = tolower(c);
-	    if ((c == 'y')
-	    ||  (c == 'n')
-	    ||  (c == 'r')
-	    ||  (c == 'q')
-	    ||  (c == 'c'))
-		break;
-	    }
-	
-    putchar(c);
-    putchar('\n');
-    return (c);
-    }
+	else
+		{
+		for (;;)
+			{
+			while (((c = (char)(_getch())) == 0)  ||  (c == (char)(0xE0)))
+				_getch();
+			c = tolower(c);
+			if ((c == 'y')
+			||  (c == 'n')
+			||  (c == 'r')
+			||  (c == 'q')
+			||  (c == 'c'))
+			break;
+			}
+		}
+
+	putchar(c);
+	putchar('\n');
+	return (c);
+	}
 
 /*--------------------------------------------------------------------*/
 /*--------------------------------------------------------------------*/

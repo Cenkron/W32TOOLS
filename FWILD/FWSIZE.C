@@ -24,12 +24,12 @@
 #include  "fwild.h"
 
 /* ------------------------------------------------------------------------ */
-    UINT64			/* Return the file size longword */
-fwsize (hp)			/* Get the size of the current filename */
-    DTA_HDR  *hp;		/* Pointer to the DTA header */
+	UINT64				/* Return the file size longword */
+fwsize (				/* Get the size of the current filename */
+    DTA_HDR  *hp)		/* Pointer to the DTA header */
 
-    {
-    return  hp->f_size;
-    }
+	{
+	return  hp->f_size;
+	}
 
 /* ------------------------------------------------------------------------ */

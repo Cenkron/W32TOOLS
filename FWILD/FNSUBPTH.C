@@ -24,27 +24,27 @@
 #define	  ispath(ch)	(((ch) == '/') || ((ch) == '\\'))
 
 /* ----------------------------------------------------------------------- */
-    int
-fnsubpth (s1, s2)	/* Check if s1 is a subpath of s2 */
-    char  *s1;		/* Pointer to the filename sub-path */
-    char  *s2;		/* Pointer to the filename super-path */
+	int
+fnsubpth (				/* Check if s1 is a subpath of s2 */
+    char  *s1,			/* Pointer to the filename sub-path */
+    char  *s2)			/* Pointer to the filename super-path */
 
-    {
-    int  result = TRUE;	/* Default result for identical strings */
-
-    for (;;)
 	{
-	if (*s1 != *s2)
-	    {
-	    result = ((*s1 == '\0') && (ispath(*s2) || (*s2 == '\0')));
-	    break;
-	    }
-	if (*s1 == '\0')
-	    break;
-	++s1;
-	++s2;
+	int  result = TRUE;	/* Default result for identical strings */
+
+	for (;;)
+		{
+		if (*s1 != *s2)
+			{
+			result = ((*s1 == '\0') && (ispath(*s2) || (*s2 == '\0')));
+			break;
+			}
+		if (*s1 == '\0')
+			break;
+		++s1;
+		++s2;
+		}
+	return (result);
 	}
-    return (result);
-    }
 
 /* ----------------------------------------------------------------------- */

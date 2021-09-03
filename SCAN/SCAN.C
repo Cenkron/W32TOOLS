@@ -36,131 +36,131 @@ NULL
 
 /* ----------------------------------------------------------------------- */
 
-int	ArgFlag     = FALSE;			/* The active argument flag */
-int	Enabled     = FALSE;			/* The enabled flag */
-int	l_flag      = FALSE;			/* List file names flag */
+int		ArgFlag     = FALSE;			/* The active argument flag */
+int		Enabled     = FALSE;			/* The enabled flag */
+int		l_flag      = FALSE;			/* List file names flag */
 char   *pEnableStr  = NULL;			/* Enabling string */
 char   *pDisableStr = NULL;			/* Disabling string */
-int	EnableSize  = 0;			/* Length of the enable string */
-int	DisableSize = 0;			/* Length of the disable string */
+int		EnableSize  = 0;			/* Length of the enable string */
+int		DisableSize = 0;			/* Length of the disable string */
 
 static	void	process (FILE *, char *);
 
 /* ----------------------------------------------------------------------- */
-    void
+	void
 main (
-    int    argc,			/* Argument count */
-    char  *argv [])			/* Argument list pointer */
+	int    argc,			/* Argument count */
+	char  *argv [])			/* Argument list pointer */
 
-    {
-    int    smode = FW_FILE;		/* File search mode attributes */
-    int    option;			/* Option character */
-    char  *ap;				/* Argument pointer */
-    void  *hp  = NULL;			/* Pointer to wild file data block */
-    char  *fnp = NULL;			/* Input file name pointer */
-    FILE  *fp  = NULL;			/* Input file descriptor */
+	{
+	int    smode = FW_FILE;		/* File search mode attributes */
+	int    option;			/* Option character */
+	char  *ap;				/* Argument pointer */
+	void  *hp  = NULL;			/* Pointer to wild file data block */
+	char  *fnp = NULL;			/* Input file name pointer */
+	FILE  *fp  = NULL;			/* Input file descriptor */
 
 
-    setbuf(stdout, fmalloc(BUFSIZ));
+	setbuf(stdout, fmalloc(BUFSIZ));
 
 //  optenv = getenv("SCAN");
 
-    while ((option = getopt(argc, argv, "?d:D:e:E:i:I:lL")) != EOF)
-	{
-	switch (tolower(option))
-	    {
-	    case 'd':
-		++ArgFlag;
-		pDisableStr = optarg;
-		DisableSize = strlen(optarg);
-		break;
-
-	    case 'e':
-		++ArgFlag;
-		pEnableStr = optarg;
-		EnableSize = strlen(optarg);
-		break;
-
-	    case 'i':
-		Enabled = *optarg == '1';
-		break;
-
-	    case 'l':
-		++l_flag;
-		break;
-
-	    case '?':
-		help();
-
-	    default:
-		usage();
-	    }
-	}
-
-
-    if ( ! ArgFlag)
-	usage();
-
-    if (optind >= argc)
-	process(stdin, "<stdin>");
-
-    else
-	{
-	while (optind < argc)
-	    {
-	    ap = argv[optind++];
-	    hp = fwinit(ap, smode);		/* Process the input list */
-	    if ((fnp = fwild(hp)) == NULL)
-		cantopen(ap);
-	    else
+	while ((option = getopt(argc, argv, "?d:D:e:E:i:I:lL")) != EOF)
 		{
-		do  {				/* Process one filespec */
-		    if (fp = fopen(fnp, "r"))
+		switch (tolower(option))
 			{
-			process(fp, fnp);
-			fclose(fp);
+			case 'd':
+				++ArgFlag;
+				pDisableStr = optarg;
+				DisableSize = strlen(optarg);
+				break;
+
+			case 'e':
+				++ArgFlag;
+				pEnableStr = optarg;
+				EnableSize = strlen(optarg);
+				break;
+
+			case 'i':
+				Enabled = *optarg == '1';
+				break;
+
+			case 'l':
+				++l_flag;
+				break;
+
+			case '?':
+				help();
+
+			default:
+				usage();
 			}
-		    else
-			cantopen(fnp);
-		    } while ((fnp = fwild(hp)));
 		}
-	    }
+
+
+	if ( ! ArgFlag)
+		usage();
+
+	if (optind >= argc)
+		process(stdin, "<stdin>");
+
+	else
+		{
+		while (optind < argc)
+			{
+			ap = argv[optind++];
+			hp = fwinit(ap, smode);		/* Process the input list */
+			if ((fnp = fwild(hp)) == NULL)
+				cantopen(ap);
+			else
+				{
+				do  {				/* Process one filespec */
+					if (fp = fopen(fnp, "r"))
+						{
+						process(fp, fnp);
+						fclose(fp);
+						}
+					else
+						cantopen(fnp);
+					} while ((fnp = fwild(hp)));
+				}
+			}
+		}
 	}
-    }
 
 /* ----------------------------------------------------------------------- */
-    static void
-process (fp, fnp)		/* Process one input file */
-    FILE  *fp;			/* Input file descriptor */
-    char  *fnp;			/* Input file name */
+	static void
+process (				/* Process one input file */
+	FILE  *fp,			/* Input file descriptor */
+	char  *fnp)			/* Input file name */
 
-    {
-    char  record [16384];
-
-    if (l_flag)
-	printf("Scanning file: %s\n", fnp);
-
-    while (fgets(record, sizeof record, fp))
 	{
-	if (Enabled)
-	    {
-	    if ((DisableSize != 0)
-	    &&  (strncmp(pDisableStr, record, DisableSize) == 0))
-		Enabled = FALSE;
-	    }
-	else
-	    {
-	    if ((EnableSize != 0)
-	    &&  (strncmp(pEnableStr, record, EnableSize) == 0))
-		Enabled = TRUE;
-	    }
+	char  record [16384];
 
-	if (Enabled)
-	    {
-	    fputs(record, stdout);
-	    fflush(stdout);
-	    }
+	if (l_flag)
+		printf("Scanning file: %s\n", fnp);
+
+	while (fgets(record, sizeof record, fp))
+		{
+		if (Enabled)
+			{
+			if ((DisableSize != 0)
+			&&  (strncmp(pDisableStr, record, DisableSize) == 0))
+				Enabled = FALSE;
+			}
+		else
+			{
+			if ((EnableSize != 0)
+			&&  (strncmp(pEnableStr, record, EnableSize) == 0))
+				Enabled = TRUE;
+			}
+
+		if (Enabled)
+			{
+			fputs(record, stdout);
+			fflush(stdout);
+			}
+		}
 	}
-    }
 
 /* ----------------------------------------------------------------------- */

@@ -5,40 +5,43 @@
 #include <getoptns.h>
 
 /*--------------------------------------------------------------------*/
-    char
-get_key (int  Flag, int ResponseSet)
-    {
-    char	c;
+	char
+get_key (
+	int  Flag,
+	int ResponseSet)
 
-    if (Flag)
+	{
+	char	c;
+
+	if (Flag)
 		c = (char)(getchar());
 	
-    else
-	{
-	for (;;)
-	    {
-	    while (((c = (char)(_getch())) == 0)  ||  (c == (char)(0xE0)))
-			_getch();
+	else
+		{
+		for (;;)
+			{
+			while (((c = (char)(_getch())) == 0)  ||  (c == (char)(0xE0)))
+				_getch();
 
-	    c = tolower(c);
-	    if ((c == 'y')
-	    ||  (c == 'n'))
-			break;
+			c = tolower(c);
+			if ((c == 'y')
+			||  (c == 'n'))
+				break;
 
-	    if ( ! ResponseSet)
-			continue;
+			if ( ! ResponseSet)
+				continue;
 
-	    if ((c == 'r')
-	    ||  (c == 'q')
-	    ||  (c == 'c'))
-			break;
-	    }
+			if ((c == 'r')
+			||  (c == 'q')
+			||  (c == 'c'))
+				break;
+			}
+		}
+
+	putchar(c);
+	putchar('\n');
+	return (c);
 	}
-
-    putchar(c);
-    putchar('\n');
-    return (c);
-    }
 
 /*--------------------------------------------------------------------*/
 /*--------------------------------------------------------------------*/

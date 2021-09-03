@@ -27,60 +27,64 @@ void help (void	);
 void dprint (char **);
 
 /* ----------------------------------------------------------------------- */
-    void
-main (argc, argv)
-    int    argc;
-    char  *argv [];
+	void
+main (
+	int    argc,
+	char  *argv [])
 
-    {
-    FILE  *teeout;
-    char   record [512];
-    char  *s;
+	{
+	FILE  *teeout;
+	char   record [512];
+	char  *s;
 
 
-    setbuf(stdout, buffer);
-    swch = egetswch();
+	setbuf(stdout, buffer);
+	swch = egetswch();
 
-    while (--argc > 0 && (*++argv)[0] == swch)
-	for (s = argv[0] + 1; *s; s++)
-	    switch (tolower(*s))
+	while (--argc > 0 && (*++argv)[0] == swch)
 		{
-		case '?':
-		    help();
+		for (s = argv[0] + 1; *s; s++)
+			{
+			switch (tolower(*s))
+				{
+				case '?':
+					help();
 
-		default:
-		    usage();
+				default:
+					usage();
+				}
+			}
 		}
 
-    if (argc == 0)
-	usage();
+	if (argc == 0)
+		usage();
 
-    if ((teeout = fopen(*argv, "w")) == NULL)
-	cantopen(*argv);
+	if ((teeout = fopen(*argv, "w")) == NULL)
+		cantopen(*argv);
 
-    while (fgets(record, sizeof record, stdin))
-	{
-	fputs(record, teeout);
-	fputs(record, stdout);
-	fflush(stdout);
+	while (fgets(record, sizeof record, stdin))
+		{
+		fputs(record, teeout);
+		fputs(record, stdout);
+		fflush(stdout);
+		}
 	}
-    }
 
 /* ----------------------------------------------------------------------- */
-    static void
-cantopen (fnp)			/* Inform user of input failure */
-    char  *fnp;			/* Input file name */
+	static void
+cantopen (			/* Inform user of input failure */
+	char  *fnp)			/* Input file name */
 
-    {
-    fprintf(stderr, "\7Unable to open input file: %s\n", fnp);
-    }
+	{
+	fprintf(stderr, "\7Unable to open input file: %s\n", fnp);
+	}
 
 /* ----------------------------------------------------------------------- */
-    void
-usage ()			/* Display usage documentation */
+	void
+usage (void)		/* Display usage documentation */
 
-    {
-    static char  *udoc [] =
+	{
+	static char  *udoc [] =
 	{
 	"Usage:  <command>  |  tee  [%c?]  out_file",
 	"        <command>  |  tee  [%c?]  out_file  |  <command>",
@@ -88,16 +92,16 @@ usage ()			/* Display usage documentation */
 	NULL
 	};
 
-    dprint(udoc);
-    exit(1);
-    }
+	dprint(udoc);
+	exit(1);
+	}
 
 /* ----------------------------------------------------------------------- */
-    void
-help ()				/* Display help documentation */
+	void
+help (void)			/* Display help documentation */
 
-    {
-    static char  *hdoc [] =
+	{
+	static char  *hdoc [] =
 	{
 	"Usage:  <command>  |  tee  [%c?]  out_file",
 	"        <command>  |  tee  [%c?]  out_file  |  <command>",
@@ -108,21 +112,21 @@ help ()				/* Display help documentation */
 	NULL
 	};
 
-    dprint(hdoc);
-    exit(0);
-    }
+	dprint(hdoc);
+	exit(0);
+	}
 
 /* ----------------------------------------------------------------------- */
-    void
-dprint (dp)			/* Print documentation text */
-    char  **dp;			/* Document array pointer */
+	void
+dprint (			/* Print documentation text */
+	char  **dp)		/* Document array pointer */
 
-    {
-    while (*dp)
 	{
-	printf(*(dp++), swch);
-	putchar('\n');
+	while (*dp)
+		{
+		printf(*(dp++), swch);
+		putchar('\n');
+		}
 	}
-    }
 
 /* ----------------------------------------------------------------------- */

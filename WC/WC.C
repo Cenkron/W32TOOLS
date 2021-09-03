@@ -56,203 +56,203 @@ NULL
 };
 
 /* ----------------------------------------------------------------------- */
-    void
-main (argc, argv)
-    int    argc;
-    char  *argv [];
+	void
+main (
+	int    argc,
+	char  *argv [])
 
-    {
-    int    smode = FW_FILE;	/* File search mode attributes */
-    int    option;		/* Option character */
-    char  *ap;			/* Argument pointer */
-    void  *hp  = NULL;		/* Pointer to wild file data block */
-    char  *fnp = NULL;		/* Input file name pointer */
-    FILE  *fp  = NULL;		/* Input file descriptor */
+	{
+	int    smode = FW_FILE;	/* File search mode attributes */
+	int    option;		/* Option character */
+	char  *ap;			/* Argument pointer */
+	void  *hp  = NULL;		/* Pointer to wild file data block */
+	char  *fnp = NULL;		/* Input file name pointer */
+	FILE  *fp  = NULL;		/* Input file descriptor */
 
 static	char   *optstring = "?dDiIlL";
 
 
-    setbuf(stdout, buffer);
-    optenv = getenv("WC");
-    swch = egetswch();
+	setbuf(stdout, buffer);
+	optenv = getenv("WC");
+	swch = egetswch();
 
-    while ((option = getopt(argc, argv, optstring)) != EOF)
-	{
-	switch (tolower(option))
-            {
-            case 'd':
-                ++d_flag;
-                ++l_flag;
-                break;
-
-            case 'i':
-                i_flag = TRUE;
-                break;
-
-            case 'l':
-                ++l_flag;
-                break;
-
-            case '?':
-                help();
-
-            default:
-                usage();
-            }
-        }
-
-
-    if (i_flag)
-	{
-	while (ap = stdpath())			/* Process the stdin list */
-	    {
-	    hp = fwinit(ap, smode);		/* Process the input list */
-	    if ((fnp = fwild(hp)) == NULL)
-		cantopen(ap);
-	    else
+	while ((option = getopt(argc, argv, optstring)) != EOF)
 		{
-		do  {				/* Process one filespec */
-		    if (fp = fopen(fnp, "r"))
+		switch (tolower(option))
 			{
-			process(fp, fnp);
-			fclose(fp);
+			case 'd':
+				++d_flag;
+				++l_flag;
+				break;
+
+			case 'i':
+				i_flag = TRUE;
+				break;
+
+			case 'l':
+				++l_flag;
+				break;
+
+			case '?':
+				help();
+
+			default:
+				usage();
 			}
-		    else
-			cantopen(fnp);
-		    } while ((fnp = fwild(hp)));
 		}
-	    }
-	}
 
-    else if (optind >= argc)
-	process(stdin, "<stdin>");
 
-    else
-	{
-	while (optind < argc)
-            {
-            ap = argv[optind++];
-	    hp = fwinit(ap, smode);		/* Process the input list */
-	    if ((fnp = fwild(hp)) == NULL)
-		cantopen(ap);
-	    else
+	if (i_flag)
 		{
-		do  {				/* Process one filespec */
-		    if (fp = fopen(fnp, "r"))
+		while (ap = stdpath())			/* Process the stdin list */
 			{
-			process(fp, fnp);
-			fclose(fp);
+			hp = fwinit(ap, smode);		/* Process the input list */
+			if ((fnp = fwild(hp)) == NULL)
+				cantopen(ap);
+			else
+				{
+				do  {				/* Process one filespec */
+					if (fp = fopen(fnp, "r"))
+						{
+						process(fp, fnp);
+						fclose(fp);
+						}
+					else
+						cantopen(fnp);
+					} while ((fnp = fwild(hp)));
+				}
 			}
-		    else
-			cantopen(fnp);
-		    } while ((fnp = fwild(hp)));
 		}
-	    }
-	}
 
-    if (d_flag)
-	printf("    Total:      ");
-    printf("%8ld characters  %8ld words  %8ld lines\n", tc, tw, tl);
-    exit(0);
-    }
+	else if (optind >= argc)
+		process(stdin, "<stdin>");
+
+	else
+		{
+		while (optind < argc)
+			{
+			ap = argv[optind++];
+			hp = fwinit(ap, smode);		/* Process the input list */
+			if ((fnp = fwild(hp)) == NULL)
+				cantopen(ap);
+			else
+				{
+				do  {				/* Process one filespec */
+					if (fp = fopen(fnp, "r"))
+						{
+						process(fp, fnp);
+						fclose(fp);
+						}
+					else
+						cantopen(fnp);
+					} while ((fnp = fwild(hp)));
+				}
+			}
+		}
+
+	if (d_flag)
+		printf("    Total:      ");
+	printf("%8ld characters  %8ld words  %8ld lines\n", tc, tw, tl);
+	exit(0);
+	}
 
 /* ----------------------------------------------------------------------- */
-    static void
-process (fp, fnp)		/* Process one input file */
-    FILE  *fp;			/* Input file descriptor */
-    char  *fnp;			/* Input file name */ 
+	static void
+process (				/* Process one input file */
+	FILE  *fp,			/* Input file descriptor */
+	char  *fnp)			/* Input file name */ 
 
-    {
-    int  ch;			/* Temporary character */
-    int  inword;		/* TRUE when parsing a word */
-    long  nc = 0;		/* Character count */
-    long  nw = 0;		/* Word count */
-    long  nl = 0;		/* Line count */
-
-    if (d_flag)
-	printf("%-16s", fnp);
-    else if (l_flag)
-	printf("%s", fnp);
-
-    inword = FALSE;
-    while ((ch = getc(fp)) != EOF)
 	{
-	++nc;
-	if (ch == '\n')
-	    {
-	    ++nl;
-	    inword = FALSE;
-	    }
+	int  ch;			/* Temporary character */
+	int  inword;		/* TRUE when parsing a word */
+	long  nc = 0;		/* Character count */
+	long  nw = 0;		/* Word count */
+	long  nl = 0;		/* Line count */
 
-	if ((ch == '\n') || (ch == ' ') || (ch == '\t'))
-	    inword = FALSE;
-	else if (inword == FALSE)
-	    {
-	    inword = TRUE;
-	    ++nw;
-	    }
+	if (d_flag)
+		printf("%-16s", fnp);
+	else if (l_flag)
+		printf("%s", fnp);
+
+	inword = FALSE;
+	while ((ch = getc(fp)) != EOF)
+		{
+		++nc;
+		if (ch == '\n')
+			{
+			++nl;
+			inword = FALSE;
+			}
+
+		if ((ch == '\n') || (ch == ' ') || (ch == '\t'))
+			inword = FALSE;
+		else if (inword == FALSE)
+			{
+			inword = TRUE;
+			++nw;
+			}
+		}
+
+	tc += nc;		/* Update the totals */
+	tw += nw;
+	tl += nl;
+
+	if (d_flag)
+		printf("%8ld characters  %8ld words  %8ld lines", nc, nw, nl);
+	if (d_flag || l_flag)
+		putchar('\n');
+	fflush(stdout);
 	}
 
-    tc += nc;		/* Update the totals */
-    tw += nw;
-    tl += nl;
-
-    if (d_flag)
-	printf("%8ld characters  %8ld words  %8ld lines", nc, nw, nl);
-    if (d_flag || l_flag)
-	putchar('\n');
-    fflush(stdout);
-    }
-
 /* ----------------------------------------------------------------------- */
-    char *
-stdpath ()			/* Parse pathnames from stdin */
+	char *
+stdpath (void)		/* Parse pathnames from stdin */
 
-    {
-    int  ch;
-    char  *p;
+	{
+	int  ch;
+	char  *p;
 static	int   eofflag = FALSE;
 static	char  line [81];
 
-    line[0] = '\0';
-    if ( ! eofflag)
-	{
-	for (;;)
-	    {
-	    ch = getchar();
-	    if (ch == EOF)
+	line[0] = '\0';
+	if ( ! eofflag)
 		{
-		eofflag = TRUE;
-		break;
+		for (;;)
+			{
+			ch = getchar();
+			if (ch == EOF)
+				{
+				eofflag = TRUE;
+				break;
+				}
+			if (isgraph(ch))
+				break;
+			}
 		}
-	    if (isgraph(ch))
-		break;
-	    }
-	}
 
-    if ( ! eofflag)
-	{
-	for (p = &line[0]; ; )
-	    {
-	    if (p >= &line[80])
+	if ( ! eofflag)
 		{
-		line[0] = '\0';
-		break;
+		for (p = &line[0]; ; )
+			{
+			if (p >= &line[80])
+				{
+				line[0] = '\0';
+				break;
+				}
+			*(p++) = (char)(ch);
+			*p = '\0';
+			ch = getchar();
+			if ( ! isgraph(ch))
+				{
+				if (ch == EOF)
+					eofflag = TRUE;
+				break;
+				}
+			}
 		}
-	    *(p++) = (char)(ch);
-	    *p = '\0';
-	    ch = getchar();
-	    if ( ! isgraph(ch))
-		{
-		if (ch == EOF)
-		    eofflag = TRUE;
-		break;
-		}
-	    }
-	}
 
-    p = (line[0] != '\0') ? (&line[0]) : (NULL);
-    return (p);
-    }
+	p = (line[0] != '\0') ? (&line[0]) : (NULL);
+	return (p);
+	}
 
 /* ----------------------------------------------------------------------- */

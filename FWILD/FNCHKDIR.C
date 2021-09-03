@@ -26,80 +26,81 @@
 #include  "fwild.h"
 
 /* ----------------------------------------------------------------------- */
-#ifdef  TEST
-    void
-main (argc, argv)
-    int    argc;
-    char  *argv [];
+	int						/* Return TRUE if the directory exists */
+fnchkdir (					/* Verify the existence of a directory */
+    char  *s)				/* Pointer to the filename string */
 
-    {
-    char  *p;
-
-    if (argc > 1)
-	p = *++argv;
-    else
-	p = "";
-    if (fnchkdir(p))
-	printf("TRUE\n");
-    else
-	printf("FALSE\n");
-    }
-#endif
-/* ------------------------------------------------------------------------ */
-    int				/* Return TRUE if the directory exists */
-fnchkdir (s)			/* Verify the existence of a directory */
-    char  *s;			/* Pointer to the filename string */
-
-    {
-    return (_fnchkdir(s) || fnchkunc(s));
-    }
-
-/* ------------------------------------------------------------------------ */
-    int				/* Return TRUE if the directory exists */
-_fnchkdir (s)			/* Verify the existence of a directory */
-    char  *s;			/* Pointer to the filename string */
-
-    {
-    int      result;		/* The returned result */
-    char    *p;			/* Temporary string pointer */
-    char    *pbuff;		/* Absoluted copy of the input string */
-    DTA_BLK  dta;		/* A DTA for _findf() */
-
-
-    if (strchr(s, '?')			/* Wild is disallowed */
-    ||  strchr(s, '*'))
-	return (FALSE);
-
-    p = pbuff = fnabspth(s);		/* Perform reduction */
-
-    if (isalpha(*p) && (*(p + 1) == ':'))
-	p += 2;
-
-    for (;;)
 	{
-	if ((*p == '/') || (*p == '\\'))
-	    ++p;
-	else if (strncmp(p, "..", 2) == 0)
-	    p += 2;
-	else if ((*p == '.')
-	&&      ((*(p+1) == '/')  ||  (*(p+1) == '\\')  ||  (*(p+1) == '\0')))
-	    ++p;
-	else
-	    break;
+	return (_fnchkdir(s) || fnchkunc(s));
 	}
 
-//printf("Check:      \"%s\"\n", pbuff);
-    if (*p == '\0')			/* "X:"  "X:/"  "."  ".."  "/"  "X:." */
-	result = TRUE;			/* are all good directories */
+/* ------------------------------------------------------------------------ */
+	int						/* Return TRUE if the directory exists */
+_fnchkdir (					/* Verify the existence of a directory */
+	char  *s)				/* Pointer to the filename string */
 
-    else if (result = _findf(&dta, pbuff, ATT_SUBD | ATT_HIDDEN) == 0)	/* Test it */
-        {
-	result = ((dta.dta_type & ATT_SUBD) != 0);
-	_findc(&dta);
-        }
+	{
+	int      result;		/* The returned result */
+	char    *p;				/* Temporary string pointer */
+	char    *pbuff;			/* Absoluted copy of the input string */
+	DTA_BLK  dta;			/* A DTA for _findf() */
+
+
+	if (strchr(s, '?')			/* Wild is disallowed */
+	||  strchr(s, '*'))
+		return (FALSE);
+
+	p = pbuff = fnabspth(s);		/* Perform reduction */
+
+	if (isalpha(*p) && (*(p + 1) == ':'))
+		p += 2;
+
+	for (;;)
+		{
+		if ((*p == '/') || (*p == '\\'))
+			++p;
+		else if (strncmp(p, "..", 2) == 0)
+			p += 2;
+		else if ((*p == '.')
+			 && ((*(p+1) == '/')  ||  (*(p+1) == '\\')  ||  (*(p+1) == '\0')))
+			++p;
+		else
+			break;
+		}
+
+//	printf("Check:      \"%s\"\n", pbuff);
+	if (*p == '\0')			/* "X:"  "X:/"  "."  ".."  "/"  "X:." */
+		result = TRUE;			/* are all good directories */
+
+	else if (result = _findf(&dta, pbuff, ATT_SUBD | ATT_HIDDEN) == 0)	/* Test it */
+		{
+		result = ((dta.dta_type & ATT_SUBD) != 0);
+		_findc(&dta);
+		}
    
-    free(pbuff);
-    return (result);
-    }
+	free(pbuff);
+	return (result);
+	}
 
 /* ----------------------------------------------------------------------- */
+#ifdef  TEST
+	void
+main (
+	int    argc,
+	char  *argv [])
+
+	{
+	char  *p;
+
+	if (argc > 1)
+		p = *++argv;
+	else
+		p = "";
+	if (fnchkdir(p))
+		printf("TRUE\n");
+	else
+		printf("FALSE\n");
+	}
+#endif
+/* ------------------------------------------------------------------------ */
+/* ------------------------------------------------------------------------ */

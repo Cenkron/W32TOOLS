@@ -64,8 +64,8 @@ wfd_to_dta (
 	
 //	FileTimeToLocalFileTime(&pDta->wfd.ftLastWriteTime, &LocalTime);
 //	FileTimeToDosDateTime(&LocalTime, &pDta->dta_date, &pDta->dta_time);
-	pDta->dta_size = (((UINT64)(pDta->wfd.nFileSizeHigh)) << 32)
-				   |  ((UINT64)(pDta->wfd.nFileSizeLow));
+	pDta->dta_size  = (((UINT64)(pDta->wfd.nFileSizeHigh)) << 32)
+					|  ((UINT64)(pDta->wfd.nFileSizeLow));
 	strcpy(&pDta->dta_name[0], &pDta->wfd.cFileName[0]);
 	}
 
@@ -88,7 +88,7 @@ Invalid (
 		{
 		if ((SrchAttr & ATT_SUBD)				/* Check if want subdirectories */
 		&& (    ((NewAttr & SrchAttr) & (FW_HIDDEN | FW_SYSTEM))
-			 == ((NewAttr           ) & (FW_HIDDEN | FW_SYSTEM))))
+				== ((NewAttr           ) & (FW_HIDDEN | FW_SYSTEM))))
 			result = FALSE;
 		}
 	else /* (it's a file) */

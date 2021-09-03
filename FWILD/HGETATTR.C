@@ -23,20 +23,21 @@
 /* ----------------------------------------------------------------------- *\
 |  hgetattr ()  -  Get the file attribute word (via open file handle)
 \* ----------------------------------------------------------------------- */
-    int
-hgetattr (int  fh)			/* The open file handle */
+	int
+hgetattr (
+	int  fh)				/* The open file handle */
 
-    {
-    int          result;		/* The returned file mode */
-    struct stat  s;			/* The stat structure */
+	{
+	int          result;	/* The returned file mode */
+	struct stat  s;			/* The stat structure */
 
 
-    if (fstat(fh, &s) == 0)
-	result = s.st_mode;
-    else
-	result = -1;
+	if (fstat(fh, &s) == 0)
+		result = s.st_mode;
+	else
+		result = -1;
 
-    return (result);
-    }
+	return (result);
+	}
 
 /* ----------------------------------------------------------------------- */

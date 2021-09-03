@@ -28,18 +28,18 @@
 
 /*--------------------------------------------------------------------*/
 
-int	l_flag	= FALSE;
+int		l_flag	= FALSE;
 long	l_value	= 0;
-int	o_flag	= FALSE;
+int		o_flag	= FALSE;
 time_t	o_time	= 0;
-int	q_flag	= FALSE;
-int	r_flag	= FALSE;
-int	t_flag	= FALSE;
-int	y_flag	= FALSE;
+int		q_flag	= FALSE;
+int		r_flag	= FALSE;
+int		t_flag	= FALSE;
+int		y_flag	= FALSE;
 time_t	y_time	= 0;
-int	z_flag	= FALSE;
+int		z_flag	= FALSE;
 
-int	verbosity	= 1;
+int		verbosity = 1;
 
 /*--------------------------------------------------------------------*/
 
@@ -48,411 +48,428 @@ int	verbosity	= 1;
 
 /*--------------------------------------------------------------------*/
 
-int	destroy (char * filename);
+int		destroy (char * filename);
 void	fatalerr (char *s);
 void	keep_dir_name (char *s);
 void	proc_file (char *s, char *dta);
 void	process (char *s, int att);
 void	remove_directories (void);
-int	query (char *s);
+int		query (char *s);
 
 /*--------------------------------------------------------------------*/
 
 typedef
-    struct DN
+	struct DN
 	{
 	struct DN *	link;
 	char *		name;
 	} DIRNODE;
 
-DIRNODE *	root	= NULL;
+DIRNODE *root	= NULL;
 
 /*--------------------------------------------------------------------*/
-    char * 
+	char * 
 usagedoc [] = {
-    "Usage:  rm [-hnqrstvz] [-x[@]xfiles] [-lN] [-odt] [-ydt] file_list",
-    "",
-    "Remove (erase, delete) a [list of] file[s]",
-    "The file_list may contain wildcards '?', '*', and '**'.",
-    "",
-    "-h    include /H/idden files",
-    "-lN   remove only if /L/arger than N bytes",
-    "-n    /N/o screen output (default: report failures)",
-    "-odt  remove only if /O/lder than dt (datetime)",
-    "-q    /Q/uery before each removal",
-    "-r    remove even if /R/ead-only",
-    "-s    include /S/ystem files",
-    "-t    remove the empty directories in the /T/ree also",
-    "-v    /V/erbose (report files as removed)",
-    "-Xxfilespec  e/X/clude files that match xfilespec",
-    "-X@xfilelist e/X/clude files that match filespec(s) in xfilelist",
-    "-ydt  remove only if /Y/ounger than dt (datetime)",
-    "-z    /Z/ero the file (make it unrecoverable - use with care)",
-    "",
-    COPYRIGHT,
-    "",
-    NULL};
+	"Usage:  rm [-hnqrstvz] [-x[@]xfiles] [-lN] [-odt] [-ydt] file_list",
+	"",
+	"Remove (erase, delete) a [list of] file[s]",
+	"The file_list may contain wildcards '?', '*', and '**'.",
+	"",
+	"-h    include /H/idden files",
+	"-lN   remove only if /L/arger than N bytes",
+	"-n    /N/o screen output (default: report failures)",
+	"-odt  remove only if /O/lder than dt (datetime)",
+	"-q    /Q/uery before each removal",
+	"-r    remove even if /R/ead-only",
+	"-s    include /S/ystem files",
+	"-t    remove the empty directories in the /T/ree also",
+	"-v    /V/erbose (report files as removed)",
+	"-Xxfilespec  e/X/clude files that match xfilespec",
+	"-X@xfilelist e/X/clude files that match filespec(s) in xfilelist",
+	"-ydt  remove only if /Y/ounger than dt (datetime)",
+	"-z    /Z/ero the file (make it unrecoverable - use with care)",
+	"",
+	COPYRIGHT,
+	"",
+	NULL};
 
 /*--------------------------------------------------------------------*/
 
 /*--------------------------------------------------------------------*/
-    int
-main (int argc, char *argv[])
-    {
-    int		c;
-    int		attrib	= FW_FILE | FW_SUBD;
+	int
+main (
+	int   argc,
+	char *argv[])
 
-    optenv = getenv("RM");
-
-    while ( (c=getopt(argc,argv,"hHl:L:nNo:O:qQrRsStTvVx:X:y:Y:zZ?")) != EOF )
-	switch (tolower(c))
-	    {
-	    case 'x' :
-		if (fexclude(optarg))
-		    {
-		    fprintf(stderr, "Error excluding %s\n", optarg);
-		    usage();
-		    }
-		break;
-
-	    case 'h' :
-		attrib |= FW_HIDDEN;
-		break;
-
-	    case 'l' :
-		l_value = atol(optarg);
-		if (l_value > 0)
-		    l_flag = TRUE;
-		break;
-
-	    case 'n' :
-		verbosity = 0;
-		break;
-
-	    case 'o':
-		if ((o_time=sgettd(optarg)) < 0)
-		    fatalerr("Bad date/time value");
-		else
-		    ++o_flag;
-		break;
-
-	    case 'q' :
-		++q_flag;
-		break;
-
-	    case 'r' :
-		++r_flag;
-		break;
-
-	    case 's' :
-		attrib |= FW_SYSTEM;
-		break;
-
-	    case 't' :
-		++t_flag;
-		break;
-
-	    case 'v' :
-		verbosity = 2;
-		break;
-
-	    case 'y':
-		if ((y_time=sgettd(optarg)) < 0)
-		    fatalerr("Bad date/time value");
-		else
-		    ++y_flag;
-		break;
-
-	    case 'z' :
-		++z_flag;
-		break;
-
-	    case '?':
-		help();
-
-	    default:
-		fprintf(stderr, "invalid option '%c'\n", optchar);
-		usage();
-	    }
-
-    if (optind == argc)
 	{
-	fprintf(stderr, "No file(s) specified.\n");
-	usage();
+	int		c;
+	int		attrib	= FW_FILE | FW_SUBD;
+
+	optenv = getenv("RM");
+
+	while ( (c=getopt(argc,argv,"hHl:L:nNo:O:qQrRsStTvVx:X:y:Y:zZ?")) != EOF )
+	switch (tolower(c))
+		{
+		case 'x' :
+			if (fexclude(optarg))
+				{
+				fprintf(stderr, "Error excluding %s\n", optarg);
+				usage();
+				}
+			break;
+
+		case 'h' :
+			attrib |= FW_HIDDEN;
+			break;
+
+		case 'l' :
+			l_value = atol(optarg);
+			if (l_value > 0)
+				l_flag = TRUE;
+			break;
+
+		case 'n' :
+			verbosity = max(0, (verbosity - 1));
+			break;
+
+		case 'o':
+			if ((o_time=sgettd(optarg)) < 0)
+				fatalerr("Bad date/time value");
+			else
+				++o_flag;
+			break;
+
+		case 'q' :
+			++q_flag;
+			break;
+
+		case 'r' :
+			++r_flag;
+			break;
+
+		case 's' :
+			attrib |= FW_SYSTEM;
+			break;
+
+		case 't' :
+			++t_flag;
+			break;
+
+		case 'v' :
+			verbosity = min(2, (verbosity + 1));
+			break;
+
+		case 'y':
+			if ((y_time=sgettd(optarg)) < 0)
+				fatalerr("Bad date/time value");
+			else
+				++y_flag;
+			break;
+
+		case 'z' :
+			++z_flag;
+			break;
+
+		case '?':
+			help();
+
+		default:
+			fprintf(stderr, "invalid option '%c'\n", optchar);
+			usage();
+		}
+
+	if (optind == argc)
+		{
+		fprintf(stderr, "No file(s) specified.\n");
+		usage();
+		return(0);
+		}
+
+	while (optind < argc)
+		process(argv[optind++], attrib);
+
+	if (t_flag)
+		remove_directories();
+
 	return(0);
 	}
 
-    while (optind < argc)
-	process(argv[optind++], attrib);
-
-    if (t_flag)
-	remove_directories();
-
-    return(0);
-    }
-
 /*--------------------------------------------------------------------*/
 
 /*--------------------------------------------------------------------*/
-    void
-process (char *s, int att)
-    {
-    char *	dta;
-    char *	fn;
-    char *	t;
-    BOOL	flag	= FALSE;
+	void
+process (
+	char *s,
+	int   att)
 
-//    strupr(s);
-
-    if (! (dta=fwinit(s,att)))
 	{
-	printf("rm %s\n", s);
-	fatalerr("fwinit() failed");
-	}
+	char *dta;
+	char *fn;
+	char *t;
+	BOOL  flag = FALSE;
 
-    if ((t_flag)
-    &&  (s[strlen(s)-1] != '.'))
-	{
-	t = s + strlen(s) - 1;
-	while (t>s && (*t=='*' || *t=='.' || *t=='\\'))
-	    {
-	    (*(t--)) = '\0';
-	    flag = TRUE;
-	    }
-	if (flag && fnchkdir(s))
-	    {
-	    keep_dir_name(s);
-	    }
-	}
+//	strupr(s);
 
-    if ((fn=fwildexcl(dta)) == NULL)
-	{
-	if (verbosity > 0)
-	    printf("%s not found.\n", s);
-	return;
-	}
-    else
-	{
-	do
-	    proc_file(fn, dta);
-	while (fn=fwildexcl(dta));
-	}
-    }
+	if (! (dta=fwinit(s,att)))
+		{
+		printf("rm %s\n", s);
+		fatalerr("fwinit() failed");
+		}
 
-/*--------------------------------------------------------------------*/
-    void
-proc_file (char *s, char *dta)
-    {
-    int		attrib	= fwtype(dta);
-    int		result;
-
-    if ((attrib != (-1)) 
-    &&  (attrib & ATT_SUBD))
-	{
 	if ((t_flag)
 	&&  (s[strlen(s)-1] != '.'))
-	    {
-	    keep_dir_name(s);
-	    }
-	}
-
-    else if ((!l_flag || (fwsize(dta) >= l_value))
-	 &&  (!o_flag || OLDERDT(fwgetfdt(dta)))
-	 &&  (!y_flag || NEWERDT(fwgetfdt(dta))))
-	{
-	if ( (attrib & ATT_RONLY) && !r_flag)
-	    {
-	    if (verbosity > 0)
-		printf("%s is read/only.\n", s);
-	    }
-	else
-	    {
-	    if (query(s))
 		{
-		BOOL  OutDone = FALSE;
-		
-		if (verbosity > 1)
-		    {
-		    printf("%s",s);
-		    OutDone = TRUE;
-		    }
-    
-		if (attrib & ATT_RONLY)
-		    if (fsetattr(s, _A_NORMAL) < 0)
-			if (verbosity > 0)
-			    {
-			    printf(" attribute change failed.");
-	    		    OutDone = TRUE;
-			    }
-
-		if (z_flag)
-		    result = destroy(s);
-		else
-		    result = unlink(s);
-
-		if (result)
-		    {
-		    if (verbosity == 1)
+		t = s + strlen(s) - 1;
+		while (t>s && (*t=='*' || *t=='.' || *t=='\\'))
 			{
-			printf("%s",s);
-			OutDone = TRUE;
+			(*(t--)) = '\0';
+			flag = TRUE;
 			}
-
-		    if (verbosity > 0)
+		if (flag && fnchkdir(s))
 			{
-			printf(" remove failed.");
-			OutDone = TRUE;
+			keep_dir_name(s);
 			}
-		    }
-		else
-		    {
-		    if (verbosity > 1)
-			{
-			printf(" removed.");
-			OutDone = TRUE;
-			}
-		    }
-		if (OutDone)
-		    printf("\n");
 		}
-	    }
-	}
-    }
 
-/*--------------------------------------------------------------------*/
-
-/*--------------------------------------------------------------------*/
-    int
-query (char *s)
-    {
-    int         i;
-    int		retval		= TRUE;
-    char        key;
-
-    if (q_flag)
-        {
-        i = printf("Remove  %s ", s);
-
-	for (; i<32; ++i)
-	    putchar(' ');
-
-        printf("? [Y/N/R/QC] : ");
-
-        key = get_key(FALSE, TRUE);
-	
-	switch (tolower(key))
-	    {
-	    case 'y':
-		retval = TRUE;
-		break;
-
-	    case 'r':
-		q_flag = FALSE;
-		retval = TRUE;
-		break;
-
-	    case 'q':
-	    case 'c':
-		printf("Remove terminated\n");
-		exit(0);
-
-	    default:
-		retval = FALSE;
-		break;
-	    }
-        }
-
-    return (retval);
-    }
-
-/*--------------------------------------------------------------------*/
-
-/*--------------------------------------------------------------------*/
-    int
-destroy (char * filename)
-    {
-    int		fh;
-    long	fsize;
-    int		result	= (-1);
-    char        buffer  [1024];
-    char        szDrive [1024];
-    char        szDir   [1024];
-    char        szName  [1024];
-    char        szExt   [1024];
-
-    if ((fh=open(filename, O_RDWR|O_BINARY)) >= 0)
-	{
-	memset(buffer, 0, sizeof(buffer));
-	fsize = filelength(fh);
-	lseek(fh, 0L, SEEK_SET);
-
-	/* Convert fsize to a count of buffers */
-	for (fsize /= sizeof(buffer), ++fsize;  fsize;  --fsize)
-	    write(fh, buffer, sizeof(buffer));
-	close(fh);
-
-        _splitpath(filename, szDrive, szDir, szName, szExt);
-        _makepath(buffer, szDrive, szDir, "_", NULL);
-
-        unlink(buffer);
-        result  = rename(filename, buffer);
-        result |= unlink(buffer);
-        }
-
-    return (result);
-    }
-
-/*--------------------------------------------------------------------*/
-
-/*--------------------------------------------------------------------*/
-    void
-remove_directories (void)
-    {
-    char *	s;
-
-    for (; root; root = root->link)
-	{
-	s = root->name;
-
-	if (query(s))
-	    {
-	    if (verbosity > 1)
-		printf("%s <DIR>",s);
-	    if (rmdir(s) == 0)
+	if ((fn=fwildexcl(dta)) == NULL)
 		{
-		if (verbosity > 1)
-		    printf(" removed.\n");
-		}
-	    else
-		{
-		if (verbosity == 1)
-		    printf("%s <DIR>",s);
 		if (verbosity > 0)
-		    printf(" remove error.\n");
+			printf("%s not found.\n", s);
+		return;
 		}
-	    }
+    else
+		{
+		do
+			proc_file(fn, dta);
+		while (fn=fwildexcl(dta));
+		}
 	}
+
+/*--------------------------------------------------------------------*/
+	void
+proc_file (
+	char *s,
+	char *dta)
+
+	{
+	int		attrib	= fwtype(dta);
+	int		result;
+
+	if ((attrib != (-1)) 
+	&&  (attrib & ATT_SUBD))
+		{
+		if ((t_flag)
+		&&  (s[strlen(s)-1] != '.'))
+			{
+			keep_dir_name(s);
+			}
+		}
+
+	else if ((!l_flag || (fwsize(dta) >= l_value))
+		 &&  (!o_flag || OLDERDT(fwgetfdt(dta)))
+		 &&  (!y_flag || NEWERDT(fwgetfdt(dta))))
+		{
+		if ( (attrib & ATT_RONLY) && !r_flag)
+			{
+			if (verbosity > 0)
+				printf("%s is read/only.\n", s);
+			}
+		else
+			{
+			if (query(s))
+				{
+				BOOL  OutDone = FALSE;
+		
+				if (verbosity > 1)
+					{
+					printf("%s",s);
+					OutDone = TRUE;
+					}
+    
+				if ((attrib & ATT_RONLY)
+				&& (fsetattr(s, _A_NORMAL) < 0)
+				&& (verbosity > 0))
+					{
+					printf(" attribute change failed.");
+					OutDone = TRUE;
+					}
+
+				if (z_flag)
+					result = destroy(s);
+				else
+					result = unlink(s);
+
+				if (result)
+					{
+					if (verbosity == 1)
+						{
+						printf("%s",s);
+						OutDone = TRUE;
+						}
+
+					if (verbosity > 0)
+						{
+						printf(" remove failed.");
+						OutDone = TRUE;
+						}
+					}
+				else
+					{
+					if (verbosity > 1)
+						{
+						printf(" removed.");
+						OutDone = TRUE;
+						}
+					}
+				if (OutDone)
+					printf("\n");
+				}
+			}
+		}
     }
 
 /*--------------------------------------------------------------------*/
-    void
-keep_dir_name (char *s)
-    {
-    DIRNODE *	dirnode;
+
+/*--------------------------------------------------------------------*/
+	int
+query (
+	char *s)
 
-    // Don't keep names of form 'd:'
-    if ((isalpha(*s))
-    &&  (*(s+1) == ':')
-    &&  (strlen(s) == 2))
-	return;
-
-    if ((dirnode=malloc(sizeof(DIRNODE))) != NULL)
 	{
-	dirnode->name = strdup(s);
-	dirnode->link = root;
-	root = dirnode;
+	int         i;
+	int		retval		= TRUE;
+	char        key;
+
+	if (q_flag)
+		{
+		i = printf("Remove  %s ", s);
+
+		for (; i<32; ++i)
+			putchar(' ');
+
+		printf("? [Y/N/R/QC] : ");
+
+		key = get_key(FALSE, TRUE);
+	
+		switch (tolower(key))
+			{
+			case 'y':
+				retval = TRUE;
+				break;
+
+			case 'r':
+				q_flag = FALSE;
+				retval = TRUE;
+				break;
+
+			case 'q':
+			case 'c':
+				printf("Remove terminated\n");
+				exit(0);
+
+			default:
+				retval = FALSE;
+				break;
+			}
+		}
+
+	return (retval);
 	}
+
+/*--------------------------------------------------------------------*/
+
+/*--------------------------------------------------------------------*/
+	int
+destroy (
+	char * filename)
+
+	{
+	int		fh;
+	long	fsize;
+	int		result	= (-1);
+	char	buffer  [1024];
+	char	szDrive [1024];
+	char	szDir   [1024];
+	char	szName  [1024];
+	char	szExt   [1024];
+
+	if ((fh=open(filename, O_RDWR|O_BINARY)) >= 0)
+		{
+		memset(buffer, 0, sizeof(buffer));
+		fsize = filelength(fh);
+		lseek(fh, 0L, SEEK_SET);
+
+		/* Convert fsize to a count of buffers */
+		for (fsize /= sizeof(buffer), ++fsize;  fsize;  --fsize)
+			write(fh, buffer, sizeof(buffer));
+		close(fh);
+
+		_splitpath(filename, szDrive, szDir, szName, szExt);
+		_makepath(buffer, szDrive, szDir, "_", NULL);
+
+		unlink(buffer);
+		result  = rename(filename, buffer);
+		result |= unlink(buffer);
+		}
+
+	return (result);
+	}
+
+/*--------------------------------------------------------------------*/
+
+/*--------------------------------------------------------------------*/
+	void
+remove_directories (void)
+
+	{
+	char *	s;
+
+	for (; root; root = root->link)
+		{
+		s = root->name;
+
+		if (query(s))
+			{
+			if (verbosity > 1)
+				printf("%s <DIR>",s);
+			if (rmdir(s) == 0)
+				{
+				if (verbosity > 1)
+					printf(" removed.\n");
+				}
+			else
+				{
+				if (verbosity == 1)
+					printf("%s <DIR>",s);
+				if (verbosity > 0)
+					printf(" remove error.\n");
+				}
+			}
+		}
     }
+
+/*--------------------------------------------------------------------*/
+	void
+keep_dir_name (
+	char *s)
+
+	{
+	DIRNODE *dirnode;
+
+	// Don't keep names of form 'd:'
+
+	if ((isalpha(*s))
+	&&  (*(s+1) == ':')
+	&&  (strlen(s) == 2))
+		return;
+
+	if ((dirnode=malloc(sizeof(DIRNODE))) != NULL)
+		{
+		dirnode->name = strdup(s);
+		dirnode->link = root;
+		root = dirnode;
+		}
+	}
 
 /*--------------------------------------------------------------------*/
 /*-------------------------- EOF -------------------------------------*/

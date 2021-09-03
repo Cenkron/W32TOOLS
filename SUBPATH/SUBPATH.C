@@ -41,91 +41,92 @@ char	cwd [1024];		// The current working directory buffer
 /* ----------------------------------------------------------------------- *\
 |  main () - The main program
 \* ----------------------------------------------------------------------- */
-    void
+	void
 main (
-    int    argc,
-    char  *argv [])
+	int    argc,
+	char  *argv [])
 
-    {
-    char  *subpath;		// Pointer to the current base path
-    char  *rootpath;		// Pointer to the root path variable
-    char  *prefix;		// Pointer to the prefix string
-    int    count = 0;		// Subpathing count
-
-
-    getcwd(&cwd[0], sizeof(cwd));
-    subpath = &cwd[0];
-    strupr(&cwd[0]);
-
-    if (argc > 1)
 	{
-	if (*(argv[1]) == '-')
-	    usagei(0);
+	char  *subpath;		// Pointer to the current base path
+	char  *rootpath;		// Pointer to the root path variable
+	char  *prefix;		// Pointer to the prefix string
+	int    count = 0;		// Subpathing count
 
-	strupr(argv[1]);
-	rootpath = getenv(argv[1]);
-	if (rootpath != NULL)
-	    strupr(rootpath);
-	else
-	    rootpath = argv[1];
+
+	getcwd(&cwd[0], sizeof(cwd));
+	subpath = &cwd[0];
+	strupr(&cwd[0]);
+
+	if (argc > 1)
+		{
+		if (*(argv[1]) == '-')
+			usagei(0);
+
+		strupr(argv[1]);
+		rootpath = getenv(argv[1]);
+		if (rootpath != NULL)
+			strupr(rootpath);
+		else
+			rootpath = argv[1];
 
 #if 0
-	printf("%s\n", cwd);
-	printf("%s\n", argv[1]);
-	printf("%s\n", rootpath);
+		printf("%s\n", cwd);
+		printf("%s\n", argv[1]);
+		printf("%s\n", rootpath);
 #endif
 
 #if 0
-	if ((strlen(rootpath) >= 2)
-	&&  (*(rootpath + 1) == ':')
-	&&  (strlen(subpath) >= 2)
-	&&  (*(subpath + 1) == ':')
-	&&  (tolower(*rootpath) == tolower(*subpath)))
-	    {
-	    subpath  += 2;
-	    rootpath += 2;
-	    }
+		if ((strlen(rootpath) >= 2)
+		&&  (*(rootpath + 1) == ':')
+		&&  (strlen(subpath) >= 2)
+		&&  (*(subpath + 1) == ':')
+		&&  (tolower(*rootpath) == tolower(*subpath)))
+			{
+			subpath  += 2;
+			rootpath += 2;
+			}
 #endif
 
-	while (*subpath == *rootpath)
-	    {
-	    if (*subpath == ':')
-		count = 0;
-	    else
-		++count;
-	    ++subpath;
-	    ++rootpath;
-	    }
+		while (*subpath == *rootpath)
+			{
+			if (*subpath == ':')
+				count = 0;
+			else
+				++count;
+			++subpath;
+			++rootpath;
+			}
 
-	if ((count > 0)
-	&& ((*subpath == '/')  ||  (*subpath == '\\')))
-	    ++subpath;
+		if ((count > 0)
+		&& ((*subpath == '/')  ||  (*subpath == '\\')))
+			++subpath;
+		}
+
+	if (argc > 2)
+		{
+		strupr(argv[2]);
+		prefix = getenv(argv[2]);
+		if (prefix != NULL)
+			strupr(prefix);
+		else
+			prefix = argv[2];
+		printf("%s", prefix);
+		}
+
+	printf("%s", subpath);
+
+	exit(0);
 	}
-
-    if (argc > 2)
-	{
-	strupr(argv[2]);
-	prefix = getenv(argv[2]);
-	if (prefix != NULL)
-	    strupr(prefix);
-	else
-	    prefix = argv[2];
-	printf("%s", prefix);
-	}
-
-    printf("%s", subpath);
-
-    exit(0);
-    }
 
 /* ----------------------------------------------------------------------- *\
 |  usagei () - Display usage information and exit
 \* ----------------------------------------------------------------------- */
-    void
-usagei (int value)		// Display help documentation
+	void
+usagei (		// Display help documentation
+	int value)
 
-    {
-    static char  *hdoc [] =
+	{
+	static char  *hdoc [] =
 	{
 	"usage:  subpath  [rootname]  [prefix]  >outfile]",
 	"",
@@ -143,23 +144,23 @@ usagei (int value)		// Display help documentation
 	NULL
 	};
 
-    dprint(hdoc);
-    exit(value);
-    }
+	dprint(hdoc);
+	exit(value);
+	}
 
 /* ----------------------------------------------------------------------- *\
 |  dprint () - Display usage data
 \* ----------------------------------------------------------------------- */
-    void
-dprint (dp)			// Print documentation text
-    char  **dp;			// Document array pointer
+	void
+dprint (			// Print documentation text
+	char  **dp)			// Document array pointer
 
-    {
-    while (*dp)
 	{
-	printf(*(dp++));
-	putchar('\n');
+	while (*dp)
+		{
+		printf(*(dp++));
+		putchar('\n');
+		}
 	}
-    }
 
 /* --------------------------------- EOF --------------------------------- */

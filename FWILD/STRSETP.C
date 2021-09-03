@@ -20,24 +20,24 @@
 #include  "fwild.h"
 
 /* ----------------------------------------------------------------------- */
-    void
-strsetp (s, ch)			/* Set the path characters in a string */
-    char  *s;			/* Pointer to the string */
-    char   ch;			/* The desired path character */
+	void
+strsetp (				/* Set the path characters in a string */
+    char  *s,			/* Pointer to the string */
+    char   ch)			/* The desired path character */
 
-    {
-    char  testch;
-
-    if (ch == '/')
-	testch = '\\';
-    else
-	testch = '/';
-
-    for ( ; *s; ++s)
 	{
-	if (*s == testch)
-	    *s = ch;
+	char  testch;
+
+	if (ch == '/')
+		testch = '\\';
+	else
+		testch = '/';
+
+	for ( ; *s; ++s)
+		{
+		if (*s == testch)
+			*s = ch;
+		}
 	}
-    }
 
 /* ----------------------------------------------------------------------- */

@@ -4,22 +4,22 @@
 #include "fwild.h"
 
 
-    void
-main (argc, argv)
-    int    argc;
-    char  *argv[];
+	void
+main (
+	int    argc,
+	char  *argv[])
 
-    {
-    char  *p;
-    char  *path;
+	{
+	char  *p;
+	char  *path;
 
-    if (argc <= 1)
-	path = ".";
-    else
-	path = *++argv;
+	if (argc <= 1)
+		path = ".";
+	else
+		path = *++argv;
 
-    if (p = vol_name(path))
-	printf("Volume name is \"%s\"\n", p);
-    else
-	printf("The volume is unnamed\n");
-    }
+	if (p = vol_name(path))
+		printf("Volume name is \"%s\"\n", p);
+	else
+		printf("The volume is unnamed\n");
+	}

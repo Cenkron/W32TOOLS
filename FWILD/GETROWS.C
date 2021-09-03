@@ -17,32 +17,31 @@
 #include  "fwild.h"
 
 /* ----------------------------------------------------------------------- */
-    int
+	int
 getrows (void)
 
-    {
-    CONSOLE_SCREEN_BUFFER_INFO  csbi;
-    int     rows;
-    ULONG   ltemp;
-    char   *p;
-
-
-    if (p = getenv("GETROWS"))
 	{
-	ltemp = strtoul(p, NULL, 0);
-	rows  = (USHORT)(min(ltemp, 255L));
-	}
-    else
-	{
-	if (GetConsoleScreenBufferInfo(
-		GetStdHandle(STD_OUTPUT_HANDLE),
-		&csbi))
-	    rows = csbi.dwSize.Y;
+	CONSOLE_SCREEN_BUFFER_INFO  csbi;
+	int     rows;
+	ULONG   ltemp;
+	char   *p;
+
+	if (p = getenv("GETROWS"))
+		{
+		ltemp = strtoul(p, NULL, 0);
+		rows  = (USHORT)(min(ltemp, 255L));
+		}
 	else
-	    rows = 25;
-	}
+		{
+		if (GetConsoleScreenBufferInfo(
+				GetStdHandle(STD_OUTPUT_HANDLE),
+				&csbi))
+			rows = csbi.dwSize.Y;
+		else
+			rows = 25;
+		}
 
-    return (max(rows, 25));
-    }
+	return (max(rows, 25));
+	}
 
 /* ----------------------------------------------------------------------- */

@@ -37,47 +37,47 @@
 #include  "fwild.h"
 
 /* ----------------------------------------------------------------------- */
-    int
-popen (				/* Build path and open() a file */
-    char  *s,			/* Pointer to the path/filename */
-    int    mode,		/* Open mode */
-    int    perm)		/* Create permission */
+	int
+popen (					/* Build path and open() a file */
+	char  *s,			/* Pointer to the path/filename */
+	int    mode,		/* Open mode */
+	int    perm)		/* Create permission */
 
-    {
-    int    finished = 0;	/* Finished flag */
-    int    fd;			/* File number or error code */
-    int    SkipCount;		/* Ignore counter for the do loop */
-    char  *p;			/* Pointer into the temporary string */
-    char   temp [1024];		/* Temporary path/filename string */
+	{
+	int    finished = 0;	/* Finished flag */
+	int    fd;				/* File number or error code */
+	int    SkipCount;		/* Ignore counter for the do loop */
+	char  *p;				/* Pointer into the temporary string */
+	char   temp [1024];		/* Temporary path/filename string */
 
 
 				/* Allow for possible UNC path */
-    SkipCount = (strncmp("\\\\", s, 2) == 0) ? (2) : (0);
+	SkipCount = (strncmp("\\\\", s, 2) == 0) ? (2) : (0);
 
-    for (;;)
-	{
-	if (((fd = open(s, mode, perm)) >= 0)  ||  finished++)
-	    break;		// File successfully opened
-
-	if ((mode & (O_CREAT | O_WRONLY | O_RDWR)) == 0)
-	    break;		// No intent to write, just report error
-
-	p = &temp[0];		// Attempt to build the path
-	do  {
-	    strcpy(&temp[0], s);
-	    if ((p = strpbrk((p + 1), "/\\"))
-	    && (--SkipCount < 0))	/* Skip over the UNC part of the path */
+	for (;;)
 		{
-//printf("\npopen: (%d) \"%s\"  \"%d\"\n", count, &temp[0], (p - &temp[0]));
-		*p = '\0';
-		if (( ! fnchkdir(&temp[0]))
-		&& ((fd = mkdir(&temp[0])) != 0))
-		    break;	// Path building complete
-		}
-	    } while (p);
+		if (((fd = open(s, mode, perm)) >= 0)  ||  finished++)
+			break;			// File successfully opened
 
+		if ((mode & (O_CREAT | O_WRONLY | O_RDWR)) == 0)
+			break;			// No intent to write, just report error
+
+		p = &temp[0];		// Attempt to build the path
+		do  {
+			strcpy(&temp[0], s);
+			if ((p = strpbrk((p + 1), "/\\"))
+			&& (--SkipCount < 0))	/* Skip over the UNC part of the path */
+				{
+//printf("\npopen: (%d) \"%s\"  \"%d\"\n", count, &temp[0], (p - &temp[0]));
+				*p = '\0';
+				if (( ! fnchkdir(&temp[0]))
+				&& ((fd = mkdir(&temp[0])) != 0))
+					break;	// Path building complete
+				}
+			} while (p);
+
+		}
+	return  (fd);
 	}
-    return  (fd);
-    }
 
 /* ----------------------------------------------------------------------- */
