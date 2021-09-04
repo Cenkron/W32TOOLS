@@ -1,13 +1,13 @@
 /* ----------------------------------------------------------------------- *\
 |
-|			Program to delete empty directories
+|						Program to delete empty directories
 |
-|		      Copyright (c) 2003, all rights reserved
-|				    Brian W Johnson
-|				        8-Feb-03
-|				       23-Dec-17 Added 'a' response for uncondional deletion mode
-|				       30-Aug-21 Added command line options -a and -l
-|				       30-Aug-21 Added command line usage and help
+|					Copyright (c) 2003, all rights reserved
+|					    Brian W Johnson
+|						8-Feb-03
+|						23-Dec-17 Added 'a' response for uncondional deletion mode
+|						30-Aug-21 Added command line options -a and -l
+|						30-Aug-21 Added command line usage and help
 |
 \* ----------------------------------------------------------------------- */
 
@@ -103,12 +103,12 @@ QueryUser (char *s)		// The path of the candidate directory
 /* ----------------------------------------------------------------------- *\
 |  PathDelete () - Determine whether to delete the path, and try to do so
 \* ----------------------------------------------------------------------- */
-	static int			// Returns 0 if delete succeeded, else 1
+	BOOL				// Returns true if the path is not deleted, else false
 PathDelete(
 	char  *s)			// The pointer to the item name
 
 	{
-	long retval = 1;		// The returned result
+	BOOL  PathNotEmpty = TRUE;	// The returned path not empty result (defaulted for Keep)
 
 	if (Running)
 		{
@@ -117,28 +117,24 @@ PathDelete(
 			printf("Delete  \"%s\"", s);
 			QueryUser(s);	// Ascertain the user Decision
 			}
+		else if (Decision == Delete) // (and not interactive)
+			printf("Deleting  \"%s\"\n", s);
+		else // (Decision = Keep)
+			printf("Would delete  \"%s\"\n", s);
 
-		else // (not interactive)
-			{
-			if (Decision == Delete)
-				printf("Deleting  \"%s\"\n", s);
-			else // (Keep)
-				printf("Would delete  \"%s\"\n", s);
-			}
-	
 		if (Decision == Delete)
 			{
-#ifndef TESTMODE
-			retval = (RemoveDirectory(s) ? 0 : 1);
+// RemoveDirectoryA() returns nonzero iff delete successful
+
+#ifdef TESTMODE
+			PathNotEmpty = (Decision == Keep);
 #else
-			retval = 0;
+			PathNotEmpty = (RemoveDirectoryA(s) == 0);
 #endif
 			}
-		else // (Don't remove it)
-			retval = 0;
 		}
 
-	return (retval);
+	return (PathNotEmpty);
 	}
 
 /* ----------------------------------------------------------------------- *\
@@ -169,14 +165,14 @@ Interesting (
 /* ----------------------------------------------------------------------- *\
 |  ProcessPath () - Process one recursive level of path processing
 \* ----------------------------------------------------------------------- */
-	static int			// Returns 1 if the path is not empty
+	static BOOL			// Returns true if the path is not empty, else false
 ProcessPath (
-	char  *pPath)			// Ptr to the path string
+	char  *pPath)		// Ptr to the path string
 
 	{
-	int              Nonempty = 0;	// The path nonempty flag
-	HANDLE           sh;		// The find search handle
-	WIN32_FIND_DATA  wfd;		// The find information
+	BOOL             PathNotEmpty = FALSE;	// The path is not empty flag, starting as empty
+	HANDLE           sh;			// The find search handle
+	WIN32_FIND_DATA  wfd;			// The find information
 	char CurrentItem [4096];		// The current item name
 	char NewPath     [4096];		// The new base path
 
@@ -212,7 +208,7 @@ ProcessPath (
 #ifdef VERBOSE
 					printf(" Dir  found, \"%s\"\n", CurrentItem);
 #endif
-					Nonempty |= ProcessPath(NewPath);
+					PathNotEmpty |= ProcessPath(NewPath);
 					}
 				}
 		
@@ -221,7 +217,7 @@ ProcessPath (
 #ifdef VERBOSE
 				printf(" File found, \"%s\"\n", CurrentItem);
 #endif
-				Nonempty = 1;
+				PathNotEmpty = TRUE;
 				}
 
 			}  while (NextResult  &&  Running);
@@ -229,14 +225,15 @@ ProcessPath (
 		}
 
 	// If this directory is empty, try to delete it
+	// If the delete fails, the path is not empty
 
-	if (Nonempty == 0)
-		Nonempty = PathDelete(pPath);
+	if ( ! PathNotEmpty)
+		PathNotEmpty |= PathDelete(pPath);
 
 #ifdef VERBOSE
-	printf("Returning %d\n", Nonempty);
+	printf("Returning path%s empty\n", (PathNotEmpty ? " not" : ""));
 #endif
-	return (Nonempty);
+	return (PathNotEmpty);
 	}
 
 /* ----------------------------------------------------------------------- *\
