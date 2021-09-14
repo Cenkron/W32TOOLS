@@ -11,7 +11,7 @@
 |
 \* ----------------------------------------------------------------------- */
 
-#define  WINVER  0x0501
+#define  WINVER  0x0A00
 
 #include <afx.h>
 #include <string.h>
