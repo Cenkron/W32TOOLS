@@ -78,7 +78,6 @@ class GMLinePrint
 	public:
 		bool print(PRINT_TYPE print_type);
 		bool reset(RESET_TYPE reset_type);
-//		bool write(LINE_TYPE line_type, BSTR text);
 		bool write(LINE_TYPE line_type, char *text);
 		GMLinePrint();
 		virtual ~GMLinePrint();
