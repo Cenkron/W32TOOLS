@@ -1,0 +1,5 @@
+0 - Unknown
+1 - Single-sided
+2 - Duplex short side
+3 - Duplex  long side
+
