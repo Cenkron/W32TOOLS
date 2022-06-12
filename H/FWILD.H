@@ -74,9 +74,9 @@ typedef				/* The DTA used by findf/finfn/findc */
 		/* NT support */
 
 		int       result;		/* The returned result */
-		int       SearchAttr;		/* The original search attributes */
+		int       SearchAttr;	/* The original search attributes */
 		HANDLE    sh;			/* The WIN32 search handle */
-		WIN32_FIND_DATA	 wfd;		/* The WIN32 FIND_DATA structure */
+		WIN32_FIND_DATA	 wfd;	/* The WIN32 FIND_DATA structure */
 		}  DTA_BLK;
 
 
@@ -84,37 +84,37 @@ typedef				/* Recursive DTA list element */
 	struct dtaele
 		{
 		struct dtaele  *link;	/* Link to the next (inactive) DTA_ELE */
-		int       wild;		/* Current wild search mode */
-		int       state;	/* Current state */
-		long      fdt;		/* The file timestamp */
-		char     *proto;	/* Pointer to prototype string, first char */
-		char     *last;		/* Pointer to prototype string, last delim */
-		char     *next;		/* Pointer to prototype string, next char */
-		char     *search;	/* Pointer to current search filename */
-		char     *pattern;	/* Pointer to current pattern filename */
-		char     *found;	/* Pointer to current found filename */
-		DTA_BLK   dta;		/* The DTA used by findf/findn/findc */
+		int       wild;			/* Current wild search mode */
+		int       state;		/* Current state */
+		long      fdt;			/* The file timestamp */
+		char     *proto;		/* Pointer to prototype string, first char */
+		char     *last;			/* Pointer to prototype string, last delim */
+		char     *next;			/* Pointer to prototype string, next char */
+		char     *search;		/* Pointer to current search filename */
+		char     *pattern;		/* Pointer to current pattern filename */
+		char     *found;		/* Pointer to current found filename */
+		DTA_BLK   dta;			/* The DTA used by findf/findn/findc */
 		}  DTA_ELE;
 
 
 typedef				/* DTA list header */
     struct
 		{
-		DTA_ELE  *link;		/* Link to active DTA_ELE element */
-		int       mode;		/* Search file attribute */
+		DTA_ELE  *link;			/* Link to active DTA_ELE element */
+		int       mode;			/* Search file attribute */
 		}  DTA_HDR;
 
 
 typedef				/* File Pair (FP) structure */
 	struct
 		{
-		int       sentinel;	/* Sentinel to detect free() error */
-		int       index;	/* Index into fnp1 for tail part */
-		int       dflag;	/* TRUE if fnp2 should be constructed */ 
-		DTA_HDR  *hp;		/* Pointer to fwild structure */
-		char     *s2;		/* Pointer to dest path */
-		char     *fnp1;		/* Pointer to first filename */
-		char     *fnp2;		/* Pointer to second filename */
+		int       sentinel;		/* Sentinel to detect free() error */
+		int       index;		/* Index into fnp1 for tail part */
+		int       dflag;		/* TRUE if fnp2 should be constructed */ 
+		DTA_HDR  *hp;			/* Pointer to fwild structure */
+		char     *s2;			/* Pointer to dest path */
+		char     *fnp1;			/* Pointer to first filename */
+		char     *fnp2;			/* Pointer to second filename */
 		}  FP;
 
 
@@ -145,15 +145,15 @@ typedef long time_t;
 #define  FALSE	0
 #endif
 
-#ifndef  MATCH				/* Used by strcmp() */
+#ifndef  MATCH					/* Used by strcmp() */
 #define  MATCH	0
 #endif
 
-typedef					/* strtoken() support */
+typedef							/* strtoken() support */
 	struct
 		{
-		char  *ptr;     	/* Pointer for search resumption */
-		char   ch;      	/* Saved delimiter character */
+		char  *ptr;     		/* Pointer for search resumption */
+		char   ch;      		/* Saved delimiter character */
 		}  TOKENCB;
 
 /* ------------------------------------------------------------------------ *\
@@ -163,83 +163,84 @@ typedef					/* strtoken() support */
 #define  finit(a,b)  fwinit((a),(b))		/* Backward name compatibility */
 
 extern	DHV    *fwinit (char *, int);		/* Init the wild filename server */
-extern	char   *fwild (DHV *);			/* Return a wild filename */
-extern	char   *fwildexcl (DHV *);		/* Return a wild filename (exclude) */
-extern	int     fexclude (char *);		/* Register an exclude path (exclude) */
-extern	DHV    *fwfree (DHV *);			/* Close and free an fwild instance */
-extern	char   *fwfirst (char *);		/* Return the first matching wild filename */
-extern  int	fwtype (DHV *);			/* Return the type of the current fn */
-extern  char   *fwdate (DHV *);			/* Return the date of the current fn */
-extern  char   *fwtime (DHV *);			/* Return the time of the current fn */
-extern  char   *fwtimes (DHV *);		/* Return the time of the current fn (secs) */
-extern  long	fwgetfdt (DHV *);		/* Return the current file timedate */
-extern  UINT64	fwsize (DHV *);			/* Return the size of the current fn */
-extern	int	fwvalid (char *);		/* Validate a file/path string */
-extern	char   *fwerror (void);			/* Return the fwerrno error string */
-extern  char   *vol_name (char *);		/* Return vol name of the spec drive */
-extern  char   *_volname (int);			/* Return vol name of the spec drive */
-extern	int	fgetattr (char *fnp);		/* Get file attributes (filename) */
-extern	int	hgetattr (int fh);		/* Get file attributes (handle) */
+extern	char   *fwild (DHV *);				/* Return a wild filename */
+extern	char   *fwildexcl (DHV *);			/* Return a wild filename (exclude) */
+extern	int     fexclude (char *);			/* Register an exclude path (exclude) */
+extern	void	fexcludeDefEnable (int);	/* Enable/disable default file exclusion(s) */
+extern	DHV    *fwfree (DHV *);				/* Close and free an fwild instance */
+extern	char   *fwfirst (char *);			/* Return the first matching wild filename */
+extern  int	fwtype (DHV *);					/* Return the type of the current fn */
+extern  char   *fwdate (DHV *);				/* Return the date of the current fn */
+extern  char   *fwtime (DHV *);				/* Return the time of the current fn */
+extern  char   *fwtimes (DHV *);			/* Return the time of the current fn (secs) */
+extern  long	fwgetfdt (DHV *);			/* Return the current file timedate */
+extern  UINT64	fwsize (DHV *);				/* Return the size of the current fn */
+extern	int	fwvalid (char *);				/* Validate a file/path string */
+extern	char   *fwerror (void);				/* Return the fwerrno error string */
+extern  char   *vol_name (char *);			/* Return vol name of the spec drive */
+extern  char   *_volname (int);				/* Return vol name of the spec drive */
+extern	int	fgetattr (char *fnp);			/* Get file attributes (filename) */
+extern	int	hgetattr (int fh);				/* Get file attributes (handle) */
 extern	long	fgetfdt (char *fnp);		/* Get timedate (filename) */
-extern	long	hgetfdt (int fh);		/* Get timedate (handle) */
+extern	long	hgetfdt (int fh);			/* Get timedate (handle) */
 extern	int	fgetsize (char *fnp, PUINT64 size);  /* Get file size (filename) */
 extern	int	hgetsize (int fh, PUINT64 size);     /* Get file size (handle) */
 extern	int	fsetattr (char *fnp, int attr);	/* Set file attr (filename) */
 extern	int	fsetfdt (char *fnp, long fdt);	/* Set timedate (filename) */
-extern	long	zerotime (void);		/* Return lowest usable UNIX time */
+extern	long	zerotime (void);			/* Return lowest usable UNIX time */
 
 extern	int	getopt (int, char **, char *);	/* Decode command options */
 extern	int	optvalue			/* Get numeric option value */
 		    (char *, long *, long, long);
-extern	char   *optvalerror (void);		/* Return optval() error string */
+extern	char   *optvalerror (void);			/* Return optval() error string */
 extern	int	expression (char *, long *);	/* Evaluate numeric expression */
 extern	char   *expression_error (void);	/* Return expression() error string */
 
-extern  char   *fnabspth (char *);		/* Return absolute name of the fn */
+extern  char   *fnabspth (char *);			/* Return absolute name of the fn */
 extern  char   *fncatpth (char *, char *);	/* Return concatenated name */
-extern  char   *fntail (char *);		/* Return the tail of the filename */
-extern	int	fnsubpth (char *, char *);	/* Check if s1 is a subpath of s2 */
-extern	int	_fnchkdir (char *);		/* Test if a directory exists (no UNC) */
-extern	int	fnchkdir (char *);		/* Test if a directory exists */
-extern	int	fnchkfil (char *);		/* Test if a file exists */
-extern  int     fnchkunc (char *);		/* Test if a UNC root */
-extern  void	fnreduce (char *);		/* Reduce a filename */
-extern  int	fndot (char *);			/* Test if a "dot" directory */
+extern  char   *fntail (char *);			/* Return the tail of the filename */
+extern	int	fnsubpth (char *, char *);		/* Check if s1 is a subpath of s2 */
+extern	int	_fnchkdir (char *);				/* Test if a directory exists (no UNC) */
+extern	int	fnchkdir (char *);				/* Test if a directory exists */
+extern	int	fnchkfil (char *);				/* Test if a file exists */
+extern  int     fnchkunc (char *);			/* Test if a UNC root */
+extern  void	fnreduce (char *);			/* Reduce a filename */
+extern  int	fndot (char *);					/* Test if a "dot" directory */
 extern	int	fnmatch (char *, char *, int);	/* Match a wild file name */
-extern  int	iswild (char *);		/* Test if a "wild" path */
+extern  int	iswild (char *);				/* Test if a "wild" path */
 extern	int	pmatch (char *, char *, int);	/* Test two fnames for match */
-extern	int	psubmatch (char *, char *, int);/* Test two fnames for submatch */
+extern	int	psubmatch (char *, char *, int);	/* Test two fnames for submatch */
 
-extern	int	pathmake (char *);		/* Build a path */
-extern	int	pcreat (char *, int);		/* Build path and creat() a file */
-extern	int	popen (char *, int, ...);	/* Build path and open() a file */
-extern	int	prename (char *, char *);	/* Build path and rename() a file */
+extern	int	pathmake (char *);				/* Build a path */
+extern	int	pcreat (char *, int);			/* Build path and creat() a file */
+extern	int	popen (char *, int, ...);		/* Build path and open() a file */
+extern	int	prename (char *, char *);		/* Build path and rename() a file */
 
 #ifdef _FILE_DEFINED
 extern  FILE  *pfopen (const char *pathname, const char *mode);
 extern	void	HexDump (FILE *, void *, unsigned); /* Perform hexdump to file */
 #endif
 
-extern  char	strpath (char *);		/* Return the path char of the fn */
+extern  char	strpath (char *);			/* Return the path char of the fn */
 extern  void	strsetp (char *, char);		/* Set the path char in a string */
 
-extern  char	egetpath (void);		/* Return the path char of the env */
-extern  char	getpath (void);			/* Return the path char of DOS */
-extern  char	egetswch (void);		/* Return the switch char of the env */
+extern  char	egetpath (void);			/* Return the path char of the env */
+extern  char	getpath (void);				/* Return the path char of DOS */
+extern  char	egetswch (void);			/* Return the switch char of the env */
 
-extern	int	getdir (int, char *);		/* Get the CWD for a drive */
-extern	int	getdrive (void);		/* Get the default drive */
-extern	int	getcols (void);			/* Get the console column count */
-extern	int	getrows (void);			/* Get the console row count */
+extern	int	getdir (int, char *);			/* Get the CWD for a drive */
+extern	int	getdrive (void);				/* Get the default drive */
+extern	int	getcols (void);					/* Get the console column count */
+extern	int	getrows (void);					/* Get the console row count */
 
-extern  char   *stpblk (char *);		/* Skip leading white space */
+extern  char   *stpblk (char *);			/* Skip leading white space */
 extern  char   *fmalloc (unsigned int);		/* Malloc() with a fatal error */
-extern  void	fatalerr (char *);		/* Die an unnatural death */
+extern  void	fatalerr (char *);			/* Die an unnatural death */
 
-extern  int	execute (char *, int);	/* Execute a child process */
-extern	int	fcopy (char *src, char *dst, int flg);	/* Copy a file */
+extern  int	execute (char *, int);						/* Execute a child process */
+extern	int	fcopy (char *src, char *dst, int flg);		/* Copy a file */
 extern	int	fp_init (FPV **, int flag, char *, char *);	/* Init fpair */
-extern	int	fp_pair (FPV *, char **, char **);	/* Return fpair */
+extern	int	fp_pair (FPV *, char **, char **);			/* Return fpair */
 
 /* Far memory manipulation support */
 
@@ -255,13 +256,13 @@ extern	void	farset (void far *dst, int value,     unsigned int n);
 
 /* Time/date string parsing support */
 
-extern	char   *strdate  (time_t dt);	/* Convert a DOS timedate to a date string */
-extern	char   *strtime  (time_t dt);	/* Convert a DOS timedate to a time string */
-extern	char   *strtime2 (time_t dt);	/* Convert a DOS timedate to a time string */
-extern	long	sgettd   (char *s);	/* Parse a TIMEDATE string */
-extern	long	fwsgettd (char *s);	/* Parse a TIMEDATE string (filename) */
-extern	char   *serrtd   (void);	/* Return TD error string */
-extern	char   *fwserrtd (void);	/* Return TD error string (filename) */
+extern	char   *strdate  (time_t dt);		/* Convert a DOS timedate to a date string */
+extern	char   *strtime  (time_t dt);		/* Convert a DOS timedate to a time string */
+extern	char   *strtime2 (time_t dt);		/* Convert a DOS timedate to a time string */
+extern	long	sgettd   (char *s);			/* Parse a TIMEDATE string */
+extern	long	fwsgettd (char *s);			/* Parse a TIMEDATE string (filename) */
+extern	char   *serrtd   (void);			/* Return TD error string */
+extern	char   *fwserrtd (void);			/* Return TD error string (filename) */
 extern  char   *strtoken (char *string, char *control, TOKENCB *tokenblk);
 
 #ifdef  FWILD_INTERNAL
@@ -269,29 +270,29 @@ extern  char   *strtoken (char *string, char *control, TOKENCB *tokenblk);
 extern	int	_findf (DTA_BLK *, char *, int);	/* Dual mode */
 extern	int	_findn (DTA_BLK *);
 extern	void	_findc (DTA_BLK *);
-extern  int	AttrFromWin32 (DWORD attr); /* Convert WIN32 attr to FWILD attr */
-extern  DWORD	AttrToWin32 (int attr);	/* Convert FWILD attr to WIN32 attr */
+extern  int	AttrFromWin32 (DWORD attr); 	/* Convert WIN32 attr to FWILD attr */
+extern  DWORD	AttrToWin32 (int attr);		/* Convert FWILD attr to WIN32 attr */
 #endif
 
-extern	char	optswch;		/* The option switch character */
-extern	char	optchar;		/* The last option character */
-extern	int	optind;			/* The current argv[] index */
-extern	char   *optarg;			/* Pointer to option parameter */
-extern	char   *optenv;			/* Pointer to environment options */
-extern	int	fwerrno;		// fwvalid() error result
-extern	int	xporlater;		// TRUE if Windows XP or later
+extern	char	optswch;					/* The option switch character */
+extern	char	optchar;					/* The last option character */
+extern	int	optind;							/* The current argv[] index */
+extern	char   *optarg;						/* Pointer to option parameter */
+extern	char   *optenv;						/* Pointer to environment options */
+extern	int	fwerrno;						// fwvalid() error result
+extern	int	xporlater;						// TRUE if Windows XP or later
 
 /* Template program support */
 
-extern	char   *usagedoc [];		/* Usage documentation pointer array */
+extern	char   *usagedoc [];				/* Usage documentation pointer array */
 
-extern	void	cantfind (char *fnp);	/* Report can't find inout file */
-extern	void	cantopen (char *fnp);	/* Report can't open inout file */
-extern	void	usage    (void);	/* Report usage following error */
-extern	void	help     (void);	/* Report help on request */
-extern	void	docprint (char *s[]);	/* Print help support */
+extern	void	cantfind (char *fnp);		/* Report can't find inout file */
+extern	void	cantopen (char *fnp);		/* Report can't open inout file */
+extern	void	usage    (void);			/* Report usage following error */
+extern	void	help     (void);			/* Report help on request */
+extern	void	docprint (char *s[]);		/* Print help support */
 
-extern	void	fmemdump  (		/* Dump n bytes of memory */
+extern	void	fmemdump  (					/* Dump n bytes of memory */
 		    _PTOFILE fp, char *p, int n, long offset);
 
 /* ------------------------------------------------------------------------ *\

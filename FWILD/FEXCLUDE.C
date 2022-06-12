@@ -80,9 +80,10 @@ fexclude (				/* Exclude a path from the fwild search */
 		clear_list();
 		return (0);
 		}
-
 	else if (*pattern == '@')
 		return (do_file(pattern + 1));
+
+//	printf("Excluding %s\n", pattern);
 
 	return (add_list(pattern));
 	}

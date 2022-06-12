@@ -109,6 +109,7 @@ usagedoc [] = {
 	"-x        e/x/it on first error",
 	"-X xspec  e/X/clude files that match xspec",
 	"-X@xfile  e/X/clude files that match spec(s) in xfile",
+	"-X-       Don't e/X/clude the default system file exclusion(s)",
 	"-y        copy only if source is /y/ounger than destination",
 	"-Ydt      copy only if source is /Y/ounger than 'dt'",
 	"-z        always return exit code of /z/ero",
@@ -158,48 +159,55 @@ main (
 	while ((c=getopt(argc, argv, optstring)) != EOF)
 		switch (c)
 			{
-			case 'a': azFlags.a  = !azFlags.a;  break; /* clear archive bit */
-			case 'A': AZ_Flags.a = !AZ_Flags.a; break; /* ASCII mode        */
-			case 'b': azFlags.b  = !azFlags.b;  break; /* brief output      */
-			case 'c': azFlags.c  = !azFlags.c;  break; /* change disk       */
-			case 'd': azFlags.d  = !azFlags.d;  break; /* if different time */
-			case 'D': AZ_Flags.d = !AZ_Flags.d; break; /* if different size */
-			case 'e': azFlags.e  = !azFlags.e;  break; /* if exist          */
-			case 'f': azFlags.f  = !azFlags.f;  break; /* flat              */
-//			case 'g': azFlags.g  = !azFlags.g;  break; /*   -- unused --    */
-			case 'h': azFlags.h  = !azFlags.h;  break; /* even hidden files */
-//			case 'i': azFlags.i  = !azFlags.i;  break; /*   -- unused --    */
-//			case 'j': azFlags.j  = !azFlags.j;  break; /*   -- unused --    */
-			case 'k': azFlags.k  = !azFlags.k;  break; /* kill old file     */
-			case 'l': azFlags.l  = !azFlags.l;  break; /* list              */
-			case 'L': AZ_Flags.l = !AZ_Flags.l; break; /* list simple form  */
-			case 'm': azFlags.m  = !azFlags.m;  break; /* if missing        */
-			case 'n': azFlags.n  = !azFlags.n;  break; /* no execute        */
-			case 'o': azFlags.o  = !azFlags.o;  break; /* if older          */
-			case 'p': azFlags.p  = !azFlags.p;  break; /* protect dest      */
-			case 'P': AZ_Flags.p = !AZ_Flags.p; break; /* predelete dest    */
-			case 'q': azFlags.q  = !azFlags.q;  break; /* query first       */
-			case 'Q': AZ_Flags.q = !AZ_Flags.q; break; /* query first       */
-			case 'r': azFlags.r  = !azFlags.r;  break; /* even if read_only */
-			case 'R': AZ_Flags.r = !AZ_Flags.r; break; /* ASCII-CR          */
-			case 's': azFlags.s  = !azFlags.s;  break; /* even system files */
-			case 'S': AZ_Flags.s = !AZ_Flags.s; break; /* check file size   */
-//			case 't': azFlags.t  = !azFlags.t;  break; /*   -- unused --    */
-			case 'u': azFlags.u  = !azFlags.u;  break; /* if archive bit    */
-			case 'U': AZ_Flags.u = !AZ_Flags.u; break; /* Unix output mode  */
-			case 'v': azFlags.v  = !azFlags.v;  break; /* verify            */
-			case 'V': AZ_Flags.v = !AZ_Flags.v; break; /* Verbose output    */
-			case 'w': azFlags.w  = !azFlags.w;  break; /* Quiet if no files */
-			case 'x': azFlags.x  = !azFlags.x;  break; /* exit on first error */
-			case 'X': fexclude(optarg);         break; /* exclude           */
-			case 'y': azFlags.y  = !azFlags.y;  break; /* if younger        */
-			case 'z': azFlags.z  = !azFlags.z;  break; /* return errorlevel 0 */
+			case 'a': azFlags.a  = !azFlags.a;  break;	/* clear archive bit */
+			case 'A': AZ_Flags.a = !AZ_Flags.a; break;	/* ASCII mode        */
+			case 'b': azFlags.b  = !azFlags.b;  break;	/* brief output      */
+			case 'c': azFlags.c  = !azFlags.c;  break;	/* change disk       */
+			case 'd': azFlags.d  = !azFlags.d;  break;	/* if different time */
+			case 'D': AZ_Flags.d = !AZ_Flags.d; break;	/* if different size */
+			case 'e': azFlags.e  = !azFlags.e;  break;	/* if exist          */
+			case 'f': azFlags.f  = !azFlags.f;  break;	/* flat              */
+//			case 'g': azFlags.g  = !azFlags.g;  break;	/*   -- unused --    */
+			case 'h': azFlags.h  = !azFlags.h;  break;	/* even hidden files */
+//			case 'i': azFlags.i  = !azFlags.i;  break;	/*   -- unused --    */
+//			case 'j': azFlags.j  = !azFlags.j;  break;	/*   -- unused --    */
+			case 'k': azFlags.k  = !azFlags.k;  break;	/* kill old file     */
+			case 'l': azFlags.l  = !azFlags.l;  break;	/* list              */
+			case 'L': AZ_Flags.l = !AZ_Flags.l; break;	/* list simple form  */
+			case 'm': azFlags.m  = !azFlags.m;  break;	/* if missing        */
+			case 'n': azFlags.n  = !azFlags.n;  break;	/* no execute        */
+			case 'o': azFlags.o  = !azFlags.o;  break;	/* if older          */
+			case 'p': azFlags.p  = !azFlags.p;  break;	/* protect dest      */
+			case 'P': AZ_Flags.p = !AZ_Flags.p; break;	/* predelete dest    */
+			case 'q': azFlags.q  = !azFlags.q;  break;	/* query first       */
+			case 'Q': AZ_Flags.q = !AZ_Flags.q; break;	/* query first       */
+			case 'r': azFlags.r  = !azFlags.r;  break;	/* even if read_only */
+			case 'R': AZ_Flags.r = !AZ_Flags.r; break;	/* ASCII-CR          */
+			case 's': azFlags.s  = !azFlags.s;  break;	/* even system files */
+			case 'S': AZ_Flags.s = !AZ_Flags.s; break;	/* check file size   */
+//			case 't': azFlags.t  = !azFlags.t;  break;	/*   -- unused --    */
+			case 'u': azFlags.u  = !azFlags.u;  break;	/* if archive bit    */
+			case 'U': AZ_Flags.u = !AZ_Flags.u; break;	/* Unix output mode  */
+			case 'v': azFlags.v  = !azFlags.v;  break;	/* verify            */
+			case 'V': AZ_Flags.v = !AZ_Flags.v; break;	/* Verbose output    */
+			case 'w': azFlags.w  = !azFlags.w;  break;	/* Quiet if no files */
+			case 'x': azFlags.x  = !azFlags.x;  break;	/* exit on first error */
 
-			case 'T':
-		timedelta = OneHour * strtol(optarg, NULL, 10);
+			case 'X':									/* exclude ... */
+				if (optarg[0] == '-')
+					fexcludeDefEnable(FALSE);
+				else
+					fexclude(optarg);
+				break;
+
+			case 'y': azFlags.y  = !azFlags.y;  break;	/* if younger        */
+			case 'z': azFlags.z  = !azFlags.z;  break;	/* return errorlevel 0 */
+
+			case 'T':									/* Offset timestamp by (+/-)nnn hours, default 0" */
+				timedelta = OneHour * strtol(optarg, NULL, 10);
 				break;
     
-			case 'O':
+			case 'O':									/* copy only if source is /O/lder than 'dt' */
 				if ((o_time=sgettd(optarg)) < 0)
 					{
 					sprintf(src, "Date-time %s error %s", optarg, serrtd());
@@ -209,7 +217,7 @@ main (
 					++AZ_Flags.o;
 				break;
     
-			case 'Y':
+			case 'Y':									/* copy only if source is /Y/ounger than 'dt' */
 				if ((y_time=sgettd(optarg)) < 0)
 					{
 					sprintf(src, "Date-time %s error %s", optarg, serrtd());
@@ -219,7 +227,7 @@ main (
 					++AZ_Flags.y;
 				break;
     
-			case '?':
+			case '?':									/* Show detailed help */
 				mhelp();
 				/*unreachable */
     

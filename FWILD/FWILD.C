@@ -94,6 +94,20 @@ static	unsigned int	AllocCount = 0;
 
 int	    xporlater = 0;					// TRUE if Windows XP or later (global)
 
+// Default file exclusion list for Windows 10
+
+static	int		 FexcludeDefaultEnable	= TRUE;	
+static	char	*DefExcludeFiles [] = 
+					{
+					"\\$RECYCLE.BIN\\**",
+					"\\$WinREAgent\\**",
+					"\\System Volume Information\\**",
+					"\\pagefile.sys",
+					"\\swapfile.sys",
+					"\\hiberfile.sys",
+					NULL
+					};
+
 /* ----------------------------------------------------------------------- */
 
 // bwj Force the inclusion of the corrected DTOXTIME library file
@@ -101,6 +115,32 @@ int	    xporlater = 0;					// TRUE if Windows XP or later (global)
 //extern int	ForceDtoxtime;
 //static int *pForceDtoxtime = &ForceDtoxtime;
  
+
+/* ----------------------------------------------------------------------- *\
+|  excludeDefFiles () - Exclude the system default files, if enabled
+\* ----------------------------------------------------------------------- */
+	void
+fexcludeDefEnable (
+	int  enable)
+
+	{
+	FexcludeDefaultEnable = enable;
+	}
+
+/* ----------------------------------------------------------------------- *\
+|  fexcludeDefFiles () - Enable/disable default system file exclusions
+\* ----------------------------------------------------------------------- */
+	void
+fexcludeDefFiles (void)
+
+	{
+	if (FexcludeDefaultEnable)
+		{
+		for (char **p = &DefExcludeFiles[0]; (*p != NULL); ++p)
+            fexclude(*p);
+		}
+	}
+
 /* ----------------------------------------------------------------------- *\
 |  fwinit () - Initialize the fwild system for a wild search
 \* ----------------------------------------------------------------------- */
@@ -121,6 +161,7 @@ fwinit (s, xmode)				/* Initialize the wild filename system */
 
 	if (fwvalid(s) != FWERR_NONE)
 		return	(NULL);
+
 	CheckVersion();
 	owild_str[0] = rwild_str[0] = strpath(s);
 mwprintf("New header\n", AllocCount);
@@ -151,6 +192,8 @@ mwprintf("New proto\n", AllocCount);
 		}
 	else
 		strcpy(p, "*.*");
+
+	fexcludeDefFiles();			// Protect special directories, if enabled
 
 #ifdef	VERBOSEOUT
 h_disp(hp, "FWINIT");
