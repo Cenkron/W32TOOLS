@@ -94,19 +94,9 @@ static	unsigned int	AllocCount = 0;
 
 int	    xporlater = 0;					// TRUE if Windows XP or later (global)
 
-// Default file exclusion list for Windows 10
+// Default file exclusion management
 
 static	int		 FexcludeDefaultEnable	= TRUE;	
-static	char	*DefExcludeFiles [] = 
-					{
-					"\\$RECYCLE.BIN\\**",
-					"\\$WinREAgent\\**",
-					"\\System Volume Information\\**",
-					"\\pagefile.sys",
-					"\\swapfile.sys",
-					"\\hiberfile.sys",
-					NULL
-					};
 
 /* ----------------------------------------------------------------------- */
 
@@ -125,20 +115,6 @@ fexcludeDefEnable (
 
 	{
 	FexcludeDefaultEnable = enable;
-	}
-
-/* ----------------------------------------------------------------------- *\
-|  fexcludeDefFiles () - Enable/disable default system file exclusions
-\* ----------------------------------------------------------------------- */
-	void
-fexcludeDefFiles (void)
-
-	{
-	if (FexcludeDefaultEnable)
-		{
-		for (char **p = &DefExcludeFiles[0]; (*p != NULL); ++p)
-            fexclude(*p);
-		}
 	}
 
 /* ----------------------------------------------------------------------- *\
@@ -193,7 +169,8 @@ mwprintf("New proto\n", AllocCount);
 	else
 		strcpy(p, "*.*");
 
-	fexcludeDefFiles();			// Protect special directories, if enabled
+	if (FexcludeDefaultEnable)	// if enabled
+		fexcludeDefault();		//   protect system special files/directories,
 
 #ifdef	VERBOSEOUT
 h_disp(hp, "FWINIT");

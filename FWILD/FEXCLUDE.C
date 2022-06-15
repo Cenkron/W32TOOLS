@@ -36,6 +36,19 @@ static	int	do_file    (char *str);
 static	int	exclude    (char *str);
 static	void	clear_list (void);
 
+// Default file exclusion list for Windows 10
+
+static	char	*DefExcludeFiles [] = 
+					{
+					"\\$RECYCLE.BIN\\**",
+					"\\$WinREAgent\\**",
+					"\\System Volume Information\\**",
+					"\\pagefile.sys",
+					"\\swapfile.sys",
+					"\\hiberfile.sys",
+					NULL
+					};
+
 /* ----------------------------------------------------------------------- */
 	char *				/* Return the pointer to the file name */
 fwildexcl (				/* Get the first/next wild filename (ex mode) */
@@ -156,6 +169,16 @@ clear_list (void)		/* Clear out the exclusion list */
 		free(p1);		/* Free the current element */
 		} 
 	root = NULL;		/* Show the list empty */
+	}
+
+/* ----------------------------------------------------------------------- */
+	int					/* Return non-zero if an error */
+fexcludeDefault (void)
+
+	{
+	for (char **p = &DefExcludeFiles[0]; (*p != NULL); ++p)
+		fexclude(*p);
+	return (0);
 	}
 
 /* ----------------------------------------------------------------------- */

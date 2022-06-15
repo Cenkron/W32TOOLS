@@ -166,6 +166,7 @@ extern	DHV    *fwinit (char *, int);		/* Init the wild filename server */
 extern	char   *fwild (DHV *);				/* Return a wild filename */
 extern	char   *fwildexcl (DHV *);			/* Return a wild filename (exclude) */
 extern	int     fexclude (char *);			/* Register an exclude path (exclude) */
+extern	int     fexcludeDefault (void);		/* Initialize the default exclusions */
 extern	void	fexcludeDefEnable (int);	/* Enable/disable default file exclusion(s) */
 extern	DHV    *fwfree (DHV *);				/* Close and free an fwild instance */
 extern	char   *fwfirst (char *);			/* Return the first matching wild filename */
