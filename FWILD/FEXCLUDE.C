@@ -13,6 +13,7 @@
 #include  <windows.h>
 #include  <stdio.h>
 #include  <stdlib.h>
+#include  <ctype.h>
 #include  <string.h>
 
 #define  FWILD_INTERNAL		/* Enable FWILD internal definitions */
@@ -172,12 +173,68 @@ clear_list (void)		/* Clear out the exclusion list */
 	}
 
 /* ----------------------------------------------------------------------- */
+	char *
+GetInitPath (void)
+
+	{
+    DWORD	length;
+	char  *pDest;
+//	int		Insert;
+static char Dest [MAX_PATH];
+
+	if ((length = GetModuleFileName(NULL, Dest, sizeof(Dest))) == 0)
+		return (NULL);
+
+	fnreduce(Dest);
+	Dest[strlen(Dest) - strlen(fntail(Dest))] = '\0';
+	pDest = fncatpth(Dest, "exclude.ini");
+//printf("Path: %s\n", pDest);
+    return ((strlen(pDest)  > 0) ? pDest : NULL);
+	}
+
+/* ----------------------------------------------------------------------- */
+	static int					/* Return non-zero if a file error */
+fexcludeFromFile (void)
+
+	{
+	char *pfn;			// Init File pathname
+	FILE *fp;			// Handle of the opened init file
+	char  line [1024];	// Init file line buffer
+
+	if (((pfn = GetInitPath()) == NULL)
+	||  ((fp = fopen(pfn, "r")) == NULL))
+		return (-1);		// File read failed, fall back to internal defaults
+
+	while (fgets(line, sizeof line, fp))
+		{
+		if (strlen(line) > 0)
+			{
+			int  length = (strlen(line) - 1);
+
+			if (length > 0)
+				line[length] = '\0';
+			fexclude(line);
+//			printf("Excluding %s\n", line);
+			}
+		}
+
+	fclose(fp);
+	return (0);			// File read suceeded
+    }
+
+/* ----------------------------------------------------------------------- */
 	int					/* Return non-zero if an error */
 fexcludeDefault (void)
 
 	{
-	for (char **p = &DefExcludeFiles[0]; (*p != NULL); ++p)
-		fexclude(*p);
+	if (fexcludeFromFile() != 0)
+		{
+		for (char **p = &DefExcludeFiles[0]; (*p != NULL); ++p)
+			{
+			fexclude(*p);
+//			printf("Excluding %s\n", *p);
+			}
+		}
 	return (0);
 	}
 

@@ -1,4 +1,5 @@
-# Ignore everything in this directory except this file
+# Ignore everything in this directory except these files
 # This a non-cleanable capture of all the Release EXE files
 # They are not intended to be version controlled.
 *.exe
+exclude.ini
