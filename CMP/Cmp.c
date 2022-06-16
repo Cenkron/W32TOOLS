@@ -72,6 +72,9 @@ char  *usagedoc [] =
 "    %cu      use UNIX mode (text file translation, also uses -d)",
 "    %cv      lists verbose information",
 "    %cx <pathname> excludes (possibly wild) matching pathnames from the compare",
+"    %cx@xfile  e/X/clude files that match spec(s) in xfile",
+"    %cx-       Disable default file exclusion(s)",
+"    %cx+       Show exclusion path(s)",
 "    %cz      returns a zero completion code even if errors",
 "",
 "Copyright (c) 1988, 1993 by J & M Software, Dallas TX - All Rights Reserved",
@@ -238,16 +241,12 @@ static	char   *optstring = "?aAbBdDeEhHlLnNoOqQrRsStT:TuUvVx:X:yYzZ";
 				break;
 
 			case 'x':
-				if (optarg == NULL)
-					{
-					printf("Exclusion string missing\n");
-					usage();
-					}
+				if      (optarg[0] == '-')
+					fexcludeDefEnable(FALSE);		/* Disable default file exclusion(s) */
+				else if (optarg[0] == '+')
+					fexcludeShowExcl(TRUE);			/* Enable stdout of exclusion(s) */
 				else if (fexclude(optarg))
-					{
 					printf("Exclusion string fault: \"%s\"\n", optarg);
-					usage();
-					}
 				break;
 
 			case 'y':
