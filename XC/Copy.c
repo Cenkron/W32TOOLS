@@ -281,7 +281,7 @@ copy_loop (char *src, int srcfh, char *dst, int dstfh)
 			{
 			if (AZ_Flags.v)
 				printf(" (forced to 0)");
-			chsize(dstfh, 0);
+			(void)chsize(dstfh, 0);
 			}
 		}
 	else

@@ -96,8 +96,6 @@ int	    xporlater = 0;					// TRUE if Windows XP or later (global)
 
 // Default file exclusion management
 
-static	int		 FexcludeDefaultEnable	= TRUE;	
-
 /* ----------------------------------------------------------------------- */
 
 // bwj Force the inclusion of the corrected DTOXTIME library file
@@ -105,17 +103,6 @@ static	int		 FexcludeDefaultEnable	= TRUE;
 //extern int	ForceDtoxtime;
 //static int *pForceDtoxtime = &ForceDtoxtime;
  
-
-/* ----------------------------------------------------------------------- *\
-|  excludeDefFiles () - Exclude the system default files, if enabled
-\* ----------------------------------------------------------------------- */
-	void
-fexcludeDefEnable (
-	int  enable)
-
-	{
-	FexcludeDefaultEnable = enable;
-	}
 
 /* ----------------------------------------------------------------------- *\
 |  fwinit () - Initialize the fwild system for a wild search
@@ -169,8 +156,7 @@ mwprintf("New proto\n", AllocCount);
 	else
 		strcpy(p, "*.*");
 
-	if (FexcludeDefaultEnable)	// if enabled
-		fexcludeDefault();		//   protect system special files/directories,
+	fexcludeDefault();		// Protect system special files/directories, if enabled
 
 #ifdef	VERBOSEOUT
 h_disp(hp, "FWINIT");

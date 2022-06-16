@@ -12,6 +12,7 @@
 |								   22-Mar-98  QuoteFlag added
 |								   25-Sep-01  Support for huge directories
 |								   27-Sep-07  Support for 64 bit file sizes
+|								   16-Jun-22  Added exclusion path mechanism
 |
 \* ----------------------------------------------------------------------- */
 
@@ -74,6 +75,7 @@ char  *usagedoc [] =
 "    %cX (pathname> Exclude (possibly wild) matching pathnames",
 "    %cX@xfile  e/X/clude files that match spec(s) in xfile",
 "    %cX-       Disable default file exclusion(s)",
+"    %cX+       Show exclusion path(s)",
 "    %cy <td>   List only if younger than <td>",
 "    %cz        Exit with zero return code even if not found",
 "",
@@ -366,10 +368,12 @@ static	char   *optstring = "?aA:cC:dDeEfF:hHiIlL:mM:nN:o:O:pP:qQrR:sStTuUvwW:VxX
 				break;
 
 			case 'x':
-				if (option == 'x')
-					++x_flag;
-				else if (optarg[0] == '-')
+				if (option == 'x')					// (lower case only)
+					++x_flag;						// Show datetime info
+				else if (optarg[0] == '-')			// (Upper case)
 					fexcludeDefEnable(FALSE);		/* Disable default file exclusion(s) */
+				else if (optarg[0] == '+')
+					fexcludeShowExcl(TRUE);			/* Enable stdout of exclusion(s) */
 				else if (fexclude(optarg))
 					printf("Exclusion string fault: \"%s\"\n", optarg);
 				break;

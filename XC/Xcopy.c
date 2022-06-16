@@ -110,6 +110,7 @@ usagedoc [] = {
 	"-X xspec  e/X/clude files that match xspec",
 	"-X@xfile  e/X/clude files that match spec(s) in xfile",
 	"-X-       Don't e/X/clude the default system file exclusion(s)",
+	"-X+       Show exclusion path(s) being used",
 	"-y        copy only if source is /y/ounger than destination",
 	"-Ydt      copy only if source is /Y/ounger than 'dt'",
 	"-z        always return exit code of /z/ero",
@@ -194,11 +195,12 @@ main (
 			case 'x': azFlags.x  = !azFlags.x;  break;	/* exit on first error */
 
 			case 'X':									/* exclude ... */
-				if (optarg[0] == '-')
-					fexcludeDefEnable(FALSE);
-				else
-					fexclude(optarg);
-				break;
+				if      (optarg[0] == '-')
+					fexcludeDefEnable(FALSE);		/* Disable default file exclusion(s) */
+				else if (optarg[0] == '+')
+					fexcludeShowExcl(TRUE);			/* Enable stdout of exclusion(s) */
+				else if (fexclude(optarg))
+					break;
 
 			case 'y': azFlags.y  = !azFlags.y;  break;	/* if younger        */
 			case 'z': azFlags.z  = !azFlags.z;  break;	/* return errorlevel 0 */

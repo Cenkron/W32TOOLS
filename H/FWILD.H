@@ -168,6 +168,7 @@ extern	char   *fwildexcl (DHV *);			/* Return a wild filename (exclude) */
 extern	int     fexclude (char *);			/* Register an exclude path (exclude) */
 extern	int     fexcludeDefault (void);		/* Initialize the default exclusions */
 extern	void	fexcludeDefEnable (int);	/* Enable/disable default file exclusion(s) */
+extern	void	fexcludeShowExcl (int);		/* Show file exclusion(s) */
 extern	DHV    *fwfree (DHV *);				/* Close and free an fwild instance */
 extern	char   *fwfirst (char *);			/* Return the first matching wild filename */
 extern  int	fwtype (DHV *);					/* Return the type of the current fn */

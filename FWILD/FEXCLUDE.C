@@ -7,6 +7,7 @@
 |				Brian W Johnson
 |				   17-Feb-93
 |				   17-Aug-97
+|				   16-Jun-22	Added default exclusion path mechanism
 |
 \* ----------------------------------------------------------------------- */
 
@@ -37,7 +38,11 @@ static	int	do_file    (char *str);
 static	int	exclude    (char *str);
 static	void	clear_list (void);
 
-// Default file exclusion list for Windows 10
+static int	showExcl = 0;						/* Show   excluded paths, default no */
+static int	enbExcl  = 1;						/* Enable excluded paths, default yes */
+
+// Internal default file exclusion list for Windows 10
+// This is used only if there is no external default file list file.
 
 static	char	*DefExcludeFiles [] = 
 					{
@@ -60,14 +65,14 @@ fwildexcl (				/* Get the first/next wild filename (ex mode) */
 
 	do	{
 		result = fwild(pdhv);
-		} while ((result != NULL)  &&  (exclude(result)));
+		} while ((result != NULL)  &&  (excluded(result)));
 
 	return (result);
 	}
 
 /* ----------------------------------------------------------------------- */
 	static int			/* Return TRUE to exclude the pathname string */
-exclude (				/* Test the string for exclusion */
+excluded (				/* Test the string for exclusion */
 	char  *target)		/* Pointer to the target string */
 
 	{
@@ -84,55 +89,81 @@ exclude (				/* Test the string for exclusion */
 	}
 
 /* ----------------------------------------------------------------------- */
-	int					/* Return non-zero if an error */
-fexclude (				/* Exclude a path from the fwild search */
-	char  *pattern)		/* Pointer to the pattern string */
+/* ----------------------------------------------------------------------- */
+	void
+fexcludeDefEnable (
+	int flag)					// True to enable exclusions
 
 	{
-	if (pattern == NULL)
-		{
-		clear_list();
-		return (0);
-		}
-	else if (*pattern == '@')
-		return (do_file(pattern + 1));
-
-//	printf("Excluding %s\n", pattern);
-
-	return (add_list(pattern));
+	enbExcl = flag;
 	}
 
 /* ----------------------------------------------------------------------- */
-	static int			/* Return non-zero if an error */
-do_file (				/* Process an exclusion file */
-	char  *pattern)		/* Pointer to the pattern string */
+	void
+fexcludeShowExcl (
+	int flag)					// True to show exclusions
 
 	{
-	int    result = 0;	/* The returned result */
-	int    length;		/* Length of each line */
-	FILE  *fp;			/* The open exclusion file */
-	char   line [LINEBUFFER];	/* The line buffer */
+	showExcl = flag;
+	}
 
-	if (((pattern = fwfirst(pattern)) == NULL)
-	||  ((fp = fopen(pattern, "rt")) == NULL))
-		result = -1;
+/* ----------------------------------------------------------------------- */
+/* ----------------------------------------------------------------------- */
+	static char *
+GetInitPath (void)	// Get the pathname of the default exclusion file
 
-	else
+	{
+    DWORD	length;
+	char  *pDest;
+//	int		Insert;
+static char Dest [MAX_PATH];
+
+	if ((length = GetModuleFileName(NULL, Dest, sizeof(Dest))) == 0)
+		return (NULL);
+
+	fnreduce(Dest);
+	Dest[strlen(Dest) - strlen(fntail(Dest))] = '\0';
+	pDest = fncatpth(Dest, "exclude.ini");
+//	printf("Path: %s\n", pDest);
+
+	return ((strlen(pDest)  > 0) ? pDest : NULL);
+	}
+
+/* ----------------------------------------------------------------------- */
+	static int					/* Return non-zero if a file error */
+fexcludeFromFile (
+	char* pfn)			// Exclusion File pathname
+
+	{
+	FILE* fp;			// Handle of the opened exclusion file
+	char  line[4096];	// Init file line buffer
+
+	if ((pfn == NULL)
+	|| ((fp = fopen(pfn, "r")) == NULL))
+		return (-1);		// File read failed, fall back to internal defaults
+
+	while (fgets(line, sizeof line, fp))
 		{
-		while (fgets(line, LINEBUFFER, fp) != NULL)
+		if (strlen(line) > 0)
 			{
-			if ((length = strlen(line)) <= 1)
-				break;
+			int  length = (strlen(line) - 1);
 
-			line[length - 1] = '\0';
-			if (result = add_list(strtok(line, " \t")))
-				break;
+			if (length > 0)				// Remove the endline character
+				line[length] = '\0';
+
+			if (line[0] == '*')			// '*' denotes a comment line
+				{
+				if (showExcl)			// Display the comment, if enabled
+					printf("Excluding: %s\n", line);
+				}
+
+			else	
+				fexclude(line);
 			}
-
-		fclose(fp);
 		}
 
-	return (result);
+	fclose(fp);
+	return (0);			// File read suceeded
 	}
 
 /* ----------------------------------------------------------------------- */
@@ -150,6 +181,10 @@ add_list (				/* Add a string to the exclusion list */
 		strcpy(p->name, pattern);	/* Allocate a new EXC element */
 		p->link = root;
 		root    = p;
+
+		if (showExcl)
+			printf("Excluding: %s\n", pattern);
+
 		return (0);
 		}
 
@@ -173,68 +208,51 @@ clear_list (void)		/* Clear out the exclusion list */
 	}
 
 /* ----------------------------------------------------------------------- */
-	char *
-GetInitPath (void)
+	int					/* Return non-zero if an error */
+fexclude (				/* Exclude a path from the fwild search */
+	char  *pattern)		/* Pointer to the pattern string */
 
 	{
-    DWORD	length;
-	char  *pDest;
-//	int		Insert;
-static char Dest [MAX_PATH];
+	if (pattern == NULL)
+		{
+		clear_list();
+		return (0);
+		}
 
-	if ((length = GetModuleFileName(NULL, Dest, sizeof(Dest))) == 0)
-		return (NULL);
+	else if (*pattern == '@')	// '@' denotes pattern is the name of an exclusion file
+		return (fexcludeFromFile(pattern + 1));
 
-	fnreduce(Dest);
-	Dest[strlen(Dest) - strlen(fntail(Dest))] = '\0';
-	pDest = fncatpth(Dest, "exclude.ini");
-//printf("Path: %s\n", pDest);
-    return ((strlen(pDest)  > 0) ? pDest : NULL);
+	return (add_list(pattern));	// Otherwise pattern IS a pattern
 	}
 
 /* ----------------------------------------------------------------------- */
-	static int					/* Return non-zero if a file error */
-fexcludeFromFile (void)
-
-	{
-	char *pfn;			// Init File pathname
-	FILE *fp;			// Handle of the opened init file
-	char  line [1024];	// Init file line buffer
-
-	if (((pfn = GetInitPath()) == NULL)
-	||  ((fp = fopen(pfn, "r")) == NULL))
-		return (-1);		// File read failed, fall back to internal defaults
-
-	while (fgets(line, sizeof line, fp))
-		{
-		if (strlen(line) > 0)
-			{
-			int  length = (strlen(line) - 1);
-
-			if (length > 0)
-				line[length] = '\0';
-			fexclude(line);
-//			printf("Excluding %s\n", line);
-			}
-		}
-
-	fclose(fp);
-	return (0);			// File read suceeded
-    }
-
-/* ----------------------------------------------------------------------- */
-	int					/* Return non-zero if an error */
+	int							/* Return non-zero if an error */
 fexcludeDefault (void)
 
 	{
-	if (fexcludeFromFile() != 0)
+	if (enbExcl)
+
+		// If default exclusions are enabled,
+		// first try the default file,
+		// but fail over to using the internal defaults
+
 		{
-		for (char **p = &DefExcludeFiles[0]; (*p != NULL); ++p)
+		if (fexcludeFromFile(GetInitPath()) != 0)
+
+			// The default file failed, so use the internal defaults instead
+
 			{
-			fexclude(*p);
-//			printf("Excluding %s\n", *p);
+			for (char **p = &DefExcludeFiles[0]; (*p != NULL); ++p)
+				fexclude(*p);
 			}
 		}
+
+	else // Defult exclusions are disabled
+		{
+		if (showExcl)
+			printf("Default exclusions disabled\n");
+		}
+
 	return (0);
 	}
 
