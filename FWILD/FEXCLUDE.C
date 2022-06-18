@@ -70,8 +70,8 @@ add_list (				/* Add a string to the exclusion list */
 	if (((length = strlen(pattern)) > 0)
 	&&  ((p = (EXC *)(malloc(sizeof(EXC) + length))) != NULL))
 		{
-		strcpy(p->name, pattern);	/* Allocate a new EXC element */
-		p->link = root;
+		strcpy(p->name, pattern);	/* Allocate and init a new EXC element */
+		p->link = root;		// List link the new entry
 		root    = p;
 
 		if (showExcl)
@@ -88,15 +88,14 @@ add_list (				/* Add a string to the exclusion list */
 clear_list (void)		/* Clear out the exclusion list */
 
 	{
-	EXC  *p1;
-	EXC  *p2;
-
-	for (p1 = root; (p2 = p1); )
+	EXC  *p;
+	
+	while (root != NULL)
 		{
-		p1 = p1->link;	/* Point the next element */
-		free(p1);		/* Free the current element */
+		p = root->link;	// Point the second element
+		free(root);		// Free the top element
+		root = p;		// Update the root
 		} 
-	root = NULL;		/* Show the list empty */
 	}
 
 /* ----------------------------------------------------------------------- */
