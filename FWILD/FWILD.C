@@ -156,7 +156,7 @@ mwprintf("New proto\n", AllocCount);
 	else
 		strcpy(p, "*.*");
 
-	fexcludeDefault();		// Protect system special files/directories, if enabled
+	fexcludeInit();		// Init the file exclusion system, effective once only
 
 #ifdef	VERBOSEOUT
 h_disp(hp, "FWINIT");

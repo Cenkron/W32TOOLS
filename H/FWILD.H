@@ -164,9 +164,10 @@ typedef							/* strtoken() support */
 
 extern	DHV    *fwinit (char *, int);		/* Init the wild filename server */
 extern	char   *fwild (DHV *);				/* Return a wild filename */
-extern	char   *fwildexcl (DHV *);			/* Return a wild filename (exclude) */
+extern	char   *fwildexcl (DHV *);			/* Return a wild filename (respects exclusion) */
+extern	int     fexcludeInit (void);		/* Initialize the default exclusions subsystem */
 extern	int     fexclude (char *);			/* Register an exclude path (exclude) */
-extern	int     fexcludeDefault (void);		/* Initialize the default exclusions */
+extern	void    fexcludeClean (void);		/* Empty the file exclusions list */
 extern	void	fexcludeDefEnable (int);	/* Enable/disable default file exclusion(s) */
 extern	void	fexcludeShowExcl (int);		/* Show file exclusion(s) */
 extern	DHV    *fwfree (DHV *);				/* Close and free an fwild instance */
