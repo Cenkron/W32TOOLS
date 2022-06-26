@@ -29,7 +29,7 @@
 
 char  *usagedoc [] =
 {
-"Usage:  touch  [%c?chiloqrstxyz]  file_list  [>output_file]",
+"Usage:  touch  [%c?cfhiloqrstXyz]  file_list  [>output_file]",
 "",
 "touch updates the modification date/time of each file in the",
 "file_list to the current (or zero) date/time.",
@@ -44,7 +44,10 @@ char  *usagedoc [] =
 "    %cs       touches system files also",
 "    %ct <td>  touches to time specified by <td>",
 "    %cf <pathname> touches to the timestamp of the file <pathname>",
-"    %cx <pathname> excludes matching (possibly wild) pathnames from the touch",
+"    %cX <pathspec> e/X/clude (possibly wild) files matching pathspec",
+"    %cX @<xfile>   e/X/clude files that match pathspec(s) in xfile",
+"    %cX-      disable default file exclusion(s)",
+"    %cX+      show exclusion path(s)",
 "    %cy <td>  touches only if file is younger than time specified by <td>",
 "    %cz       backdates the files to 1-Jan-1980",
 "",
@@ -88,7 +91,7 @@ main (
 	char  *ap;				/* Argument pointer */
 	char  *fnp  = NULL;			/* Input file name pointer */
 
-static	char   *optstring = "?cCf:F:hHiIlLo:O:qQrRsSt:T:y:Y:zZ";
+static	char   *optstring = "?cCf:F:hHiIlLo:O:qQrRsSt:T:X:y:Y:zZ";
 
 
 	swch   = egetswch();
@@ -156,7 +159,16 @@ static	char   *optstring = "?cCf:F:hHiIlLo:O:qQrRsSt:T:y:Y:zZ";
 				break;
 
 			case 'x':
-				if (fexclude(optarg))
+printf("option = %c\n", option);
+
+				if (option == 'x')
+					usage();
+
+				if      (optarg[0] == '-')
+					fexcludeDefEnable(FALSE);		/* Disable default file exclusion(s) */
+				else if (optarg[0] == '+')
+					fexcludeShowExcl(TRUE);			/* Enable stdout of exclusion(s) */
+				else if (fexclude(optarg))
 					{
 					exitcode = 1;
 					printf("\7Exclusion string fault: \"%s\"\n", optarg);

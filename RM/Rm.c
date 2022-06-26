@@ -70,7 +70,7 @@ DIRNODE *root	= NULL;
 /*--------------------------------------------------------------------*/
 	char * 
 usagedoc [] = {
-	"Usage:  rm [-hnqrstvz] [-x[@]xfiles] [-lN] [-odt] [-ydt] file_list",
+	"Usage:  rm [-hnqrstvz] [-X...] [-lN] [-odt] [-ydt] file_list",
 	"",
 	"Remove (erase, delete) a [list of] file[s]",
 	"The file_list may contain wildcards '?', '*', and '**'.",
@@ -84,8 +84,10 @@ usagedoc [] = {
 	"-s    include /S/ystem files",
 	"-t    remove the empty directories in the /T/ree also",
 	"-v    /V/erbose (report files as removed)",
-	"-Xxfilespec  e/X/clude files that match xfilespec",
-	"-X@xfilelist e/X/clude files that match filespec(s) in xfilelist",
+	"-X <pathspec> e/X/clude (possibly wild) files that match pathspec",
+	"-X @<xfile>   e/X/clude paths that match pathspec(s) in xfile",
+	"-X-   disable default file exclusion(s)",
+	"-X+   show exclusion path(s)",
 	"-ydt  remove only if /Y/ounger than dt (datetime)",
 	"-z    /Z/ero the file (make it unrecoverable - use with care)",
 	"",
@@ -107,13 +109,20 @@ main (
 
 	optenv = getenv("RM");
 
-	while ( (c=getopt(argc,argv,"hHl:L:nNo:O:qQrRsStTvVx:X:y:Y:zZ?")) != EOF )
+	while ( (c=getopt(argc,argv,"hHl:L:nNo:O:qQrRsStTvVX:y:Y:zZ?")) != EOF )
 	switch (tolower(c))
 		{
 		case 'x' :
-			if (fexclude(optarg))
+			if (c == 'x')
+				usage();
+
+			if      (optarg[0] == '-')
+				fexcludeDefEnable(FALSE);		/* Disable default file exclusion(s) */
+			else if (optarg[0] == '+')
+				fexcludeShowExcl(TRUE);			/* Enable stdout of exclusion(s) */
+			else if (fexclude(optarg))
 				{
-				fprintf(stderr, "Error excluding %s\n", optarg);
+				printf("\7Exclusion string fault: \"%s\"\n", optarg);
 				usage();
 				}
 			break;
@@ -401,7 +410,7 @@ destroy (
 
 		/* Convert fsize to a count of buffers */
 		for (fsize /= sizeof(buffer), ++fsize;  fsize;  --fsize)
-			write(fh, buffer, sizeof(buffer));
+			(void)write(fh, buffer, sizeof(buffer));
 		close(fh);
 
 		_splitpath(filename, szDrive, szDir, szName, szExt);

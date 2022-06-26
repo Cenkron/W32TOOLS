@@ -34,13 +34,13 @@
 /**********************************************************************/
 	static char 
 helpline [] =
-	"Usage:\n  xc [-options?] [-Odt] [-Ydt] [-X[@]xfile] src1 [[src2...] destpath]";
+	"Usage:\n  xc [-options?] [-Odt] [-Ydt] [-X...] src1 [[src2...] destpath]";
 
 	static char 
 optstring [] =
 	"aAbcdDefhklLmnoO:pPqQrRsSuUvVwxX:yY:z?";
 
-/* options used: aAb c dDe f   h     k lLm n oOpPqQrRsS  uUvVw  xXyYz  */
+/* options used: aAb c dDe f   h     k lLm n oOpPqQrRsS  uUvVw xXyYz  */
 /* options left:    B C   E FgG HiIjJ K   M N          tT     W     Z */
 
 	char * 
@@ -107,9 +107,9 @@ usagedoc [] = {
 	"-V        /V/erbose output",
 	"-w        don't report source file(s) not found",
 	"-x        e/x/it on first error",
-	"-X xspec  e/X/clude files that match xspec",
-	"-X@xfile  e/X/clude files that match spec(s) in xfile",
-	"-X-       Don't e/X/clude the default system file exclusion(s)",
+	"-X <pathspec> e/X/clude (possibly wild) paths that match pathspec",
+	"-X @<xfile>   e/X/clude paths that match pathspec(s) in xfile",
+	"-X-       Don't exclude the default system file exclusion(s)",
 	"-X+       Show exclusion path(s) being used",
 	"-y        copy only if source is /y/ounger than destination",
 	"-Ydt      copy only if source is /Y/ounger than 'dt'",

@@ -24,7 +24,7 @@
 /*------------------------------------------------------------------*/
 	char *
 usagedoc[] = {
-	"Usage:  ds  [-?] [-dx:] [-bfhqsv] [-x[@]xspec] [path\\][file_spec]",
+	"Usage:  ds  [-?] [-dx:] [-bfhqsv] [-X...] [path\\][file_spec]",
 	"",
 	"Displays the total amount of space required on various",
 	"sized disks (or a particular disk) to store the specified files.",
@@ -38,8 +38,10 @@ usagedoc[] = {
 	"-s       system: include system files",
 	"-b       brief: no output to screen",
 	"-v       verbose: output directory name also",
-	"-x xspec exclude: don't count files which match xspec",
-	"-x@xspec exclude: don't count files which match xspec(s) in xfile",
+	"-X <pathspec> e/X/clude (possibly wild) files which match pathspec",
+	"-X @<xfile>   e/X/clude files which match pathspec(s) in xfile",
+	"-X-       Disable default file exclusion(s)",
+	"-X+       Show exclusion path(s)",
 	"",
 	"If 'file_spec' is not specified, then '*.*' is assumed.",
 	"The recursive path name '**' may be used to specifiy the inclusion",
@@ -126,15 +128,22 @@ main (
 
 	optenv = getenv("DS");
 
-	while ((c=getopt(argc, argv, "?bBd:D:fFhHqQsSvVx:X:")) != EOF)
+	while ((c=getopt(argc, argv, "?bBd:D:fFhHqQsSvVX:")) != EOF)
 		{
 		switch (tolower(c))
 			{
 			case 'x':
-				if (fexclude(optarg))
+				if (c == 'x')
+					usage();
+
+				if      (optarg[0] == '-')
+					fexcludeDefEnable(FALSE);		/* Disable default file exclusion(s) */
+				else if (optarg[0] == '+')
+					fexcludeShowExcl(TRUE);			/* Enable stdout of exclusion(s) */
+				else if (fexclude(optarg))
 					{
 					fprintf(stderr, "Error excluding '%s'\n", optarg);
-					exit (1);
+					usage();
 					}
 				break;
 

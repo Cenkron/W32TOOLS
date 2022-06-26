@@ -28,7 +28,10 @@ usagedoc [] =
     "-m      Inverts the usage of the metacharacter escape",
     "-s      Find shortest match (default: find longest)",
     "-vv     Print verbose internal information",
-    "-X <pathname> excludes matching (possibly wild) pathnames from the sed",
+	"-X <pathspec> e/X/clude (possibly wild) files matching pathspec",
+	"-X @<xfile>   e/X/clude files that match pathspec(s) in xfile",
+	"-X-       Disable default file exclusion(s)",
+	"-X+       Show exclusion path(s)",
     "",
     "Input is from the file list.  Output replaces input.",
     "The input file list path names accept the wildcards '?', '*', and '**'.",
@@ -103,7 +106,7 @@ main (
     int    argc,
     char  *argv [])
     {
-static char *   optstring = "?fFgGkKmMsSvVx:X:";
+static char *   optstring = "?fFgGkKmMsSvVX:";
     char *      ap;                     /* Argument pointer */
     char *      fnp   = NULL;           /* Input file name pointer */
     void *      hp    = NULL;           /* Pointer to wild file data block */
@@ -131,7 +134,14 @@ static char *   optstring = "?fFgGkKmMsSvVx:X:";
             case 'v':           ++debug;                break;
 
             case 'x':
-                if (fexclude(optarg))
+				if (option == 'x')
+					usage();
+
+				if (optarg[0] == '-')
+					fexcludeDefEnable(FALSE);		/* Disable default file exclusion(s) */
+				else if (optarg[0] == '+')
+					fexcludeShowExcl(TRUE);			/* Enable stdout of exclusion(s) */
+				else if (fexclude(optarg))
                     {
                     printf("Exclusion string fault: \"%s\"\n", optarg);
                     usage();

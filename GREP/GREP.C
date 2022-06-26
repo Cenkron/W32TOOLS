@@ -47,8 +47,8 @@
 
 char  *usagedoc [] =
 {
-"Usage:  grep  [%cac?cCefhilLmnpr] [-P path] [-R [-/+]NN] [-s NNN] [-t N]",
-"              [%ct N] [-v+] [-w NNN] [-X path]  regexpr  [input_file_list]",
+"Usage:  grep  [%cac?cCefhilLmnprX] [-P path] [-R [-/+]NN] [-s NNN] [-t N]",
+"              [%ct N] [-v+] [-w NNN] regexpr  [input_file_list]",
 "",
 "grep searches one or more files for a given regular expression pattern.",
 "",
@@ -80,7 +80,10 @@ char  *usagedoc [] =
 "    %ct N    Set the tab width increment              (default 8)",
 "    %cvvv    Print verbose internal information       (cumulative)",
 "    %cw NNN  Trim output to NNN columns               (default no limit)",
-"    %cX <pathname> excludes matching (possibly wild) pathnames from the grep",
+"    %cX <pathspec> e/X/clude (possibly wild) paths matching pathspec",
+"    %cX @<xfile>   e/X/clude files that match pathspec(s) in xfile",
+"    %cX-      Disable default file exclusion(s)",
+"    %cX+      Show exclusion path(s)",
 "",
 "Input is from the file list, or standard input.  Output is to standard output.",
 "The input file list path names accept the wildcards '?', '*', and '**'.",
@@ -429,7 +432,7 @@ main (argc, argv)
 	char  *ip;					/* Indirect input pathname */
 	char  *pPattern;			/* Ptr to the pattern buffer */
 
-static	char   *optstring = "?acCfFhHiIlLmMnNo:O:pP:rR:s:St:T:vVw:W:x:X:";
+static	char   *optstring = "?acCfFhHiIlLmMnNo:O:pP:rR:s:St:T:vVw:W:X:";
 
 
 	fout	 = stdout;			// The output file defaults to stdout
@@ -567,9 +570,16 @@ static	char   *optstring = "?acCfFhHiIlLmMnNo:O:pP:rR:s:St:T:vVw:W:x:X:";
 				break;
 
 			case 'x':
-				if (fexclude(optarg))
+				if (option == 'x')
+					usage();
+
+				if      (optarg[0] == '-')
+					fexcludeDefEnable(FALSE);		/* Disable default file exclusion(s) */
+				else if (optarg[0] == '+')
+					fexcludeShowExcl(TRUE);			/* Enable stdout of exclusion(s) */
+				else if (fexclude(optarg))
 					{
-					fprintf(fout, "Exclusion string fault: \"%s\"\n", optarg);
+					printf("\7Exclusion string fault: \"%s\"\n", optarg);
 					usage();
 					}
 				break;

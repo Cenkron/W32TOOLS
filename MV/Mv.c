@@ -37,7 +37,7 @@ optstring [] =
 
     char
 helpline [] =
-    {"Usage:  mv  [-?cfhlnoqrsxz]  [-X[@]xfiles]  [path\\]file_list  new_path"};
+    {"Usage:  mv  [-?cfhlnoqrsxz]  [-X...]  [path\\]file_list  new_path"};
 
     char *
 usagedoc [] = {
@@ -55,8 +55,10 @@ usagedoc [] = {
     "    -r    even if destination is /r/ead-only",
     "    -s    include /s/ystem files",
     "    -x    e/x/it on first error",
-    "    -Xxfilespec  e/X/clude files that match xfilespec",
-    "    -X@xfilelist e/X/clude files that match filespec(s) in xfilelist",
+    "    -X<pathspec> e/X/clude (possibly wild) paths that match pathspec",
+    "    -X@<xfile>   e/X/clude files that match pathspec(s) in xfile",
+	"    -X-   disable default file exclusion(s)",
+	"    -X+   show exclusion path(s)",
     "    -z    always return exit code of /z/ero",
     "",
     "The file_list may contain the wildcard characters '**', '*', and/or '?'.",
@@ -108,10 +110,16 @@ special_options (
 	{
 	switch (c)
 		{
-		case 'X':
-			optdata.flags.x = !optdata.flags.x;
+		case 'x':
+			optdata.flags.x = !optdata.flags.x;	// Lower case:
+			break;
 
-			if (fexclude(arg))
+		case 'X':
+			if      (optarg[0] == '-')			// (Upper case)
+				fexcludeDefEnable(FALSE);		/* Disable default file exclusion(s) */
+			else if (optarg[0] == '+')
+				fexcludeShowExcl(TRUE);			/* Enable stdout of exclusion(s) */
+			else if (fexclude(optarg))
 				{
 				fprintf(stderr, "Error excluding '%s'\n", arg);
 				exit(1);
@@ -134,10 +142,10 @@ main (
 
 	{
 	int		iResult;	// = 0;
-	int         lastarg;
+	int		lastarg;
 	int		c;
-	char *      dst;
-	char        src [1024];
+	char   *dst;
+	char	src [1024];
 
 	optdata.pProc[GETOPT_X] = special_options;
 

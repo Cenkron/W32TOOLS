@@ -33,7 +33,7 @@ char *aszExts []	= {".BAT", ".COM", ".EXE", ".DLL", NULL};
 /*--------------------------------------------------------------------*/
 	char * 
 usagedoc [] = {
-	"Usage:  spath [-?hnsv] [-x[@]xfiles] file_list",
+	"Usage:  spath [-?hnsv] [-X...] file_list",
 	"",
 	"Search the DOS PATH for a [list of] file[s]",
 	"The file_list may contain wildcards '?' and '*'.",
@@ -42,8 +42,10 @@ usagedoc [] = {
 	"-s           include /S/ystem files",
 	"-n           /N/o screen output",
 	"-v           /V/erbose output",
-	"-Xxfilespec  e/X/clude files that match xfilespec",
-	"-X@xfilelist e/X/clude files that match filespec(s) in xfilelist",
+	"-X <pathspec> e/X/clude (possibly wild) paths that match pathspec",
+	"-X @(xfile>   e/X/clude paths that match pathspec(s) in xfile",
+	"-X-          disable default file exclusion(s)",
+	"-X+          show exclusion path(s)",
 	"",
 	COPYRIGHT,
 	"",
@@ -67,12 +69,19 @@ main (int argc, char *argv[])
 
 	optenv = getenv("SPATH");
 
-	while ( (c=getopt(argc,argv,"hHnNsSvVx:X:?")) != EOF )
+	while ( (c=getopt(argc,argv,"hHnNsSvVX:?")) != EOF )
 		{
 		switch (tolower(c))
 			{
 			case 'x' :
-				if (fexclude(optarg))
+				if (c == 'x')
+					usage();
+
+				if      (optarg[0] == '-')
+					fexcludeDefEnable(FALSE);		/* Disable default file exclusion(s) */
+				else if (optarg[0] == '+')
+					fexcludeShowExcl(TRUE);			/* Enable stdout of exclusion(s) */
+				else if (fexclude(optarg))
 					{
 					fprintf(stderr, "Error excluding %s\n", optarg);
 					usage();

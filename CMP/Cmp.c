@@ -37,7 +37,7 @@
 
 char  *usagedoc [] =
 {
-"Usage:  cmp  [%c?abdehlLnoqQrstvxyz]  path1  [path2]  [>output_file]",
+"Usage:  cmp  [%c?abdehlLnoqQrstvXyz]  path1  [path2]  [>output_file]",
 "",
 "cmp compares files.  Various attributes and/or the data in one",
 "or more pairs of files are compared.  Comparison differences",
@@ -71,10 +71,10 @@ char  *usagedoc [] =
 "    %cn      lists all file names, but does not compare them",
 "    %cu      use UNIX mode (text file translation, also uses -d)",
 "    %cv      lists verbose information",
-"    %cx <pathname> excludes (possibly wild) matching pathnames from the compare",
-"    %cx@xfile  e/X/clude files that match spec(s) in xfile",
-"    %cx-       Disable default file exclusion(s)",
-"    %cx+       Show exclusion path(s)",
+"    %cX <pathspec> e/X/cludes (possibly wild) files matching pathspec",
+"    %cX @<xfile>   e/X/clude files that match pathspec(s) in xfile",
+"    %cX-       Disable default file exclusion(s)",
+"    %cX+       Show exclusion path(s)",
 "    %cz      returns a zero completion code even if errors",
 "",
 "Copyright (c) 1988, 1993 by J & M Software, Dallas TX - All Rights Reserved",
@@ -149,7 +149,7 @@ main (
 	char  *fnp1 = NULL;		/* Input file name pointer */
 	char  *fnp2 = NULL;		/* Input file name pointer */
 
-static	char   *optstring = "?aAbBdDeEhHlLnNoOqQrRsStT:TuUvVx:X:yYzZ";
+static	char   *optstring = "?aAbBdDeEhHlLnNoOqQrRsStT:TuUvVX:yYzZ";
 
 
 	setbuf(stdout, buffer);
@@ -241,12 +241,18 @@ static	char   *optstring = "?aAbBdDeEhHlLnNoOqQrRsStT:TuUvVx:X:yYzZ";
 				break;
 
 			case 'x':
-				if      (optarg[0] == '-')
-					fexcludeDefEnable(FALSE);		/* Disable default file exclusion(s) */
-				else if (optarg[0] == '+')
-					fexcludeShowExcl(TRUE);			/* Enable stdout of exclusion(s) */
-				else if (fexclude(optarg))
-					printf("Exclusion string fault: \"%s\"\n", optarg);
+				if (option == 'x')
+					usage();
+
+					if      (optarg[0] == '-')
+						fexcludeDefEnable(FALSE);		/* Disable default file exclusion(s) */
+					else if (optarg[0] == '+')
+						fexcludeShowExcl(TRUE);			/* Enable stdout of exclusion(s) */
+					else if (fexclude(optarg))
+						{
+						printf("\7Exclusion string fault: \"%s\"\n", optarg);
+						usage();
+						}
 				break;
 
 			case 'y':

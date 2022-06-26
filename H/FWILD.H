@@ -279,7 +279,7 @@ extern  DWORD	AttrToWin32 (int attr);		/* Convert FWILD attr to WIN32 attr */
 
 extern	char	optswch;					/* The option switch character */
 extern	char	optchar;					/* The last option character */
-extern	int	optind;							/* The current argv[] index */
+extern	int		optind;						/* The current argv[] index */
 extern	char   *optarg;						/* Pointer to option parameter */
 extern	char   *optenv;						/* Pointer to environment options */
 extern	int	fwerrno;						// fwvalid() error result

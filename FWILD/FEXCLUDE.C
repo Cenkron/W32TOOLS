@@ -56,6 +56,8 @@ static	char	*DefExcludeFiles [] =
 					NULL
 					};
 
+// Exclusion files can contain comments, lines beginning with '~'.
+
 /* ----------------------------------------------------------------------- */
 /* Private methods
 /* ----------------------------------------------------------------------- */
@@ -227,7 +229,7 @@ fexclude (				/* Exclude a path or path file from the fwild search */
 		if ((pattern[0] == '\0')	// Comment empty line
 	||  (!isgraph(pattern[0]))		// Comment blank or empty line
 	||  (isspace(pattern[0]))		// Comment line
-	||  (pattern[0] == '*'))		// Explicit comment line
+	||  (pattern[0] == '~'))		// Explicit comment line
 		{
 		if (showExcl)				// Display the comment, if enabled
 			printf("ExComment: %s\n", pattern);
