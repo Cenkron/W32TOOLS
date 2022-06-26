@@ -208,7 +208,7 @@ static	char   *optstring = "?bBcCd:D:eEf:F:iIlLn:N:oOqQrRsSt:T:vVwWy:Y:zZ";
 		do  {
 			ap = argv[optind++];
 			hp = fwinit(ap, smode);		/* Process the input list */
-			if ((fnp = fwild(hp)) == NULL)
+			if ((fnp = fwildexcl(hp)) == NULL)
 				cantopen(ap);
 			else
 				{
@@ -220,7 +220,7 @@ static	char   *optstring = "?bBcCd:D:eEf:F:iIlLn:N:oOqQrRsSt:T:vVwWy:Y:zZ";
 						}
 					else
 						cantopen(fnp);
-					} while ((fnp = fwild(hp)));
+					} while ((fnp = fwildexcl(hp)));
 				}
 			} while (optind < argc);
 		}
