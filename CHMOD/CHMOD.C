@@ -1,7 +1,5 @@
 /*********************************************************************\
                 CHMOD - change file attributes
- ---------------------------------------------------------------------
- Copyright (c) 1985-2018 Miller Micro Systems - All Rights Reserved
 \*********************************************************************/
 
 #include <windows.h>
@@ -12,10 +10,13 @@
 #include <dos.h>
 #include <fwild.h>
 #include <getoptns.h>
+#include <getopt2.h>
 
 /*--------------------------------------------------------------------*/
 #define VERSION "930730.113707"
 /*--------------------------------------------------------------------*/
+
+#define DEBUG_LEVEL 0
 
 /*--------------------------------------------------------------------*/
 //#define DIRECTORIES
@@ -36,63 +37,83 @@ int     v_flag;
 char    path_char;
 
 /**********************************************************************/
-    static char 
-usageline [] =
-#if defined(DIRECTORIES)
-	{"Usage:  chmod  [-aArRhHsS] [+arhs] [=arhs0] [-?cdqv] [-x[@]xfile] file_list"};
-#else
-	{"Usage:  chmod  [-aArRhHsS] [+arhs] [=arhs0] [-?cqv] [-x[@]xfile] file_list"};
-#endif
-
-/**********************************************************************/
 	static char 
 copyright [] =
-	{"Version 4.3 Copyright (c) 1998 J & M Software, Dallas TX - All Rights Reserved"};
+	{"Version 4.3+ Copyright (c) 1998, 2022 J & M Software, Dallas TX - All Rights Reserved"};
 
 /**********************************************************************/
 	char *
-usagedoc [] ={
-	usageline,
-	"",
-	"Change the attributes of files in the file_list to match the given parameters.",
-	"",
-	"+         add attribute",
-	"-         remove attribute (lower case), add attribute (upper case)",
-	"=         set file to these attributes",
-	"",
-	"a         unarchived",
-	"r         read-only",
-	"h         hidden",
-	"s         system",
-	"0         no attributes",
-	"",
+usagedoc [] =
+{
 #if defined(DIRECTORIES)
-	"-d        directory: change attributes on directories also",
+"Usage:  chmod  [-aArRhHsS] [+arhs] [=arhs0] [-?cdqv] [-X...] [file_list]",
+#else
+"Usage:  chmod  [-aArRhHsS] [+arhs] [=arhs0] [-?cqv] [-X...] [file_list]",
 #endif
-	"-v        verbose:   do not output filenames as they are changed",
-	"-q        query:     ask before changing each file",
-	"-x xspec  exclude:   exclude files which match xspec",
-	"-x@xlist  exclude:   exclude files which match xspec(s) in xlist",
-	"-c        compare:   do not change attributes, but",
-	"          return errorlevel 1 if file matches specified attributes",
-	"                            0 if it does not",
-	"",
-	"The file_list may contain the wild-card characters '**' '*' and/or '?'.",
-	"",
-	copyright,
-	NULL
-	};
-
-/*--------------------------------------------------------------------*/
-
-void    process (char *fnp);
-int     query (char *s);
-char ** getoptn (int *argc, char **argv);
-void    cantopen (char *fnp);
-void    procloop (char *arg, int smode);
+"",
+"Change the attributes of files in the file_list to match the given parameters.",
+"",
+"+         add attribute",
+"-         remove attribute (lower case), add attribute (upper case)",
+"=         set file to these attributes",
+"",
+"a         unarchived",
+"r         read-only",
+"h         hidden",
+"s         system",
+"0         no attributes",
+"",
+#if defined(DIRECTORIES)
+"-d        directory: change attributes on directories also",
+#endif
+"-v        verbose:   do not output filenames as they are changed",
+"-q        query:     ask before changing each file",
+"-X <pathspec> e/X/clude (possibly wild) matching pathspec",
+"-X @<xfile>   e/X/clude files that match pathspec(s) in xfile",
+"-X-       disable default file exclusion(s)",
+"-X+       show exclusion path(s)",
+"-c        compare:   do not change attributes, but",
+"          return errorlevel 1 if file matches specified attributes",
+"                            0 if it does not",
+"",
+"The file_list may contain the wild-card characters '**' '*' and/or '?'.",
+"",
+copyright,
+NULL
+};
 
 /*--------------------------------------------------------------------*/
 
+/*--------------------------------------------------------------------*/
+	int
+query(
+	char* s)
+
+	{
+	if (q_flag)
+		{
+		printf("change %-40s? [Y/N/R/QC] : ", s);
+
+		const char key = get_key(FALSE, TRUE);
+		if (key == 'y')
+			return TRUE;
+		if ((key == 'q') || (key == 'c'))
+			{
+			printf("Chmod terminated\n");
+			exit(0);
+			}
+		if (key == 'r')
+			{
+			q_flag = FALSE;
+			return TRUE;
+			}
+
+		return FALSE;
+		}
+
+	return TRUE;
+	}
+
 /*--------------------------------------------------------------------*/
 	void
 process (
@@ -102,10 +123,10 @@ process (
 	int attrib = fgetattr(fnp);
 
 	if (attrib < 0)
-		printf("Unable to get attributes: %s\n", fnp);
+		printf("\7Unable to get attributes: %s\n", fnp);
 	else if (plus_flags | minus_flags | equal_flags | do_anyway)
 		{
-		if (!c_flag)
+		if (!c_flag)	// Change flags
 			{
 			if (equal_flags | do_anyway)
 				{
@@ -119,10 +140,10 @@ process (
 				}
 
 			if (query(fnp)  &&  (fsetattr(fnp, attrib) < 0))
-				printf("Unable to change attributes: %s\n", fnp);
+				printf("\7Unable to change attributes: %s\n", fnp);
 			attrib = fgetattr(fnp);
 			}
-		else  /* c_flag */
+		else  /* c_flag, only compare flags */
 			{
 			if (equal_flags || do_anyway)
 				{
@@ -156,238 +177,245 @@ process (
 	}
 
 /*--------------------------------------------------------------------*/
-	int
-query (
-	char *s)
-
-	{
-	if (q_flag)
-		{
-		printf("change %-40s? [Y/N/R/QC] : ",s);
-
-		const char key = get_key(FALSE, TRUE);
-		if (key == 'y')
-			return TRUE;
-		if ((key == 'q')  ||  (key == 'c'))
-			{
-			printf("Chmod terminated\n");
-			exit(0);
-			}
-		if (key == 'r')
-			{
-			q_flag = FALSE;
-			return TRUE;
-			}
-        
-		return FALSE;
-		}
-    
-	return TRUE;
-	}
-
-/*--------------------------------------------------------------------*/
 
 /*--------------------------------------------------------------------*/
-	char **
-getoptn (
-	int *argc,
-	char **argv)
+	int
+configMinusOptions (
+	char	optchar,
+	char   *optarg)
 
 	{
-	char *      s;
+	int result = 0;
 
-	plus_flags  = 0;
-	minus_flags = 0;
-	equal_flags = 0;
-	do_anyway   = 0;
-	c_flag      = 0;
-	q_flag      = 0;
+#if DEBUG_LEVEL > 0
+	printf("ChmodConfig (-, %c, %s)\n", optchar, ((optarg) ? optarg : "(NULL)"));
+#endif
 
-	while (--(*argc) > 0 )
+	switch (optchar)
 		{
-		++argv;
-    
-		if ( ((*argv)[0] == '/') )
-			{
-			for (s = argv[0]+1; *s != '\0'; s++)
-				{
-				switch (tolower(*s))
-					{
-					case 'c':   ++c_flag;               break;
+		case 'c':   ++c_flag;	break;
+		case 'C':   ++c_flag;	break;
 #if defined(DIRECTORIES)
-					case 'd':   ++d_flag;               break;
+		case 'd':   ++d_flag;	break;
+		case 'D':   ++d_flag;	break;
 #endif
-					case 'q':   ++q_flag;               break;
-					case 'v':   ++v_flag;               break;
+		case 'q':   ++q_flag;	break;
+		case 'Q':   ++q_flag;	break;
 
-					case '?':   help();
+		case 'v':   ++v_flag;	break;
+		case 'V':   ++v_flag;	break;
 
-					default:    
-						fprintf(stderr, "invalid option '%c'\n", optchar);
-						usage();
-					}
-				}
-			}
-    
-		else if ( ((*argv)[0] == '-') )
-			{
-			for (s = argv[0]+1; *s != '\0'; s++)
-				{
-				switch (*s)
-					{
-					case 'a':   minus_flags |= _A_ARCH;         break;
-					case 'h':   minus_flags |= _A_HIDDEN;       break;
-					case 'r':   minus_flags |= _A_RDONLY;       break;
-					case 's':   minus_flags |= _A_SYSTEM;       break;
+		case '?':   help();
 
-					case 'A':   plus_flags  |= _A_ARCH;         break;
-					case 'H':   plus_flags  |= _A_HIDDEN;       break;
-					case 'R':   plus_flags  |= _A_RDONLY;       break;
-					case 'S':   plus_flags  |= _A_SYSTEM;       break;
-
-					case 'C':
-					case 'c':   ++c_flag;               break;
-#if defined(DIRECTORIES)
-					case 'D':
-					case 'd':   ++d_flag;               break;
-#endif
-					case 'Q':
-					case 'q':   ++q_flag;               break;
-
-					case 'V':
-					case 'v':   ++v_flag;               break;
-
-					case '?':   help();
-
-					default:    
-						fprintf(stderr, "invalid option '%c'\n", optchar);
-						usage();
-					}
-				}
-			}
-    
-		else if ((*argv)[0] == '+')
-			{
-			for (s = argv[0]+1; *s != '\0'; s++)
-				{
-				switch (tolower(*s))
-					{
-					case 'a':   plus_flags |= _A_ARCH;          break;
-					case 'h':   plus_flags |= _A_HIDDEN;        break;
-					case 'r':   plus_flags |= _A_RDONLY;        break;
-					case 's':   plus_flags |= _A_SYSTEM;        break;
-
-					default:    
-						fprintf(stderr, "invalid option '%c'\n", optchar);
-						usage();
-					}
-				}
-			}
-
-		else if (((*argv)[0] == '#') || ((*argv)[0] == '='))
-			{
-			for (s = argv[0]+1; *s != '\0'; s++)
-				{
-				switch (tolower(*s))
-					{
-					case 'a':   equal_flags |= _A_ARCH;         break;
-					case 'h':   equal_flags |= _A_HIDDEN;       break;
-					case 'r':   equal_flags |= _A_RDONLY;       break;
-					case 's':   equal_flags |= _A_SYSTEM;       break;
-					case '0':   ++do_anyway;                    break;
-
-					default:    
-						fprintf(stderr, "invalid option '%c'\n", optchar);
-						usage();
-					}
-				}
-			}
-		else
-			{
+		case 'X':
+			if      (optarg[0] == '-')			// (Upper case)
+				fexcludeDefEnable(FALSE);		/* Disable default file exclusion(s) */
+			else if (optarg[0] == '+')
+				fexcludeShowExcl(TRUE);			/* Enable stdout of exclusion(s) */
+			else if (fexclude(optarg))
+				printf("Exclusion string fault: \"%s\"\n", optarg);
 			break;
-			}
+
+
+		// Attribute settings
+
+		case 'a':   minus_flags |= _A_ARCH;		break;
+		case 'A':   minus_flags |= _A_ARCH;		break;
+		case 'h':   minus_flags |= _A_HIDDEN;	break;
+		case 'H':   minus_flags |= _A_HIDDEN;	break;
+		case 'r':   minus_flags |= _A_RDONLY;	break;
+		case 'R':   minus_flags |= _A_RDONLY;	break;
+		case 's':   minus_flags |= _A_SYSTEM;	break;
+		case 'S':   minus_flags |= _A_SYSTEM;	break;
+
+		default:    
+			fprintf(stdout, "invalid \'-\' option \'%c\'\n", optchar);
+			result = -1;
 		}
-    
-	return (argv);
+
+	return (result);
 	}
 
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+	int
+configPlusOptions (
+	char	optchar,
+	char   *optarg)
+
+	{
+	int result = 0;
+
+#if DEBUG_LEVEL > 0
+	printf("ChmodConfig (+, %c)\n", optchar);
+#endif
+
+	switch (tolower(optchar))
+		{
+		case 'a':   plus_flags  |= _A_ARCH;		break;
+		case 'h':   plus_flags  |= _A_HIDDEN;	break;
+		case 'r':   plus_flags  |= _A_RDONLY;	break;
+		case 's':   plus_flags  |= _A_SYSTEM;	break;
+
+		default:    
+			fprintf(stdout, "invalid \'+\' option '%c'\n", optchar);
+			result = -1;
+		}
+
+	return (result);
+	}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+	int
+configEqualOptions(
+	char	optchar,
+	char* optarg)
+
+	{
+	int result = 0;
+
+#if DEBUG_LEVEL > 0
+	printf("ChmodConfig (=, %c)\n", optchar);
+#endif
+
+	switch (optchar)
+		{
+		case 'a':   equal_flags &= ~_A_ARCH;	break;
+		case 'h':   equal_flags &= ~_A_HIDDEN;	break;
+		case 'r':   equal_flags &= ~_A_RDONLY;	break;
+		case 's':   equal_flags &= ~_A_SYSTEM;	break;
+
+		case 'A':   equal_flags |= _A_ARCH;		break;
+		case 'H':   equal_flags |= _A_HIDDEN;	break;
+		case 'R':   equal_flags |= _A_RDONLY;	break;
+		case 'S':   equal_flags |= _A_SYSTEM;	break;
+		case '0':   ++do_anyway;				break;
+		default:
+			fprintf(stdout, "invalid \'=\' option '%c'\n", optchar);
+			result = -1;
+		}
+
+	return (result);
+	}
+		
 /*--------------------------------------------------------------------*/
 
-/* ------------------------------------------------------------------------ */
+// diagnostics ()
+/*--------------------------------------------------------------------*/
+#if DEBUG_LEVEL > 0
+
 	void
-cantopen (
-	char *fnp)                    /* Inform user of input failure */
+diagnostics (void)
 
 	{
-	printf("\nFile not found:  %s\n", fnp);
-	}
+	printf("Plus_flags:  ");
+	printf("%c%c%c%c\n",
+		((plus_flags & _A_ARCH)   ? 'A' : 'a'),
+		((plus_flags & _A_RDONLY) ? 'R' : 'r'),
+		((plus_flags & _A_HIDDEN) ? 'H' : 'h'),
+		((plus_flags & _A_SYSTEM) ? 'S' : 's'));
+//	printf("\n");
 
-/* ------------------------------------------------------------------------ */
+	printf("Minus_flags: ");
+	printf("%c%c%c%c\n",
+		((minus_flags & _A_ARCH)   ? 'A' : 'a'),
+		((minus_flags & _A_RDONLY) ? 'R' : 'r'),
+		((minus_flags & _A_HIDDEN) ? 'H' : 'h'),
+		((minus_flags & _A_SYSTEM) ? 'S' : 's'));
+//	printf("\n");
+
+	printf("Equal_flags: ");
+	printf("%c%c%c%c\n",
+		((equal_flags & _A_ARCH)   ? 'A' : 'a'),
+		((equal_flags & _A_RDONLY) ? 'R' : 'r'),
+		((equal_flags & _A_HIDDEN) ? 'H' : 'h'),
+		((equal_flags & _A_SYSTEM) ? 'S' : 's'));
+
+	printf("  do_anyway: %s\n", ((do_anyway > 0) ? "TRUE" : "FALSE"));
+	}
+#endif
+
+/*--------------------------------------------------------------------*/
+// getopt initialization data
+/*--------------------------------------------------------------------*/
+
+OPTINIT	minusOptions = { NULL, '-', "aAhHrRsS?cqvVX:", configMinusOptions };
+OPTINIT	plusOptions  = { NULL, '+', "aAhHrRsS",        configPlusOptions  };
+OPTINIT	equalOptions = { NULL, '=', "0aAhHrRsS",       configEqualOptions };
+
+/*--------------------------------------------------------------------*/
+// main()
+/*--------------------------------------------------------------------*/
 	void
-procloop (
-	char *arg,
-	int smode)
-
-	{
-	char  *fnp;	    // = NULL;                  /* Input file name pointer */
-	char *hp = fwinit(arg, smode);             /* Process the input list */
-
-	if ((fnp = fwildexcl(hp)) == NULL)
-		cantopen(arg);
-	else
-		{
-		do  {                           /* Process one filespec */
-			if (strcmp(fnp, ".") != 0
-			&&  strcmp(fnp, "..") != 0)
-				{
-//				strupr(fnp);
-				fnreduce(fnp);
-				strsetp(fnp, path_char);
-				process(fnp);
-				}
-			} 
-		while ((fnp = fwildexcl(hp)));
-		}
-	}
-
-/* ------------------------------------------------------------------------ */
-
-/* ------------------------------------------------------------------------ */
-	int
 main (
-	int argc,
-	char *argv[])
+	int    argc,			/* Argument count */
+	char  *argv [])			/* Argument list pointer */
 
 	{
-	const int smode = FW_FILE
-					+ FW_HIDDEN
-					+ FW_SYSTEM;		/* File search mode attributes */
+	int		exitcode = 0;		// The program exit code
+	int		argIndex;
+	int		errorCode;			// The getopt2 completion code
+	int		smode	= FW_FILE;	/* File search mode attributes */
+	void   *hp		= NULL;		/* Pointer to wild file data block */
+	char   *ap		= NULL;		/* Argument pointer */
+	char   *fnp		= NULL;		/* Target file name pointer */
+	char   *envPtr	= NULL;		/* Target file name pointer */
 
-	path_char = egetpath();
+//BWJ	setbuf(stdout, fmalloc(BUFSIZ));
+	envPtr = getenv("CHMOD");
 
-	argv = getoptn(&argc, argv);		/* get option flags */
+	// Set up the switch table state machine
+
+	getoptInit(&minusOptions);
+	getoptInit(&plusOptions);
+	getoptInit(&equalOptions);
+
+	errorCode = getopt2(argc, argv, envPtr, &argIndex);
+	if (errorCode != OPTERR_NONE)
+		{
+		printf("\7Error (%d), %s\n", errorCode, getoptErrorStr());
+		exit(1);
+		}
 
 #if defined(DIRECTORIES)
 	if (d_flag)
 		smode |= FW_SUBD;
 #endif
 
-	if (argc == 0)
-		procloop("*.*", smode);
-	else
+#if DEBUG_LEVEL > 0
+	printf("Files: argIndex: %d, argc: %d\n", argIndex, argc);
+	printf("getopt2() returned (%d) \"%s\"\n", errorCode, getoptErrorStr());
+	diagnostics();
+#endif
+
+	if (argIndex >= argc)	// Default to *.* if no files specified
 		{
-		do  {
-			procloop(*argv, smode);
-			} 
-		while (*++argv);
+		argIndex = 0;
+		argc     = 1;
+		argv[0]  = "*.*";
 		}
 
-	if (q_flag || !v_flag)
-		printf("\n");
+	while (argIndex < argc)
+		{
+		ap = argv[argIndex++];
+		hp = fwinit(ap, smode);		/* Process the input list */
+		if ((fnp = fwildexcl(hp)) != NULL)
+			{
+			do  {			/* Process one filespec */
+				process(fnp);
+				} while (fnp = fwildexcl(hp));
+			}
+		else
+			{
+			exitcode = 1;
+			cantfind(ap);
+			}
+		}
 
-	return (0);
+	exit (exitcode);
 	}
 
-/* ------------------------------------------------------------------------ */
-/*                              EOF                                         */
-/* ------------------------------------------------------------------------ */
+/*--------------------------------------------------------------------*/
+/*                              EOF                                   */
+/*--------------------------------------------------------------------*/
