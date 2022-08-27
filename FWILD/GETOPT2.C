@@ -60,6 +60,7 @@
 #include  "fwild.h"
 
 #define DEBUG_LEVEL 0
+//#define DEBUG_LEVEL 3
 
 // --------------------------------------------------------------------------
 // Private definitions
@@ -675,7 +676,8 @@ printf("ST_ENDPARM (%c)\n", ch);
 					NextCH();
 					state = ST_WHTSW;
 					}
-//???				NextCH();
+				else	
+					NextCH();					// Skip over the active parm
 				break;
 
 			case ST_EOP:					// End parse

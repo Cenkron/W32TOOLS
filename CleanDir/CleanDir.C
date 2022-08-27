@@ -12,13 +12,14 @@
 \* ----------------------------------------------------------------------- */
 
 //#define  TESTMODE
-//#define  VERBOSE
 
 #include  <windows.h>
 #include  <stdio.h>
 #include  <conio.h>
 
-#include  "fwild.h"
+#include  <fwild.h>
+#include  <getoptns.h>
+#include  <getopt2.h>
 
 char	copyright [] =
 "Copyright (c) 1985, 2021 by J & M Software, Dallas TX - All Rights Reserved";
@@ -34,10 +35,34 @@ Keep = 1
 static BOOL			Running     = TRUE;
 static BOOL			Listing     = FALSE;
 static BOOL			Interactive = TRUE;
+static BOOL			Verbose     = FALSE;
 static Decision_t	Decision    = Keep;
 
 char star [2] = {'*', 0};
 char dot  [2] = {'.', 0};
+
+/* ----------------------------------------------------------------------- *\
+|  IsRootPath () - Return if the path is a root path
+\* ----------------------------------------------------------------------- */
+	static int
+IsRootPath (char *pPath)
+
+	{
+	return (*(pPath + strlen(pPath) - 1) == '\\');
+	}
+
+/* ----------------------------------------------------------------------- *\
+|  Rooted () - Return the path with a root prefix
+\* ----------------------------------------------------------------------- */
+	static char *
+Rooted (char *pPath)
+
+	{
+static char pRooted [4096] = {'\\' };
+
+	strcpy((pRooted + 1), pPath);
+	return (pRooted);
+	}
 
 /* ----------------------------------------------------------------------- *\
 |  GetKey () - Get the response key for QueryUser() (Interactive mode only)
@@ -173,16 +198,101 @@ ProcessPath (
 	BOOL             PathNotEmpty = FALSE;	// The path is not empty flag, starting as empty
 	HANDLE           sh;			// The find search handle
 	WIN32_FIND_DATA  wfd;			// The find information
-	char CurrentItem [4096];		// The current item name
+	char CurrentFile [4096];		// The current item name, assuming a file
+	char CurrentDir  [4096];		// The current directory name
 	char NewPath     [4096];		// The new base path
 
 
-#ifdef VERBOSE
-	printf("Processing \"%s\"\n", pPath);
-#endif
+	if (Verbose)
+		printf("Processing path \"%s\"\n", pPath);
 
 	strcpy(NewPath, pPath);		// Make the starting search path
 	PathCat(NewPath, star);
+
+	// The following code is a simplified abstraction from the fwild library
+
+	if ((sh = FindFirstFile(NewPath, &wfd)) != INVALID_HANDLE_VALUE)
+		{
+		BOOL   NextResult;		// Result of the next search
+		DWORD  Attr;			// Attributes of the current search
+
+		do  {
+
+			// Save the useful parameters of this search, and perform
+			// the next search, in case the current item is deleted
+
+			Attr = wfd.dwFileAttributes;
+			strcpy(CurrentFile, wfd.cFileName);
+			NextResult = FindNextFile(sh, &wfd);
+
+			if (Interesting(CurrentFile))
+				{
+				if (Attr & FILE_ATTRIBUTE_DIRECTORY)
+					{
+					strcpy(CurrentDir, CurrentFile);	// Current file is a directory
+					if (fexcludeCheck(CurrentDir))
+						{
+						if (Verbose)
+							printf(" Dir  found, \"%s\" (EXCLUDED)\n", CurrentDir);
+						}
+					else
+						{
+						if (Verbose)
+							printf(" Dir  found, \"%s\"\n", CurrentDir);
+
+						strcpy(NewPath, pPath);					// Make the child search path
+						PathCat(NewPath, CurrentDir);
+						PathNotEmpty |= ProcessPath(NewPath);	// Search it recursively
+						}
+					}
+
+				else /* (the current item is a file), and is therefore automatically excluding its parent directory */
+					{
+					if (Verbose > 1)
+						printf(" File found, \"%s\"\n", CurrentFile);
+
+					PathNotEmpty = TRUE;
+					}
+				}
+
+			}  while (NextResult  &&  Running);
+			FindClose(sh);
+		}
+
+	// If this directory is empty, try to delete it
+	// If the delete fails, the path is not empty
+
+	if ( ! PathNotEmpty)
+		PathNotEmpty |= PathDelete(pPath);
+
+	if (Verbose)
+		printf("Returning \"%s\"%s empty\n", pPath, (PathNotEmpty ? " not" : ""));
+
+	return (PathNotEmpty);
+	}
+
+/* ----------------------------------------------------------------------- *\
+|  ProcessRootPath () - Process the first level of root level recursive path processing
+\* ----------------------------------------------------------------------- */
+	void
+ProcessRootPath (
+	char  *pPath)		// Ptr to the path string
+
+	{
+	HANDLE           sh;			// The find search handle
+	WIN32_FIND_DATA  wfd;			// The find information
+	char CurrentFile [4096];		// The current item name, assuming a file
+	char CurrentDir  [4096];		// The current directory name
+	char NewPath     [4096];		// The new base path
+
+
+	if (Verbose)
+		printf("Processing root \"%s\"\n", pPath);
+
+	strcpy(NewPath, pPath);		// Make the starting search path
+	PathCat(NewPath, star);
+
+	// The following code is a simplified abstraction from the fwild library
 
 	if ((sh = FindFirstFile(NewPath, &wfd)) != INVALID_HANDLE_VALUE)
 		{
@@ -194,71 +304,63 @@ ProcessPath (
 			// the next search, in case the current item is deleted
 
 			Attr = wfd.dwFileAttributes;
-			strcpy(CurrentItem, wfd.cFileName);
+			strcpy(CurrentFile, wfd.cFileName);
 			NextResult = FindNextFile(sh, &wfd);
 
-			if ((Attr & FILE_ATTRIBUTE_DIRECTORY)
-			&&  ( ! (Attr & FILE_ATTRIBUTE_HIDDEN))
-			&&  ( ! (Attr & FILE_ATTRIBUTE_SYSTEM)))
+			if ((Interesting(CurrentFile))
+			&&  (Attr & FILE_ATTRIBUTE_DIRECTORY))
 				{
-				if (Interesting(CurrentItem))
+				strcpy(CurrentDir, CurrentFile);	// Current file is a directory
+				if (fexcludeCheck(Rooted(CurrentDir)))
 					{
-					strcpy(NewPath, pPath);	// Make the search path
-					PathCat(NewPath, CurrentItem);
-#ifdef VERBOSE
-					printf(" Dir  found, \"%s\"\n", CurrentItem);
-#endif
-					PathNotEmpty |= ProcessPath(NewPath);
+					if (Verbose)
+						printf(" Dir  found, \"%s\" (EXCLUDED)\n", CurrentDir);
+					}
+				else
+					{
+					if (Verbose)
+						printf(" Dir  found, \"%s\"\n", CurrentDir);
+
+					strcpy(NewPath, pPath);			// Make the child search path
+					PathCat(NewPath, CurrentDir);
+					ProcessPath(NewPath);			// Begin a recursive search of this directory
 					}
 				}
-		
-			else /* (the found item is a file) */
-				{
-#ifdef VERBOSE
-				printf(" File found, \"%s\"\n", CurrentItem);
-#endif
-				PathNotEmpty = TRUE;
-				}
-
 			}  while (NextResult  &&  Running);
 		FindClose(sh);
 		}
 
-	// If this directory is empty, try to delete it
-	// If the delete fails, the path is not empty
-
-	if ( ! PathNotEmpty)
-		PathNotEmpty |= PathDelete(pPath);
-
-#ifdef VERBOSE
-	printf("Returning path%s empty\n", (PathNotEmpty ? " not" : ""));
-#endif
-	return (PathNotEmpty);
+	return;
 	}
 
 /* ----------------------------------------------------------------------- *\
-|  Process () - Check and process one path
+|  Process () - Check and process the base path
 \* ----------------------------------------------------------------------- */
-	void
+	int
 Process (char *p)		// Ptr to the raw path string
 
 	{
+	int exitcode = 0;
 	char  *s = fnabspth(p);	// The processed path
 
-#ifdef VERBOSE
-	printf("Path: \"%s\"\n", s);
-#endif
+	if (Verbose)
+		printf("BasePath: \"%s\"\n", s);
 
-	if (fnchkdir(s))
-		ProcessPath(s);
-	else
+	if ( ! fnchkdir(s))
 		{
 		printf("Specified path must be a root or directory:\n");
 		printf("    \"%s\"\n", s);
 		printf("Usage: CleanDir [path1] .. [pathN]\n");
+		exitcode = 1;
 		}
+	else if (IsRootPath(p))
+		ProcessRootPath(s);
+	else
+		ProcessPath(s);
 
 	free(s);
+
+	return (exitcode);
 	}
 
 /* ----------------------------------------------------------------------- *\
@@ -307,11 +409,15 @@ help ()				/* Display help documentation */
 	"",
 	"cleandir cleans one or more directory tree(s) of all empty directories.",
 	"Trees are specified as a parameter list (or from stdin).",
-	"Using the - a switch performs the deletions unconditionally;",
-	"otherwise CleanDir asks for delete permission for each empty directory found",
+	"Using the -a switch performs the deletions unconditionally;",
+	"otherwise CleanDir asks for delete permission for each empty directory found.",
 	"",
 	"    -a  signifies deletions are to be performed unconditionally, and listed.",
 	"    -l  signifies deletions are to be denied unconditionally, but listed.",
+	"    -v  shows verbose output (0..2).",
+	"    -X <pathspec> e/X/clude (possibly wild) matching pathspec.",
+	"    -X @<xfile>   e/X/clude files that match pathspec(s) in xfile.",
+	"    -X-           disable default file exclusion(s).",
 	"",
 	"    When running interactively, valid responses are:",
 	"",
@@ -331,19 +437,18 @@ help ()				/* Display help documentation */
     }
 
 /* ----------------------------------------------------------------------- *\
-|  main () - main program
+|  configOptions () - Process command line options
 \* ----------------------------------------------------------------------- */
 	int
-main (
-	int     argc,		// Argument count
-	char  **argv)		// Argument list
+configOptions (
+	char	optchar,
+	char   *optarg)
 
 	{
-	char  *s;			// Parser temporary
+		int exitcode = 0;		// The program exit code
+		int result = 0;
 
-	while (--argc > 0 && (*++argv)[0] == '-')
-	for (s = argv[0] + 1; *s; s++)
-	    switch (tolower(*s))
+	switch (optchar)
 		{
 		case 'a':		// Signifies blanket acceptance of deletions
 		    Running		= TRUE;
@@ -359,26 +464,80 @@ main (
 		    Decision	= Keep;
 		    break;
 
+		case 'v':		// Signifies run in verbose mode
+		    ++Verbose;
+		    break;
+
+		case 'X':		// Signifies path exclusion entry
+			if      (optarg[0] == '-')
+				fexcludeDefEnable(FALSE);		/* Disable default file exclusion(s) */
+			else if (optarg[0] == '+')
+				fexcludeShowExcl(TRUE);			/* Enable stdout of exclusion(s) */
+			else if (fexclude(optarg))
+				printf("Exclusion string fault: \"%s\"\n", optarg);
+			break;
+
 		case '?':		// Lists help, and terminates the program
 		    help();
 
-		default:		// Lists usage, and terminates the program
-		    usage();
+		default:    
+			fprintf(stdout, "invalid \'-\' option \'%c\'\n", optchar);
+			exitcode = 1;
 		}
 
-#ifdef VERBOSE
-    printf("Argc: %d\n", argc);
-	printf("Path: \"%s\"\n", argv[0]);
-#endif
-
-	if (argc == 0)
-		Process(dot);
-	else
-		{
-		while (argc-- > 0)
-			Process(*(argv++));
-		}
-	return (0);
+	return (exitcode);
 	}
 
-/* -------------------------------- END ---------------------------------- */
+/*--------------------------------------------------------------------*/
+
+OPTINIT	options = { NULL, '-', "alvX:?", configOptions };
+
+/*--------------------------------------------------------------------*/
+// main()
+/*--------------------------------------------------------------------*/
+	void
+main (
+	int    argc,				// Argument count
+	char  *argv [])				// Argument list pointer
+
+	{
+	int		exitcode = 0;		// The program exit code
+	int		argIndex;
+	int		errorCode;			// The getopt2 completion code
+	char   *envPtr = NULL;		// Ptr to environment string
+
+	envPtr = getenv("CleanDir");
+
+	getoptInit(&options);		// Set up the switch table state machine
+
+	errorCode = getopt2(argc, argv, envPtr, &argIndex);
+	if (errorCode != OPTERR_NONE)
+		usage();
+
+	fexcludeInit();				// Init the path exclusion mechanism
+
+	if (argIndex >= argc)
+		{
+		if (Verbose)
+			printf("Arg: <empty>\n");
+
+		exitcode = Process(dot);
+		}
+
+	else
+		{
+		while ((argIndex < argc)  &&  (exitcode == 0))
+			{
+			if (Verbose)
+				printf("Arg: \"%s\"\n", argv[argIndex]);
+
+			exitcode = Process(argv[argIndex++]);
+			}
+		}
+
+	exit (exitcode);
+	}
+
+/*--------------------------------------------------------------------*/
+/*                              EOF                                   */
+/*--------------------------------------------------------------------*/

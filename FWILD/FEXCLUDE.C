@@ -181,6 +181,15 @@ fwildexcl (
 	}
 
 /* ----------------------------------------------------------------------- */
+	int
+fexcludeCheck (			// Check if a file/path is in the exclusion list
+	char *path)					// Path to check
+
+	{
+	return (excluded(path));
+	}
+
+/* ----------------------------------------------------------------------- */
 	void
 fexcludeDefEnable (		/* Enable/disable default exclusion paths */
 	int flag)					// True to enable exclusions
