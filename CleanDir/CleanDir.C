@@ -234,7 +234,26 @@ ProcessPath (
 						{
 						if (Verbose)
 							printf(" Dir  found, \"%s\" (EXCLUDED)\n", CurrentDir);
+
+						PathNotEmpty = TRUE;
 						}
+
+					else if (Attr & FILE_ATTRIBUTE_HIDDEN)
+						{
+						if (Verbose)
+							printf(" Dir  found, \"%s\" (HIDDEN)\n", CurrentDir);
+
+						PathNotEmpty = TRUE;
+						}
+
+					else if (Attr & FILE_ATTRIBUTE_SYSTEM)
+						{
+						if (Verbose)
+							printf(" Dir  found, \"%s\" (SYSTEM)\n", CurrentDir);
+
+						PathNotEmpty = TRUE;
+						}
+
 					else
 						{
 						if (Verbose)
@@ -316,6 +335,19 @@ ProcessRootPath (
 					if (Verbose)
 						printf(" Dir  found, \"%s\" (EXCLUDED)\n", CurrentDir);
 					}
+
+				else if (Attr & FILE_ATTRIBUTE_HIDDEN)
+					{
+					if (Verbose)
+						printf(" Dir  found, \"%s\" (HIDDEN)\n", CurrentDir);
+					}
+
+				else if (Attr & FILE_ATTRIBUTE_SYSTEM)
+					{
+					if (Verbose)
+						printf(" Dir  found, \"%s\" (SYSTEM)\n", CurrentDir);
+					}
+
 				else
 					{
 					if (Verbose)
@@ -340,25 +372,25 @@ ProcessRootPath (
 Process (char *p)		// Ptr to the raw path string
 
 	{
-	int exitcode = 0;
-	char  *s = fnabspth(p);	// The processed path
+	int    exitcode = 0;
+	char *pPath     = fnabspth(p);	// The path to process
 
 	if (Verbose)
-		printf("BasePath: \"%s\"\n", s);
+		printf("BasePath: \"%s\"\n", pPath);
 
-	if ( ! fnchkdir(s))
+	if ( ! fnchkdir(pPath))
 		{
 		printf("Specified path must be a root or directory:\n");
-		printf("    \"%s\"\n", s);
+		printf("    \"%s\"\n",pPath);
 		printf("Usage: CleanDir [path1] .. [pathN]\n");
 		exitcode = 1;
 		}
-	else if (IsRootPath(p))
-		ProcessRootPath(s);
+	else if (IsRootPath(pPath))
+		ProcessRootPath(pPath);
 	else
-		ProcessPath(s);
+		ProcessPath(pPath);
 
-	free(s);
+	free(pPath);
 
 	return (exitcode);
 	}
