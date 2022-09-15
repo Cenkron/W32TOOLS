@@ -414,8 +414,10 @@ static	char   *optstring = "?aA:cC:dDeEfF:hHiIlL:mM:nN:o:O:pP:qQrR:sStTuUvwW:VxX
 			if (hp == NULL)						/* Validate the argument */
 				printf("%s: %s\n", fwerror(), ap);
 
-			while (fnp = fwildexcl(hp))			/* Process each filespec */
+			fwExclEnable(hp, TRUE);				/* Enable file exclusion */
+			while (fnp = fwild(hp))				/* Process each filespec */
 				process(fnp);
+			hp = NULL;
 
 			if ((itemcode != 0)
 			&& ((f_flag | d_flag | t_flag)	&&	( ! q_flag)))
@@ -444,8 +446,10 @@ static	char   *optstring = "?aA:cC:dDeEfF:hHiIlL:mM:nN:o:O:pP:qQrR:sStTuUvwW:VxX
 			if (hp == NULL)						/* Validate the argument */
 				printf("%s: %s\n", fwerror(), ap);
 
-			while (fnp = fwildexcl(hp))			/* Process each filespec */
+			fwExclEnable(hp, TRUE);				/* Enable file exclusion */
+			while (fnp = fwild(hp))				/* Process each filespec */
 				process(fnp);
+			hp = NULL;
 
 			if ((itemcode != 0)
 			&& ((f_flag | d_flag | t_flag)	&&	( ! q_flag)))

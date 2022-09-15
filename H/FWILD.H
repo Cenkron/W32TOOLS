@@ -29,6 +29,10 @@ extern "C" {
 #include <SYS\STAT.H>
 #include <SYS\TIMEB.H>
 
+#include "FEXCLUDE.h"
+
+//#define		MAX_PATH	(1024)	// No idea where it is now
+
 typedef signed   __int64  INT64,  *PINT64;
 typedef unsigned __int64  UINT64, *PUINT64;
 
@@ -41,6 +45,13 @@ typedef unsigned __int64  UINT64, *PUINT64;
 #define  FW_FILE      1			/* Ordinary file request */
 #define  FW_HIDDEN    2			/* Hidden file request */
 #define  FW_SYSTEM    4			/* System file request */
+
+/* File exclusion control attributes */
+
+#define  XD_BYNAME    1			/* Check directories, unrooted */
+#define  XD_BYPATH    2			/* Check directories, rooted */
+#define  XF_BYNAME	  4			/* Check files, unrooted */
+#define  XF_BYPATH    8			/* Check files, rooted */
 
 #ifdef  FWILD_INTERNAL
 #define  FW_VOLU      8			/* Volume name request */
@@ -69,7 +80,7 @@ typedef				/* The DTA used by findf/finfn/findc */
 		{
 		char      dta_type;		/* File attribute, type */
 		UINT64    dta_size;		/* File attribute, size */
-		char      dta_name [_MAX_PATH];	/* The found filename */
+		char      dta_name [MAX_PATH];	/* The found filename */
 
 		/* NT support */
 
@@ -83,25 +94,27 @@ typedef				/* The DTA used by findf/finfn/findc */
 typedef				/* Recursive DTA list element */
 	struct dtaele
 		{
-		struct dtaele  *link;	/* Link to the next (inactive) DTA_ELE */
-		int       wild;			/* Current wild search mode */
-		int       state;		/* Current state */
-		long      fdt;			/* The file timestamp */
-		char     *proto;		/* Pointer to prototype string, first char */
-		char     *last;			/* Pointer to prototype string, last delim */
-		char     *next;			/* Pointer to prototype string, next char */
-		char     *search;		/* Pointer to current search filename */
-		char     *pattern;		/* Pointer to current pattern filename */
-		char     *found;		/* Pointer to current found filename */
-		DTA_BLK   dta;			/* The DTA used by findf/findn/findc */
+		struct dtaele  *link;		/* Link to the next (inactive) DTA_ELE */
+		int       wild;				/* Current wild search mode */
+		int       state;			/* Current state */
+		long      fdt;				/* The file timestamp */
+		char     *last;				/* Pointer to prototype string, last delim */
+		char     *next;				/* Pointer to prototype string, next char */
+		char     *search;			/* Pointer to current search filename */
+		char     *pattern;			/* Pointer to current pattern filename */
+		char     proto [MAX_PATH];	/* Curent prototype string, first char */
+		char     found [MAX_PATH];	/* Current found filename */
+		DTA_BLK   dta;				/* The DTA used by findf/findn/findc */
 		}  DTA_ELE;
 
 
 typedef				/* DTA list header */
     struct
 		{
-		DTA_ELE  *link;			/* Link to active DTA_ELE element */
-		int       mode;			/* Search file attribute */
+		DTA_ELE  *link;			/* Link to active DTA_ELE element chain */
+		int	      exActive;		/* Enable file exclusion processing */
+		int       xmode;		/* File exclusion mode */
+		int       mode;			/* Find search file attribute */
 		}  DTA_HDR;
 
 
@@ -164,13 +177,7 @@ typedef							/* strtoken() support */
 
 extern	DHV    *fwinit (char *, int);		/* Init the wild filename server */
 extern	char   *fwild (DHV *);				/* Return a wild filename */
-extern	char   *fwildexcl (DHV *);			/* Return a wild filename (respects exclusion) */
-extern	int     fexcludeInit (void);		/* Initialize the default exclusions subsystem */
-extern	int     fexclude (char *);			/* Register an exclude path (exclude) */
-extern	int     fexclude (char *);			/* Register an exclude path (exclude) */
-extern	int     fexcludeCheck (char *);		/* Check if an excluded file/path */
-extern	void	fexcludeDefEnable (int);	/* Enable/disable default file exclusion(s) */
-extern	void	fexcludeShowExcl (int);		/* Show file exclusion(s) */
+extern	void	fwExclEnable(DHV *, int);	/* Enable the file exclusion mechanism */
 extern	DHV    *fwfree (DHV *);				/* Close and free an fwild instance */
 extern	char   *fwfirst (char *);			/* Return the first matching wild filename */
 extern  int	fwtype (DHV *);					/* Return the type of the current fn */

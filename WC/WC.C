@@ -108,7 +108,11 @@ static	char   *optstring = "?dDiIlL";
 			{
 			hp = fwinit(ap, smode);		/* Process the input list */
 			if ((fnp = fwild(hp)) == NULL)
+				{
+				hp = NULL;
 				cantopen(ap);
+				}
+				
 			else
 				{
 				do  {				/* Process one filespec */
@@ -120,6 +124,7 @@ static	char   *optstring = "?dDiIlL";
 					else
 						cantopen(fnp);
 					} while ((fnp = fwild(hp)));
+				hp = NULL;
 				}
 			}
 		}
@@ -134,7 +139,10 @@ static	char   *optstring = "?dDiIlL";
 			ap = argv[optind++];
 			hp = fwinit(ap, smode);		/* Process the input list */
 			if ((fnp = fwild(hp)) == NULL)
+				{
+				hp = NULL;
 				cantopen(ap);
+				}
 			else
 				{
 				do  {				/* Process one filespec */
@@ -146,6 +154,7 @@ static	char   *optstring = "?dDiIlL";
 					else
 						cantopen(fnp);
 					} while ((fnp = fwild(hp)));
+				hp = NULL;
 				}
 			}
 		}

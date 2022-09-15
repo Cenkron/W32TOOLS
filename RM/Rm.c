@@ -88,6 +88,7 @@ usagedoc [] = {
 	"-X @<xfile>   e/X/clude paths that match pathspec(s) in xfile",
 	"-X-   disable default file exclusion(s)",
 	"-X+   show exclusion path(s)",
+	"-X=   show excluded path(s)",
 	"-ydt  remove only if /Y/ounger than dt (datetime)",
 	"-z    /Z/ero the file (make it unrecoverable - use with care)",
 	"",
@@ -119,7 +120,9 @@ main (
 			if      (optarg[0] == '-')
 				fexcludeDefEnable(FALSE);		/* Disable default file exclusion(s) */
 			else if (optarg[0] == '+')
-				fexcludeShowExcl(TRUE);			/* Enable stdout of exclusion(s) */
+				fexcludeShowConf(TRUE);			/* Enable stdout of exclusion(s) */
+			else if (optarg[0] == '=')
+				fexcludeShowExcl(TRUE);			/* Enable stdout of excluded paths(s) */
 			else if (fexclude(optarg))
 				{
 				printf("\7Exclusion string fault: \"%s\"\n", optarg);
@@ -240,17 +243,20 @@ process (
 			}
 		}
 
-	if ((fn=fwildexcl(dta)) == NULL)
+	fwExclEnable(dta, TRUE);			/* Enable file exclusion */
+	if ((fn = fwild(dta)) == NULL)
 		{
+		dta = NULL;
 		if (verbosity > 0)
 			printf("%s not found.\n", s);
 		return;
 		}
     else
 		{
-		do
+		do	{
 			proc_file(fn, dta);
-		while (fn=fwildexcl(dta));
+			} while (fn = fwild(dta));
+		dta = NULL;
 		}
 	}
 

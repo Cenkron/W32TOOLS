@@ -36,6 +36,7 @@ static BOOL			Running     = TRUE;
 static BOOL			Listing     = FALSE;
 static BOOL			Interactive = TRUE;
 static BOOL			Verbose     = FALSE;
+static int			xmode       = 0;		// Dummy, not used in the CleanDir version of fwild
 static Decision_t	Decision    = Keep;
 
 char star [2] = {'*', 0};
@@ -52,13 +53,13 @@ IsRootPath (char *pPath)
 	}
 
 /* ----------------------------------------------------------------------- *\
-|  Rooted () - Return the path with a root prefix
+|  RootedX () - Return the path with a root prefix
 \* ----------------------------------------------------------------------- */
 	static char *
-Rooted (char *pPath)
+RootedX (char *pPath)
 
 	{
-static char pRooted [4096] = {'\\' };
+static char pRooted [1024] = {'\\' };
 
 	strcpy((pRooted + 1), pPath);
 	return (pRooted);
@@ -198,9 +199,9 @@ ProcessPath (
 	BOOL             PathNotEmpty = FALSE;	// The path is not empty flag, starting as empty
 	HANDLE           sh;			// The find search handle
 	WIN32_FIND_DATA  wfd;			// The find information
-	char CurrentFile [4096];		// The current item name, assuming a file
-	char CurrentDir  [4096];		// The current directory name
-	char NewPath     [4096];		// The new base path
+	char CurrentFile [1024];		// The current item name, assuming a file
+	char CurrentDir  [1024];		// The current directory name
+	char NewPath     [1024];		// The new base path
 
 
 	if (Verbose)
@@ -233,6 +234,7 @@ ProcessPath (
 					if (fexcludeCheck(CurrentDir))
 						{
 						if (Verbose)
+//BWJ fix xmode system
 							printf(" Dir  found, \"%s\" (EXCLUDED)\n", CurrentDir);
 
 						PathNotEmpty = TRUE;
@@ -300,9 +302,9 @@ ProcessRootPath (
 	{
 	HANDLE           sh;			// The find search handle
 	WIN32_FIND_DATA  wfd;			// The find information
-	char CurrentFile [4096];		// The current item name, assuming a file
-	char CurrentDir  [4096];		// The current directory name
-	char NewPath     [4096];		// The new base path
+	char CurrentFile [1024];		// The current item name, assuming a file
+	char CurrentDir  [1024];		// The current directory name
+	char NewPath     [1024];		// The new base path
 
 
 	if (Verbose)
@@ -330,9 +332,10 @@ ProcessRootPath (
 			&&  (Attr & FILE_ATTRIBUTE_DIRECTORY))
 				{
 				strcpy(CurrentDir, CurrentFile);	// Current file is a directory
-				if (fexcludeCheck(Rooted(CurrentDir)))
+				if (fexcludeCheck(RootedX(CurrentDir)))
 					{
 					if (Verbose)
+//BWJ fix xmode system
 						printf(" Dir  found, \"%s\" (EXCLUDED)\n", CurrentDir);
 					}
 
@@ -449,7 +452,9 @@ help ()				/* Display help documentation */
 	"    -v  shows verbose output (0..2).",
 	"    -X <pathspec> e/X/clude (possibly wild) matching pathspec.",
 	"    -X @<xfile>   e/X/clude files that match pathspec(s) in xfile.",
+	"    -X+           enable showing the configuration progress.",
 	"    -X-           disable default file exclusion(s).",
+	"    -X=           enable showing excluded paths dynamically.",
 	"",
 	"    When running interactively, valid responses are:",
 	"",
@@ -504,7 +509,9 @@ configOptions (
 			if      (optarg[0] == '-')
 				fexcludeDefEnable(FALSE);		/* Disable default file exclusion(s) */
 			else if (optarg[0] == '+')
-				fexcludeShowExcl(TRUE);			/* Enable stdout of exclusion(s) */
+				fexcludeShowConf(TRUE);			/* Enable stdout of configuration */
+			else if (optarg[0] == '=')
+				fexcludeShowExcl(TRUE);			/* Enable stdout of excluded path(s) */
 			else if (fexclude(optarg))
 				printf("Exclusion string fault: \"%s\"\n", optarg);
 			break;
@@ -546,7 +553,7 @@ main (
 	if (errorCode != OPTERR_NONE)
 		usage();
 
-	fexcludeInit();				// Init the path exclusion mechanism
+	fexcludeInit(&xmode);	// Init the path exclusion mechanism
 
 	if (argIndex >= argc)
 		{

@@ -228,9 +228,9 @@ d_disp (
 
 	{
 	printf("Type:  %02X\n",	 pDta->dta_type);
-	printf("Time:  %04X\n",	 pDta->dta_time);
-	printf("Date:  %04X\n",	 pDta->dta_date);
-	printf("Size:  %-8lu\n", pDta->dta_size);
+//	printf("Time:  %04X\n",	 pDta->dta_time);
+//	printf("Date:  %04X\n",	 pDta->dta_date);
+	printf("Size:  %-8llu\n", pDta->dta_size);
 	printf("Name:  %s\n",	 pDta->dta_name);
 	}
 

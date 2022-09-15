@@ -80,7 +80,7 @@ main (int argc, char *argv[])
 				if      (optarg[0] == '-')
 					fexcludeDefEnable(FALSE);		/* Disable default file exclusion(s) */
 				else if (optarg[0] == '+')
-					fexcludeShowExcl(TRUE);			/* Enable stdout of exclusion(s) */
+					fexcludeShowConf(TRUE);			/* Enable stdout of exclusion(s) */
 				else if (fexclude(optarg))
 					{
 					fprintf(stderr, "Error excluding %s\n", optarg);
@@ -192,18 +192,20 @@ proc_dir (
 
 	if (! (dta=fwinit(s, attrib)))
 		fatalerr("fwinit() failed");
-
-	if ((fn=fwildexcl(dta)) == NULL)
+	fwExclEnable(dta, TRUE);				/* Enable file exclusion */
+	if ((fn = fwild(dta)) == NULL)
 		{
+		dta = NULL;
 		if (verbosity > 1)
 			printf("%s not found.\n", s);
 		return;
 		}
 	else
 		{
-		do
+		do	{
 			proc_file(fn, dta);
-			while (fn=fwildexcl(dta));
+			} while (fn = fwild(dta));
+		dta = NULL;
 		}
 	}
 

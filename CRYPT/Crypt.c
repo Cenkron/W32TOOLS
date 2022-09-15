@@ -149,7 +149,10 @@ main (
 			ap = argv[optind++];
 			hp = finit(ap, smode);		// Process the input list
 			if ((fnp = fwild(hp)) == NULL)
+				{
+				hp = NULL;
 				cantopen(ap);
+				}
 			else
 				{
 				do  {				// Process one filespec
@@ -175,6 +178,7 @@ main (
 						fsetattr(fnp, attr);
 						}
 					} while ((fnp = fwild(hp)));
+				hp = NULL;
 				}
 			}
 		}

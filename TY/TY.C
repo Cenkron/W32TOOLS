@@ -47,7 +47,7 @@ main (
 
 	{
 	int    smode = FW_FILE;		/* File search mode attributes */
-	char  *s;				/* Parser temporary */
+	char  *s;					/* Parser temporary */
 	void  *hp  = NULL;			/* Pointer to wild file data block */
 	char  *fnp = NULL;			/* Input file name pointer */
 	FILE  *fp  = NULL;			/* Input file descriptor */
@@ -68,6 +68,10 @@ main (
 
 				case 'g':
 					g_flag = FALSE;
+					break;
+
+				case 'h':
+					smode |= FW_HIDDEN;
 					break;
 
 				case 'l':
@@ -94,7 +98,10 @@ main (
 		do  {
 			hp = fwinit(*argv, smode);		/* Process the input list */
 			if ((fnp = fwild(hp)) == NULL)
+				{
+				hp = NULL;
 				cantopen(*argv);
+				}
 			else
 				{
 				do  {				/* Process one filespec */
@@ -106,6 +113,7 @@ main (
 					else
 						cantopen(fnp);
 					} while ((fnp = fwild(hp)));
+				hp = NULL;
 				}
 			} while (*++argv);
 		}
@@ -127,7 +135,7 @@ usage (void)		/* Display usage documentation */
 	{
 	static char  *udoc [] =
 	{
-	"Usage:  ty  [%c?fglt]  [input_file_list]  [>output_file]",
+	"Usage:  ty  [%c?fghlt]  [input_file_list]  [>output_file]",
 	"        ty  %c?  for help",
 	NULL
 	};
@@ -151,6 +159,7 @@ help (void)			/* Display help documentation */
 	"",
 	"    %cf  interposes formfeeds between files",
 	"    %cg  does not interpose a three line gap between files",
+	"    %ch  includes hidden files",
 	"    %cl  does not list file names as they are typed",
 	"    %ct  trims off all trailing white space from each line",
 	"",

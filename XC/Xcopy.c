@@ -111,6 +111,7 @@ usagedoc [] = {
 	"-X @<xfile>   e/X/clude paths that match pathspec(s) in xfile",
 	"-X-       Don't exclude the default system file exclusion(s)",
 	"-X+       Show exclusion path(s) being used",
+	"-X=       Show excluded paths",
 	"-y        copy only if source is /y/ounger than destination",
 	"-Ydt      copy only if source is /Y/ounger than 'dt'",
 	"-z        always return exit code of /z/ero",
@@ -198,7 +199,9 @@ main (
 				if      (optarg[0] == '-')
 					fexcludeDefEnable(FALSE);		/* Disable default file exclusion(s) */
 				else if (optarg[0] == '+')
-					fexcludeShowExcl(TRUE);			/* Enable stdout of exclusion(s) */
+					fexcludeShowConf(TRUE);			/* Enable stdout of exclusion(s) */
+				else if (optarg[0] == '=')
+					fexcludeShowExcl(TRUE);			/* Enable stdout of excluded path(s) */
 				else if (fexclude(optarg))
 					break;
 
@@ -308,21 +311,25 @@ main (
 
 /* ----------------------------------------------------------------------- */
 	void
-filepair (          /* Process the pathnames */
-	char  *s1,                  /* Pointer to the pathname1 string */
-	char  *dstpath             /* Pointer to the pathname2 string */
+filepair(          /* Process the pathnames */
+	char* s1,                  /* Pointer to the pathname1 string */
+	char* dstpath             /* Pointer to the pathname2 string */
 	)
-    
+
 	{
-	char  *srcname;             /* Pointer to the path1 pathname */
-	char  *dstname;             /* Pointer to the path2 pathname */
+	char* srcname;             /* Pointer to the path1 pathname */
+	char* dstname;             /* Pointer to the path2 pathname */
 
-	const int index = suffix(s1);                 /* Set pointer to construct path2 */
+	const int index = suffix(s1);       /* Set pointer to construct path2 */
 
-	char *hp = fwinit(s1, mode);		/* Find the first path1 file */
-	if ((srcname = fwildexcl(hp)) == NULL)
+	char* hp = fwinit(s1, mode);		/* Find the first path1 file */
+	fwExclEnable(hp, TRUE);				/* Enable file exclusion */
+	if ((srcname = fwild(hp)) == NULL)	/* Process files */
+		{
+		hp = NULL;
 		notfound(s1);
-
+		}
+	
 	else do  
 		{				/* Process all path1 files */
 		filesize = (__int64)(fwsize(hp));
@@ -340,7 +347,8 @@ filepair (          /* Process the pathnames */
 		process(srcname, hp, dstname, dstpath);
 
 		free(dstname);
-		} while ((srcname = fwildexcl(hp)) != NULL);
+		} while ((srcname = fwild(hp)) != NULL);
+	hp = NULL;
 	}
 
 /**********************************************************************\

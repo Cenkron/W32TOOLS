@@ -15,13 +15,12 @@
 |
 \* ----------------------------------------------------------------------- */
 
+#include  <windows.h>
 #include  <stdlib.h>
 #include  <string.h>
 #include  <direct.h>
 
 #include  "fwild.h"
-
-#define  MAX_PATH_X  (1024)
 
 /* ----------------------------------------------------------------------- */
 	int
@@ -30,7 +29,7 @@ getdir (			/* Convert a filename to absolute format */
 	char  *s)		/* Pointer to the destination path string buffer */
 
 	{
-	_getdcwd(drive, s, (MAX_PATH_X + 1));
+	_getdcwd(drive, s, (MAX_PATH));
 
 	return (strlen(s));
 	}

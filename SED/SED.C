@@ -140,7 +140,7 @@ static char *   optstring = "?fFgGkKmMsSvVX:";
 				if (optarg[0] == '-')
 					fexcludeDefEnable(FALSE);		/* Disable default file exclusion(s) */
 				else if (optarg[0] == '+')
-					fexcludeShowExcl(TRUE);			/* Enable stdout of exclusion(s) */
+					fexcludeShowConf(TRUE);			/* Enable stdout of exclusion(s) */
 				else if (fexclude(optarg))
                     {
                     printf("Exclusion string fault: \"%s\"\n", optarg);
@@ -195,13 +195,18 @@ static char *   optstring = "?fFgGkKmMsSvVX:";
             {
             ap = argv[optind++];
             hp = fwinit(ap, smode);             /* Process the input list */
-            if ((fnp = fwildexcl(hp)) == NULL)
+			fwExclEnable(hp, TRUE);				/* Enable file exclusion */
+            if ((fnp = fwild(hp)) == NULL)
+				{
+				hp = NULL;
                 cantopen(ap);
+				}
             else
                 {
                 do  {                           /* Process one filespec */
                     process(fnp);
-                    } while ((fnp = fwildexcl(hp)));
+                    } while ((fnp = fwild(hp)));
+				hp = NULL;
                 }
             }
         }

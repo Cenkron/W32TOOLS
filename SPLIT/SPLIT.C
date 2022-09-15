@@ -144,7 +144,10 @@ main (
 		do  {
 			char *	hp = fwinit(argv[optind], smode);	/* Process the input list */
 			if ((fnp = fwild(hp)) == NULL)
+				{
+				hp = NULL;
 				cantopen(argv[optind]);
+				}
 			else
 				{
 				do  {				/* Process one filespec */
@@ -156,6 +159,7 @@ main (
 					else
 						cantopen(fnp);
 					} while ((fnp = fwild(hp)));
+				hp = NULL;
 				}
 			} while (++optind < argc);
 		}

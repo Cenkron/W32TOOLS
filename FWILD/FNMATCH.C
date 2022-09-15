@@ -19,6 +19,7 @@
 |
 \* ----------------------------------------------------------------------- */
 
+#include  <windows.h>
 #include  <stdio.h>
 #include  <stdlib.h>
 #include  <string.h>
@@ -27,8 +28,6 @@
 #include  "fwild.h"
 
 // #define   CONSOLEMODETEST
-
-#define  MAX_PATH_X  (1024)
 
 static	char   *basecopy  (char *, char *);
 static	int	namematch (char *, char *);
@@ -43,8 +42,8 @@ fnmatch 		(			/* Test two filenames for filename match */
 	{
 	int    patternlen;		/* Length of the pattern extension */
 	int    testlen;			/* Length of the tested  extension */
-	char   r [MAX_PATH_X];	/* Copy of the pattern file name prefix */
-	char   s [MAX_PATH_X];	/* Copy of the tested  file name prefix */
+	char   r [MAX_PATH];	/* Copy of the pattern file name prefix */
+	char   s [MAX_PATH];	/* Copy of the tested  file name prefix */
 
 
 	if ((p == NULL)  ||  (q == NULL))

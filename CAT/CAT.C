@@ -201,7 +201,10 @@ main (argc, argv)
 				do  {
 					hp = fwinit(*argv, smode);		/* Process the input list */
 					if ((fnp = fwild(hp)) == NULL)
+						{
+						hp = NULL;
 						cantopen(*argv);
+						}
 					else
 						{
 						do  {				/* Process one filespec */
@@ -213,6 +216,7 @@ main (argc, argv)
 							else
 								cantopen(fnp);
 							} while ((fnp = fwild(hp)));
+						hp = NULL;
 						}
 					} while (*++argv);
 				}

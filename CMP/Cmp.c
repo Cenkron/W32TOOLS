@@ -75,6 +75,7 @@ char  *usagedoc [] =
 "    %cX @<xfile>   e/X/clude files that match pathspec(s) in xfile",
 "    %cX-       Disable default file exclusion(s)",
 "    %cX+       Show exclusion path(s)",
+"    %cX=       Show excluded path(s)",
 "    %cz      returns a zero completion code even if errors",
 "",
 "Copyright (c) 1988, 1993 by J & M Software, Dallas TX - All Rights Reserved",
@@ -247,7 +248,9 @@ static	char   *optstring = "?aAbBdDeEhHlLnNoOqQrRsStT:TuUvVX:yYzZ";
 					if      (optarg[0] == '-')
 						fexcludeDefEnable(FALSE);		/* Disable default file exclusion(s) */
 					else if (optarg[0] == '+')
-						fexcludeShowExcl(TRUE);			/* Enable stdout of exclusion(s) */
+						fexcludeShowConf(TRUE);			/* Enable stdout of exclusion(s) */
+					else if (optarg[0] == '=')
+						fexcludeShowExcl(TRUE);			/* Enable stdout of excluded path(s) */
 					else if (fexclude(optarg))
 						{
 						printf("\7Exclusion string fault: \"%s\"\n", optarg);
@@ -340,8 +343,10 @@ filepair1 (					/* Process the pathnames forward */
 // printf("1 hp: %p\n", hp);
 // fflush(stdout);
 
-	if ((fnp1 = fwildexcl(hp)) == NULL)
+	fwExclEnable(hp, TRUE);				/* Enable file exclusion */
+	if ((fnp1 = fwild(hp)) == NULL)
 		{
+		hp = NULL;
 		if (!bi_flag)
 			cantfind(s1);
 		}
@@ -362,7 +367,8 @@ filepair1 (					/* Process the pathnames forward */
 			}
 		else
 			process(fnp1, s2);
-		} while ((fnp1 = fwildexcl(hp)));
+		} while ((fnp1 = fwild(hp)));
+	hp = NULL;
 	}
 
 /* ----------------------------------------------------------------------- */
@@ -408,7 +414,8 @@ filepair2 (					/* Process the pathnames backward */
 	if (strlen(fnppat2) == 0)		// Handle cat -b .. . case
 		fnppat2 = ".";
 	hp = fwinit(fnppat2, filetypes);	/* Process all path2 files */
-	while ((fnp2 = fwildexcl(hp)) != NULL)
+	fwExclEnable(hp, TRUE);				/* Enable file exclusion */
+	while ((fnp2 = fwild(hp)) != NULL)
 		{
 		fnp1 = fncatpth(s1, (fnp2 + index2));
 
@@ -422,6 +429,7 @@ filepair2 (					/* Process the pathnames backward */
 		free(fnp1);
 		}
 
+	hp = NULL;
 	free(fnppat2);
 	}
 

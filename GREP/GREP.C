@@ -84,6 +84,7 @@ char  *usagedoc [] =
 "    %cX @<xfile>   e/X/clude files that match pathspec(s) in xfile",
 "    %cX-      Disable default file exclusion(s)",
 "    %cX+      Show exclusion path(s)",
+"    %cX=      Show excluded path(s)",
 "",
 "Input is from the file list, or standard input.  Output is to standard output.",
 "The input file list path names accept the wildcards '?', '*', and '**'.",
@@ -576,7 +577,9 @@ static	char   *optstring = "?acCfFhHiIlLmMnNo:O:pP:rR:s:St:T:vVw:W:X:";
 				if      (optarg[0] == '-')
 					fexcludeDefEnable(FALSE);		/* Disable default file exclusion(s) */
 				else if (optarg[0] == '+')
-					fexcludeShowExcl(TRUE);			/* Enable stdout of exclusion(s) */
+					fexcludeShowConf(TRUE);			/* Enable stdout of exclusion(s) */
+				else if (optarg[0] == '=')
+					fexcludeShowExcl(TRUE);			/* Enable stdout of excluded path(s) */
 				else if (fexclude(optarg))
 					{
 					printf("\7Exclusion string fault: \"%s\"\n", optarg);
@@ -686,8 +689,12 @@ procwild (
 
 
 	hp = fwinit(pp, smode);				/* Process the input list */
-	if ((fnp = fwildexcl(hp)) == NULL)
+	fwExclEnable(hp, TRUE);				/* Enable file exclusion */
+	if ((fnp = fwild(hp)) == NULL)
+		{
+		hp = NULL;
 		cantopen(pp);
+		}
 	else
 		{
 		do	{							/* Process one filespec */
@@ -698,7 +705,8 @@ procwild (
 				}
 			else
 				cantopen(fnp);
-			} while ((fnp = fwildexcl(hp)));
+			} while ((fnp = fwild(hp)));
+		hp = NULL;
 		}
 	}
 

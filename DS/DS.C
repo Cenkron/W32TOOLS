@@ -139,7 +139,7 @@ main (
 				if      (optarg[0] == '-')
 					fexcludeDefEnable(FALSE);		/* Disable default file exclusion(s) */
 				else if (optarg[0] == '+')
-					fexcludeShowExcl(TRUE);			/* Enable stdout of exclusion(s) */
+					fexcludeShowConf(TRUE);			/* Enable stdout of exclusion(s) */
 				else if (fexclude(optarg))
 					{
 					fprintf(stderr, "Error excluding '%s'\n", optarg);
@@ -276,9 +276,10 @@ process (
 		printf("\nfinit fail\n");
 		_exit(1);
 		}
-
-	while (fwildexcl(dta) != NULL)
+	fwExclEnable(dta, TRUE);				/* Enable file exclusion */
+	while (fwild(dta) != NULL)
 		proc_file(dta);
+	dta = NULL;
 	}
 
 /**********************************************************************/

@@ -48,6 +48,7 @@ char  *usagedoc [] =
 "    %cX @<xfile>   e/X/clude files that match pathspec(s) in xfile",
 "    %cX-      disable default file exclusion(s)",
 "    %cX+      show exclusion path(s)",
+"    %cX=      show excluded path(s)",
 "    %cy <td>  touches only if file is younger than time specified by <td>",
 "    %cz       backdates the files to 1-Jan-1980",
 "",
@@ -167,7 +168,9 @@ printf("option = %c\n", option);
 				if      (optarg[0] == '-')
 					fexcludeDefEnable(FALSE);		/* Disable default file exclusion(s) */
 				else if (optarg[0] == '+')
-					fexcludeShowExcl(TRUE);			/* Enable stdout of exclusion(s) */
+					fexcludeShowConf(TRUE);			/* Enable stdout of exclusion(s) */
+				else if (optarg[0] == '=')
+					fexcludeShowExcl(TRUE);			/* Enable stdout of excluded(s) */
 				else if (fexclude(optarg))
 					{
 					exitcode = 1;
@@ -207,14 +210,16 @@ printf("option = %c\n", option);
 		{
 		ap = argv[optind++];
 		hp = fwinit(ap, smode);		/* Process the input list */
-		if ((fnp = fwildexcl(hp)) != NULL)
+		fwExclEnable(hp, TRUE);		/* Enable file exclusion */
+		if ((fnp = fwild(hp)) != NULL)
 			{
 			do  {			/* Process one filespec */
 				t = fwgetfdt(hp);
 				if (((youngertime == 0L)  ||  (t >= youngertime))
 				&&  ((oldertime   == 0L)  ||  (t <= oldertime)))
 					process(fnp, FALSE);
-				} while (fnp = fwildexcl(hp));
+				} while (fnp = fwild(hp));
+			hp = NULL;
 			}
 		else if (c_flag)
 			trycreate(ap);

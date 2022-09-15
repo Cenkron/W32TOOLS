@@ -76,6 +76,7 @@ char  *usagedoc [] =
 "    %cX @<xfile>   e/X/clude files that match pathspec(s) in xfile",
 "    %cX-       Disable default file exclusion(s)",
 "    %cX+       Show exclusion path(s)",
+"    %cX=       Show excluded path(s)",
 "    %cy <td>   List only if younger than <td>",
 "    %cz        Exit with zero return code even if not found",
 "",
@@ -373,7 +374,9 @@ static	char   *optstring = "?aA:cC:dDeEfF:hHiIlL:mM:nN:o:O:pP:qQrR:sStTuUvwW:VxX
 				else if (optarg[0] == '-')			// (Upper case)
 					fexcludeDefEnable(FALSE);		/* Disable default file exclusion(s) */
 				else if (optarg[0] == '+')
-					fexcludeShowExcl(TRUE);			/* Enable stdout of exclusion(s) */
+					fexcludeShowConf(TRUE);			/* Enable stdout of exclusion(s) */
+				else if (optarg[0] == '=')
+					fexcludeShowExcl(TRUE);			/* Enable stdout of excluded path(s) */
 				else if (fexclude(optarg))
 					printf("Exclusion string fault: \"%s\"\n", optarg);
 				break;
@@ -424,8 +427,10 @@ static	char   *optstring = "?aA:cC:dDeEfF:hHiIlL:mM:nN:o:O:pP:qQrR:sStTuUvwW:VxX
 			if (hp == NULL)						/* Validate the argument */
 				printf("%s: %s\n", fwerror(), ap);
 
-			while (fnp = fwildexcl(hp))			/* Process each filespec */
+			fwExclEnable(hp, TRUE);				/* Enable file exclusion */
+			while (fnp = fwild(hp))				/* Process each filespec */
 				process(fnp);
+			hp = NULL;
 
 			if ((itemcode != 0)
 			&& ((f_flag | d_flag | t_flag)	&&	( ! q_flag)))
@@ -454,8 +459,10 @@ static	char   *optstring = "?aA:cC:dDeEfF:hHiIlL:mM:nN:o:O:pP:qQrR:sStTuUvwW:VxX
 			if (hp == NULL)						/* Validate the argument */
 				printf("%s: %s\n", fwerror(), ap);
 
-			while (fnp = fwildexcl(hp))			/* Process each filespec */
+			fwExclEnable(hp, TRUE);				/* Enable file exclusion */
+			while (fnp = fwild(hp))				/* Process each filespec */
 				process(fnp);
+			hp = NULL;
 
 			if ((itemcode != 0)
 			&& ((f_flag | d_flag | t_flag)	&&	( ! q_flag)))

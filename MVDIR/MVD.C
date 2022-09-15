@@ -113,6 +113,7 @@ mvdir_copy (			/* Move a directory and its contents */
 			free(p);
 			}
 		}
+	hp = NULL;
 
 	rmdir(p1);			/* Remove the source directory */
 	}

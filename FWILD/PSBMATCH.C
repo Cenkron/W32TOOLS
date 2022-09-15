@@ -10,6 +10,9 @@
 |
 |	Drive specifications, if any, are matched before matching the rest
 |
+|	This file is deprecated.  It is no longer in use, left here for historical access.
+|	This file has been removed from the build.
+|
 \* ----------------------------------------------------------------------- */
 
 #include  <windows.h>

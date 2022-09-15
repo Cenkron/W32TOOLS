@@ -72,6 +72,7 @@ usagedoc [] =
 "-X @<xfile>   e/X/clude files that match pathspec(s) in xfile",
 "-X-       disable default file exclusion(s)",
 "-X+       show exclusion path(s)",
+"-X=       show excluded path(s)",
 "-c        compare:   do not change attributes, but",
 "          return errorlevel 1 if file matches specified attributes",
 "                            0 if it does not",
@@ -211,7 +212,9 @@ configMinusOptions (
 			if      (optarg[0] == '-')			// (Upper case)
 				fexcludeDefEnable(FALSE);		/* Disable default file exclusion(s) */
 			else if (optarg[0] == '+')
-				fexcludeShowExcl(TRUE);			/* Enable stdout of exclusion(s) */
+				fexcludeShowConf(TRUE);			/* Enable stdout of exclusion(s) */
+			else if (optarg[0] == '=')
+				fexcludeShowExcl(TRUE);			/* Enable stdout of excluded path(s) */
 			else if (fexclude(optarg))
 				printf("Exclusion string fault: \"%s\"\n", optarg);
 			break;
@@ -400,11 +403,13 @@ main (
 		{
 		ap = argv[argIndex++];
 		hp = fwinit(ap, smode);		/* Process the input list */
-		if ((fnp = fwildexcl(hp)) != NULL)
+		fwExclEnable(hp, TRUE);		/* Enable file exclusion */
+		if ((fnp = fwild(hp)) != NULL)
 			{
 			do  {			/* Process one filespec */
 				process(fnp);
-				} while (fnp = fwildexcl(hp));
+				} while (fnp = fwild(hp));
+			hp = NULL;
 			}
 		else
 			{

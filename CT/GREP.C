@@ -437,8 +437,12 @@ procwild (char *pp)		/* Pointer to pathname specifier */
 
 
     hp = fwinit(pp, smode);		/* Process the input list */
-    if ((fnp = fwildexcl(hp)) == NULL)
+	fwExclEnable(pp, TRUE);		/* Enable file exclusion */
+    if ((fnp = fwild(hp)) == NULL)
+	{
+	hp = NULL;
 	cantopen(pp);
+	}
     else
 	{
 	do  {				/* Process one filespec */
@@ -449,7 +453,8 @@ procwild (char *pp)		/* Pointer to pathname specifier */
 		}
 	    else
 		cantopen(fnp);
-	    } while ((fnp = fwildexcl(hp)));
+	    } while ((fnp = fwild(hp)));
+	hp = NULL;
 	}
     }
 

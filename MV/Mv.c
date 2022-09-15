@@ -59,6 +59,7 @@ usagedoc [] = {
     "    -X@<xfile>   e/X/clude files that match pathspec(s) in xfile",
 	"    -X-   disable default file exclusion(s)",
 	"    -X+   show exclusion path(s)",
+	"    -X=   show excluded path(s)",
     "    -z    always return exit code of /z/ero",
     "",
     "The file_list may contain the wildcard characters '**', '*', and/or '?'.",
@@ -118,7 +119,9 @@ special_options (
 			if      (optarg[0] == '-')			// (Upper case)
 				fexcludeDefEnable(FALSE);		/* Disable default file exclusion(s) */
 			else if (optarg[0] == '+')
-				fexcludeShowExcl(TRUE);			/* Enable stdout of exclusion(s) */
+				fexcludeShowConf(TRUE);			/* Enable stdout of exclusion(s) */
+			else if (optarg[0] == '=')
+				fexcludeShowExcl(TRUE);			/* Enable stdout of excluded path(s) */
 			else if (fexclude(optarg))
 				{
 				fprintf(stderr, "Error excluding '%s'\n", arg);
@@ -232,8 +235,12 @@ filepair (		/* Process the pathnames */
 	const int index = suffix(s1);			/* Set pointer to construct path2 */
 
 	char *hp = fwinit(s1, attrib);		/* Find the first path1 file */
-	if ((srcname = fwildexcl(hp)) == NULL)
+	fwExclEnable(hp, TRUE);				/* Enable file exclusion */
+	if ((srcname = fwild(hp)) == NULL)
+		{
+		hp = NULL;
 		notfound(s1);
+		}
 
 	else do
 		{				/* Process all path1 files */
@@ -248,7 +255,8 @@ filepair (		/* Process the pathnames */
 
 		if (dstname)
 			free(dstname);
-		}  while ((srcname = fwildexcl(hp)) != NULL);
+		}  while ((srcname = fwild(hp)) != NULL);
+	hp = NULL;
 	}
 
 /* ----------------------------------------------------------------------- *\

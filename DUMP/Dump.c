@@ -178,7 +178,10 @@ static	char   *optstring = "?bBd:D:e:E:lLmMs:S:y";
 		ap = argv[optind++];
 		hp = fwinit(ap, smode);         /* Process the input list */
 		if ((fnp = fwild(hp)) == NULL)
+			{
+			hp = NULL;
 			cantopen(ap);
+			}
 		else
 			{
 			do  {			/* Process one filespec */
@@ -190,6 +193,7 @@ static	char   *optstring = "?bBd:D:e:E:lLmMs:S:y";
 				else
 					cantopen(fnp);
 				} while ((fnp = fwild(hp)));
+			hp = NULL;
 			}
 		}
 	}

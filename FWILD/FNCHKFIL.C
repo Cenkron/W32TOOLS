@@ -30,8 +30,6 @@
 
 #include  "fwild.h"
 
-#define  MAX_PATH_X  (1024)
-
 /* ----------------------------------------------------------------------- */
 	int						/* Return TRUE if the file exists */
 fnchkfil (					/* Verify the existence of a disk file */
@@ -40,10 +38,10 @@ fnchkfil (					/* Verify the existence of a disk file */
 	{
 	int      result;			/* The returned result */
 	DTA_BLK  dta;				/* The DTA_BLK for _findf() */
-	char     temp [MAX_PATH_X];	/* Copy of the input string */
+	char     temp [MAX_PATH];	/* Copy of the input string */
 
 
-	if ((strlen(s) >= MAX_PATH_X)
+	if ((strlen(s) >= MAX_PATH)
 	||  (strpbrk(s, "?*")))		/* Wild is disallowed */
 		return (FALSE);
 

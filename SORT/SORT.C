@@ -208,8 +208,12 @@ static	char   *optstring = "?bBcCd:D:eEf:F:iIlLn:N:oOqQrRsSt:T:vVwWy:Y:zZ";
 		do  {
 			ap = argv[optind++];
 			hp = fwinit(ap, smode);		/* Process the input list */
-			if ((fnp = fwildexcl(hp)) == NULL)
+			fwExclEnable(hp, TRUE);		/* Enable file exclusion */
+			if ((fnp = fwild(hp)) == NULL)
+				{
+				hp = NULL;
 				cantopen(ap);
+				}
 			else
 				{
 				do  {				/* Process one filespec */
@@ -220,7 +224,8 @@ static	char   *optstring = "?bBcCd:D:eEf:F:iIlLn:N:oOqQrRsSt:T:vVwWy:Y:zZ";
 						}
 					else
 						cantopen(fnp);
-					} while ((fnp = fwildexcl(hp)));
+					} while ((fnp = fwild(hp)));
+				hp = NULL;
 				}
 			} while (optind < argc);
 		}

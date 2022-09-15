@@ -32,8 +32,6 @@
 
 // #define  VOLNAMETEST
 	
-#define  MAX_PATH_X  (1024)
-
 /* ------------------------------------------------------------------------ *\
 |  Return the volume name of the disk, based on drive number
 \* ------------------------------------------------------------------------ */
@@ -42,7 +40,7 @@ _volname (
 	int n)		/* The drive number (0 for current drive) */
 
 	{
-static char  volname  [MAX_PATH_X];	/* The recovered volume name */
+static char  volname  [MAX_PATH];	/* The recovered volume name */
 static char  rootname [] = "X:\\";	/* The constructed root directory name */
 
 	DWORD    dummy;
@@ -55,7 +53,7 @@ static char  rootname [] = "X:\\";	/* The constructed root directory name */
 	if (GetVolumeInformation(
 			(n == 0) ? NULL : rootname,
 			volname,
-			MAX_PATH_X,
+			MAX_PATH,
 			&dummy,
 			&dummy,
 			&dummy,
