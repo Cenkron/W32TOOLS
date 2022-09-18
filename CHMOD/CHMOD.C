@@ -24,17 +24,14 @@
 
 #define MASK  (ATT_VOLU | ATT_SUBD)
 
-int     plus_flags;
-int     minus_flags;
-int     equal_flags;
-int     do_anyway;
-int     c_flag;
+int     plus_flags  = 0;
+int     minus_flags = 0;
+int     c_flag      = 0;
 #if defined(DIRECTORIES)
-int     d_flag;
+int     d_flag      = 0;
 #endif
-int     q_flag;
-int     v_flag;
-char    path_char;
+int     q_flag      = 0;
+int     v_flag      = 0;
 
 /**********************************************************************/
 	static char 
@@ -125,43 +122,25 @@ process (
 
 	if (attrib < 0)
 		printf("\7Unable to get attributes: %s\n", fnp);
-	else if (plus_flags | minus_flags | equal_flags | do_anyway)
+	else if (plus_flags | minus_flags)
 		{
 		if (!c_flag)	// Change flags
 			{
-			if (equal_flags | do_anyway)
-				{
-				attrib &= MASK;
-				attrib |= equal_flags;
-				}
-			else
-				{
-				attrib &= (~minus_flags);
-				attrib |= plus_flags;
-				}
+			attrib &= (~minus_flags);
+			attrib |= plus_flags;
 
 			if (query(fnp)  &&  (fsetattr(fnp, attrib) < 0))
 				printf("\7Unable to change attributes: %s\n", fnp);
 			attrib = fgetattr(fnp);
-			}
+			} 
 		else  /* c_flag, only compare flags */
 			{
-			if (equal_flags || do_anyway)
-				{
-				if ((attrib&MASK) == equal_flags)
-					exit(1);
-				else
-					exit(0);
-				}
-			else 
-				{
-				if ((plus_flags&attrib) != plus_flags)
-					exit(0);
-				else if ((minus_flags&attrib) != 0)
-					exit(0);
-				else
-					exit(1);
-				}
+			if ((plus_flags & attrib) != plus_flags)
+				exit(0);
+			else if ((minus_flags & attrib) != 0)
+				exit(0);
+			else
+				exit(1);
 			}
 		}
 
@@ -284,16 +263,19 @@ configEqualOptions(
 
 	switch (optchar)
 		{
-		case 'a':   equal_flags &= ~_A_ARCH;	break;
-		case 'h':   equal_flags &= ~_A_HIDDEN;	break;
-		case 'r':   equal_flags &= ~_A_RDONLY;	break;
-		case 's':   equal_flags &= ~_A_SYSTEM;	break;
+		case '0':   plus_flags = 0;
+					minus_flags |= (_A_ARCH | _A_HIDDEN | _A_RDONLY | _A_SYSTEM);
+					break;
 
-		case 'A':   equal_flags |= _A_ARCH;		break;
-		case 'H':   equal_flags |= _A_HIDDEN;	break;
-		case 'R':   equal_flags |= _A_RDONLY;	break;
-		case 'S':   equal_flags |= _A_SYSTEM;	break;
-		case '0':   ++do_anyway;				break;
+		case 'a':   minus_flags |= _A_ARCH;		break;
+		case 'h':   minus_flags |= _A_HIDDEN;	break;
+		case 'r':   minus_flags |= _A_RDONLY;	break;
+		case 's':   minus_flags |= _A_SYSTEM;	break;
+
+		case 'A':   plus_flags |= _A_ARCH;		break;
+		case 'H':   plus_flags |= _A_HIDDEN;	break;
+		case 'R':   plus_flags |= _A_RDONLY;	break;
+		case 'S':   plus_flags |= _A_SYSTEM;	break;
 		default:
 			fprintf(stdout, "invalid \'=\' option '%c'\n", optchar);
 			result = -1;

@@ -31,14 +31,14 @@ extern "C" {
 
 #include "FEXCLUDE.h"
 
-//#define		MAX_PATH	(1024)	// No idea where it is now
-
 typedef signed   __int64  INT64,  *PINT64;
 typedef unsigned __int64  UINT64, *PUINT64;
 
 /* ------------------------------------------------------------------------ *\
 |  fwild() internal / external definitions
 \* ------------------------------------------------------------------------ */
+
+#define FWP_PATH	(500)	// Fwild path buffers are larger than just barely adequate
 
 /* Mode request bit definitions */
 
@@ -78,56 +78,56 @@ typedef unsigned __int64  UINT64, *PUINT64;
 typedef				/* The DTA used by findf/finfn/findc */
 	struct
 		{
-		char      dta_type;		/* File attribute, type */
-		UINT64    dta_size;		/* File attribute, size */
-		char      dta_name [MAX_PATH];	/* The found filename */
+		char      dta_type;				/* File attribute, type */
+		UINT64    dta_size;				/* File attribute, size */
+		char      dta_name [FWP_PATH];	/* The found filename */
 
 		/* NT support */
 
-		int       result;		/* The returned result */
-		int       SearchAttr;	/* The original search attributes */
-		HANDLE    sh;			/* The WIN32 search handle */
-		WIN32_FIND_DATA	 wfd;	/* The WIN32 FIND_DATA structure */
+		int       result;				/* The returned result */
+		int       SearchAttr;			/* The original search attributes */
+		HANDLE    sh;					/* The WIN32 search handle */
+		WIN32_FIND_DATA	 wfd;			/* The WIN32 FIND_DATA structure */
 		}  DTA_BLK;
 
 
 typedef				/* Recursive DTA list element */
 	struct dtaele
 		{
-		struct dtaele  *link;		/* Link to the next (inactive) DTA_ELE */
-		int       wild;				/* Current wild search mode */
-		int       state;			/* Current state */
-		long      fdt;				/* The file timestamp */
-		char     *last;				/* Pointer to prototype string, last delim */
-		char     *next;				/* Pointer to prototype string, next char */
-		char     *search;			/* Pointer to current search filename */
-		char     *pattern;			/* Pointer to current pattern filename */
-		char     proto [MAX_PATH];	/* Curent prototype string, first char */
-		char     found [MAX_PATH];	/* Current found filename */
-		DTA_BLK   dta;				/* The DTA used by findf/findn/findc */
+		struct dtaele  *link;			/* Link to the next (inactive) DTA_ELE */
+		int		wild;					/* Current wild search mode */
+		int		state;					/* Current state */
+		long	fdt;					/* The file timestamp */
+		char   *pLast;					/* Pointer to prototype string, block delimiter */
+		char   *pNext;					/* Pointer to prototype string, next char */
+		char	search  [FWP_PATH];		/* Pointer to current search filename */
+		char	pattern [FWP_PATH];		/* Pointer to current pattern filename */
+		char    proto   [FWP_PATH];		/* Curent prototype string, first char */
+		char    found   [FWP_PATH];		/* Current found filename */
+		DTA_BLK   dta;					/* The DTA used by findf/findn/findc */
 		}  DTA_ELE;
 
 
 typedef				/* DTA list header */
     struct
 		{
-		DTA_ELE  *link;			/* Link to active DTA_ELE element chain */
-		int	      exActive;		/* Enable file exclusion processing */
-		int       xmode;		/* File exclusion mode */
-		int       mode;			/* Find search file attribute */
+		DTA_ELE  *link;					/* Link to active DTA_ELE element chain */
+		int	      exActive;				/* Enable file exclusion processing */
+		int       xmode;				/* File exclusion mode */
+		int       mode;					/* Find search file attribute */
 		}  DTA_HDR;
 
 
 typedef				/* File Pair (FP) structure */
 	struct
 		{
-		int       sentinel;		/* Sentinel to detect free() error */
-		int       index;		/* Index into fnp1 for tail part */
-		int       dflag;		/* TRUE if fnp2 should be constructed */ 
-		DTA_HDR  *hp;			/* Pointer to fwild structure */
-		char     *s2;			/* Pointer to dest path */
-		char     *fnp1;			/* Pointer to first filename */
-		char     *fnp2;			/* Pointer to second filename */
+		int       sentinel;				/* Sentinel to detect free() error */
+		int       index;				/* Index into fnp1 for tail part */
+		int       dflag;				/* TRUE if fnp2 should be constructed */ 
+		DTA_HDR  *hp;					/* Pointer to fwild structure */
+		char     *s2;					/* Pointer to dest path */
+		char     *fnp1;					/* Pointer to first filename */
+		char     *fnp2;					/* Pointer to second filename */
 		}  FP;
 
 

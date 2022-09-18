@@ -25,6 +25,8 @@
 |		fwfree (hp);			Close and free the fwild system instance
 |			void  *hp;			Pointer to the fwild header
 |
+|		fwfree() need only be called if aborting the fwild sequence early
+|
 \* ----------------------------------------------------------------------- */
 
 #ifdef _WIN32
@@ -44,12 +46,12 @@
 // #define	MEMORYWATCH	 1	  // Define this in the makefile to watch for memory leaks
 
 #ifdef	MEMORYWATCH
-#define	 mwfree(a)		dispose(a)
 #define	 mwprintf(a,b)	printf(a,b)
 #else
-#define	 mwfree(a)		free(a)
 #define	 mwprintf(a,b)
 #endif
+
+//define  SHOWSRCH
 
 #ifdef	VERBOSEOUT
 static void		m_disp (char *s1, char *s2);
@@ -78,11 +80,16 @@ static void		e_disp (DTA_ELE *p, char *s, int flag);
 static  char	 rwild_str [] = "/**";
 static  char	 owild_str [] = "/*.*";
 
+// -----------------------------------------------------------------------
+// Private methods
+// -----------------------------------------------------------------------
+
 static	void	 build_fn (DTA_ELE *);
 static	void	 copyn (char *, char *, int);
+static  DTA_HDR *new_header (void);
 static	DTA_ELE *new_element (void);
-static	char	*new_string (int);
-static	char	*dispose (char *);
+static	char	*new_object (int);
+static	char	*dispose_object (char *);
 static	void	 release_header (DTA_HDR *);
 static	DTA_ELE *unnest_element (DTA_ELE *);
 static	void	 fat_err (int);
@@ -91,6 +98,10 @@ static 	void     CheckVersion (void);
 #ifdef MEMORYWATCH
 static	unsigned int	AllocCount = 0;
 #endif
+
+// -----------------------------------------------------------------------
+// Private variables
+// -----------------------------------------------------------------------
 
 int			    xporlater = 0;					// TRUE if Windows XP or later (global)
 
@@ -102,14 +113,14 @@ int			    xporlater = 0;					// TRUE if Windows XP or later (global)
 // Removed because no longer in use
 //extern int	ForceDtoxtime;
 //static int *pForceDtoxtime = &ForceDtoxtime;
- 
+
 
 /* ----------------------------------------------------------------------- *\
 |  fwinit () - Initialize the fwild system for a wild search
 \* ----------------------------------------------------------------------- */
 	DTA_HDR *					/* Return a pointer to a DTA header */
 fwinit (						/* Initialize the wild filename system */
-	char *s,					/* Drive/path/filename search string */
+	char *pattern,				/* Drive/path/filename search string */
 	int fmode)					/* Find search mode to use */
 
 	{
@@ -122,18 +133,16 @@ fwinit (						/* Initialize the wild filename system */
 		// the DTA list.  Initialize the first element with the supplied
 		// prototype file name pattern.
 
-	if (fwvalid(s) != FWERR_NONE)
+	if (fwvalid(pattern) != FWERR_NONE)
 		return	(NULL);
 
 	CheckVersion();
-	owild_str[0] = rwild_str[0] = strpath(s);
-mwprintf("New header\n", AllocCount);
-	hp = (DTA_HDR *)(new_string(sizeof(DTA_HDR)));
+	owild_str[0] = rwild_str[0] = strpath(pattern);
+	hp = new_header();
 	hp->xmode = 0;					// File exclusion mode, updated by fexclude
 	hp->mode  = fmode;				// Find mode to use
-mwprintf("New element\n", AllocCount);
 	hp->link  = ep = new_element();
-	strcpy(ep->proto, s);
+	strcpy(ep->proto, pattern);
 	fnreduce(ep->proto);
 
 		// Fix up the file name pattern string if it is not complete.
@@ -175,6 +184,7 @@ fwfree (						/* Close and free the fwild system instance */
 	{
 	fexcludeClean();			// Terminate the fexclude mechanism
 	release_header(hp);
+mwprintf("Allocs (done) %d\n", AllocCount);
 	return (NULL);
 	}
 
@@ -204,7 +214,6 @@ fwild (							/* Find the next filename */
 	DTA_ELE	 *ep;
 	DTA_ELE	 *xep;
 	int		  findFail ;
-	int		  n;
 	int		  chflag;
 	int		  m_mode;
 	char	 *p;
@@ -252,60 +261,57 @@ e_disp(ep, "Main switch", FALSE);
 						chflag = FALSE;
 						if (ep->wild)
 							break;
-						ep->last = p;
+						ep->pLast = p;	// Point the last replaced proto separator
 						}
 					else
 						chflag = TRUE;
-					} while (*(++p));
+					} while (*(++p));	// Point end of active proto string
+				ep->pNext = p;			// Point end of the proto string
 
-				ep->next = p;
 				if (ep->wild)
 					{
+					int  n;			// Copy length
+
 					if (ep->wild == REC_WILD)	/* Make match pattern */
 						ep->state = RECW_F;
 					else
 						{
 						ep->state = WILD_F;
-mwprintf("New pattern\n", AllocCount);
-						if (ep->last)
+						if (ep->pLast)
 							{
-							ep->pattern = new_string((n = p - (ep->last + 1)) + 1);
-							copyn(ep->pattern, ep->last + 1, n);
+							n = (p - (ep->pLast + 1));
+							copyn(ep->pattern, (ep->pLast + 1), n);
 							}
 						else
 							{
-							ep->pattern = new_string((n = p - ep->proto) + 1);
+							n = (p - (ep->proto));
 							copyn(ep->pattern, ep->proto, n);
 							}
 						}
-mwprintf("New search\n", AllocCount);
-					if (ep->last)				/* Make search pattern */
+					if (ep->pLast)				/* Make search pattern */
 						{
-						ep->search = new_string((n = (ep->last + 1) - ep->proto) + 4);
+						n = ((ep->pLast + 1) - (ep->proto));
 						copyn(ep->search, ep->proto, n);
 						strcat(ep->search, "*.*");
 						}
 					else
-						{
-						ep->search = new_string(4);
 						strcpy(ep->search, "*.*");
-						}
 					}
 				else			/* Not wild, make only a search string */
 					{
+					int  n;		// Copy length
+
 					ep->state = NONW_F;
-mwprintf("New search\n", AllocCount);
-					ps = ep->search = new_string((n = p - ep->proto) + 5);
+					ps = ep->search;
+					n = (p - ep->proto);
 					copyn(ps, ep->proto, n);
 // printf("proto: %s\n", ep->proto	? ep->proto	 : "null" );
-// printf("last:  %s\n", ep->last	? ep->last	 : "null" );
-// printf("next:  %s\n", ep->next	? ep->next	 : "null" );
+// printf("last:  %s\n", ep->pLast	? ep->pLast	 : "null" );
+// printf("next:  %s\n", ep->pNext	? ep->pNext	 : "null" );
 // printf("srch:  %s\n", ep->search ? ep->search : "null" );
 					if (hp->mode & FW_DSTAR)	/* Check for implied ".*" */
 						{
-						p = (ep->last) ? (ep->last) : (ep->proto);
-// printf("xxxx 1 %s\n", p);
-#ifdef _WIN32
+						p = (ep->pLast) ? (ep->pLast) : (ep->proto);
 						if ((strchr(p, '.') == NULL)  &&  ( ! _fnchkdir(ep->proto)))
 							{
 							if (fnchkunc(ps))	// UNC fixup
@@ -320,26 +326,20 @@ mwprintf("New search\n", AllocCount);
 								ep->state = NONW_FX;
 								}
 							}
-#else
-						if ((strchr(p, '.') == NULL)  &&  ( ! fnchkdir(ep->proto)))
-							{
-							strcat(ps, ".*");
-							ep->state = NONW_FX;
-							}
-#endif
 						}
-#ifdef _WIN32
+
 					else if (fnchkunc(ps))	 // UNC fixup
 						{
+#ifdef SHOWSRCH
+printf("srch:  %s\n", ep->search ? ep->search : "null" );
+#endif
 						if (_findf(&ep->dta, ps, (hp->mode & FW_ALL) | FW_SUBD) != 0)
 							{
-//							strcat(ep->proto, "\\");
 							strcat(ps, "\\*.*");
 							ep->state = NONW_FX;
-							ep->last  = ep->proto + strlen(ep->proto);
+							ep->pLast  = ep->proto + strlen(ep->proto);
 							}
 						}
-#endif
 					}
 				break;
 
@@ -353,6 +353,9 @@ e_disp(ep, "RECW", FALSE);
 #endif
 				if (ep->state == RECW_F)		/* Search for file */
 					{
+#ifdef SHOWSRCH
+printf("srch:  %s\n", ep->search ? ep->search : "null" );
+#endif
 					findFail  = _findf(&ep->dta, ep->search, (hp->mode & FW_ALL) | FW_SUBD);
 					ep->state = RECW_N;
 					}
@@ -364,7 +367,6 @@ e_disp(ep, "RECW", FALSE);
 					if ((hp->link = ep = unnest_element(ep)) == NULL)
 						{
 						fwfree(hp);				/* Terminate the object */
-mwprintf("Allocs (done) %d\n", AllocCount);
 						return (NULL);			/* Return failure */
 						}
 					break;						/* Continue unnested */
@@ -381,9 +383,9 @@ e_disp(ep, "RECW", TRUE);
 					||	(strcmp(ep->dta.dta_name, "..") == 0))
 						break;
 
-					if (*ep->next)			/* Process non-terminal subd */
+					if (*ep->pNext)			/* Process non-terminal subd */
 						{
-						if (fnmatch(ep->next + 1, ep->dta.dta_name, hp->mode & FW_DSTAR))
+						if (fnmatch(ep->pNext + 1, ep->dta.dta_name, hp->mode & FW_DSTAR))
 							{
 							if (hp->exActive && (hp->xmode & XD_BYNAME) && fexcludeCheck(ep->dta.dta_name))
 								break;
@@ -399,7 +401,7 @@ e_disp(ep, "RECW", TRUE);
 								}
 							}
 						}
-					else // (not *ep->next)					/* Process terminal subd */
+					else // (not *ep->pNext)					/* Process terminal subd */
 						{
 						if (hp->exActive && (hp->xmode & XD_BYNAME) && fexcludeCheck(ep->dta.dta_name))
 							break;
@@ -420,9 +422,9 @@ e_disp(ep, "RECW", TRUE);
 
 				else if (hp->mode & FW_FLS)		/* Process file case */
 					{
-					if (*ep->next)				/* Process non-terminal file */
+					if (*ep->pNext)				/* Process non-terminal file */
 						{
-						if (fnmatch(ep->next + 1, ep->dta.dta_name, hp->mode & FW_DSTAR))
+						if (fnmatch(ep->pNext + 1, ep->dta.dta_name, hp->mode & FW_DSTAR))
 							{
 							if (hp->exActive && (hp->xmode & XF_BYNAME) && fexcludeCheck(ep->dta.dta_name))
 								break;
@@ -434,7 +436,7 @@ e_disp(ep, "RECW", TRUE);
 							return (ep->found);
 							}
 						}
-					else // (not *ep->next)		/* Process terminal file */
+					else // (not *ep->pNext)		/* Process terminal file */
 						{
 						if (hp->exActive && (hp->xmode & XF_BYNAME) && fexcludeCheck(ep->dta.dta_name))
 							break;
@@ -459,12 +461,11 @@ e_disp(ep, "RECW", TRUE);
 					{			/* Wild "." and ".." don't nest */
 					build_fn(ep);
 					xep = ep;			/* Nest the DTA element list */
-mwprintf("New element\n", AllocCount);
 					hp->link = ep = new_element();
 					ep->link = xep;
 					strcpy(ep->proto, xep->found);
 					strcat(ep->proto, rwild_str);
-					strcat(ep->proto, xep->next);
+					strcat(ep->proto, xep->pNext);
 					}
 				break;
 
@@ -479,6 +480,9 @@ e_disp(ep, "WILD", FALSE);
 #endif
 				if (ep->state == WILD_F)		/* Search for file */
 					{
+#ifdef SHOWSRCH
+printf("srch:  %s\n", ep->search ? ep->search : "null" );
+#endif
 					findFail  = _findf(&ep->dta, ep->search, (hp->mode & FW_ALL) | FW_SUBD);
 					ep->state = WILD_N;
 					}
@@ -490,7 +494,6 @@ e_disp(ep, "WILD", FALSE);
 					if ((hp->link = ep = unnest_element(ep)) == NULL)
 						{
 						fwfree(hp);				/* Terminate the object */
-mwprintf("Allocs (done) %d\n", AllocCount);
 						return (NULL);			/* Return failure */
 						}
 					break;						/* Continue unnested */
@@ -499,9 +502,9 @@ mwprintf("Allocs (done) %d\n", AllocCount);
 #ifdef	VERBOSEOUT
 e_disp(ep, "WILD", TRUE);
 #endif
-				if (*ep->next)			/* If terminal name, set match mode */
+				if (*ep->pNext)			/* If terminal name, set match mode */
 					m_mode = 0;
-				else // (not *ep->next)
+				else // (not *ep->pNext)
 					m_mode = hp->mode & FW_DSTAR;
 
 				if (!fnmatch(ep->pattern, ep->dta.dta_name, m_mode))
@@ -509,7 +512,7 @@ e_disp(ep, "WILD", TRUE);
 
 				if (ep->dta.dta_type & ATT_SUBD)		/* Check if SUBD */
 					{
-					if (*ep->next)					/* Yes, process non-terminal subd */
+					if (*ep->pNext)					/* Yes, process non-terminal subd */
 						{
 						if ((strcmp(ep->dta.dta_name,  ".") == 0)	// No
 						||	(strcmp(ep->dta.dta_name, "..") == 0))
@@ -521,13 +524,12 @@ e_disp(ep, "WILD", TRUE);
 						if (hp->exActive && (hp->xmode & XD_BYPATH) && fexcludeCheck(ep->found))
 							break;
 						xep = ep;				/* Nest the DTA element list */
-mwprintf("New element\n", AllocCount);
 						hp->link = ep = new_element();
 						ep->link = xep;
 						strcpy(ep->proto, xep->found);
-						strcat(ep->proto, xep->next);
+						strcat(ep->proto, xep->pNext);
 						}
-					else // (not *ep->next)		/* Process terminal subd */
+					else // (not *ep->pNext)		/* Process terminal subd */
 						{
 						if (hp->exActive && (hp->xmode & XD_BYNAME) && fexcludeCheck(ep->dta.dta_name))
 							break;
@@ -545,7 +547,7 @@ mwprintf("New element\n", AllocCount);
 
 				else								/* Process file */
 					{
-					if ((*ep->next == '\0')  &&  (hp->mode & FW_FLS))
+					if ((*ep->pNext == '\0')  &&  (hp->mode & FW_FLS))
 						{
 						if (hp->exActive && (hp->xmode & XF_BYNAME) && fexcludeCheck(ep->dta.dta_name))
 							break;
@@ -568,10 +570,12 @@ mwprintf("New element\n", AllocCount);
 #ifdef	VERBOSEOUT
 e_disp(ep, "NONW", FALSE);
 #endif
-#if 1
 				if (ep->state == NONW_FX)		/* Search for file */
 					{
 // printf("\nNONW: findf on \"%s\" (1)\n", ep->search);
+#ifdef SHOWSRCH
+printf("srch:  %s\n", ep->search ? ep->search : "null" );
+#endif
 					findFail  = _findf(&ep->dta, ep->search, (hp->mode & FW_ALL) | FW_SUBD);
 					if (findFail )
 						{
@@ -583,6 +587,9 @@ e_disp(ep, "NONW", FALSE);
 				if (ep->state == NONW_F)
 					{
 // printf("\nNONW: findf on \"%s\" (2)\n", ep->search);
+#ifdef SHOWSRCH
+printf("srch:  %s\n", ep->search ? ep->search : "null" );
+#endif
 					findFail  = _findf(&ep->dta, ep->search, (hp->mode & FW_ALL) | FW_SUBD);
 					}
 
@@ -593,24 +600,12 @@ e_disp(ep, "NONW", FALSE);
 					}
 
 				ep->state = NONW_N;
-#endif
-#if 0
-				if ((ep->state == NONW_FX)		  /* Search for file */
-				||	(ep->state == NONW_F))
-					{
-					findFail  = _findf(&ep->dta, ep->search, (hp->mode & FW_ALL) | FW_SUBD);
-					ep->state = NONW_N;
-					}
-				else
-					findFail  = _findn(&ep->dta);
-#endif
 
 				if (findFail )						/* If no file found... */
 					{
 					if ((hp->link = ep = unnest_element(ep)) == NULL)
 						{
 						fwfree(hp);				/* Terminate the object */
-mwprintf("Allocs (done) %d\n", AllocCount);
 						return (NULL);			/* Return failure */
 						}
 					break;						/* Continue unnested */
@@ -659,7 +654,6 @@ e_disp(ep, "NONW", TRUE);
 					{
 // printf("\nNONW_T: nesting\n");
 					xep = ep;			/* Nest the DTA element list */
-mwprintf("New element\n", AllocCount);
 					hp->link = ep = new_element();
 					ep->link = xep;
 					strcpy(ep->proto, xep->found);
@@ -673,6 +667,7 @@ mwprintf("New element\n", AllocCount);
 				fat_err(3);
 			}					// End of the state switch table
 		}						// Return to top of the state loop
+
 //	fwfree(hp);					// Terminate the object (if it were a real exit)
 	return	(NULL);				// Dummy to make the compiler happy, never taken
 	}
@@ -690,9 +685,9 @@ build_fn (ep)					/* Build the found filename in the DTA */
 	int	  n;
 	char  ch;
 
-	if (ep->last)
+	if (ep->pLast)
 		{
-		n = ep->last - ep->proto + 1;
+		n = ep->pLast - ep->proto + 1;
 		copyn(ep->found, ep->proto, n);
 		if (strlen(ep->found) > 0)
 			{
@@ -722,35 +717,45 @@ copyn (p2, p1, n)				/* Copy n bytes from p1 to p2 */
 	}
 
 /* ----------------------------------------------------------------------- */
+	static DTA_HDR *			/* Return a pointer to the new DTA header */
+new_header ()
+
+	{
+	DTA_HDR *hp = (DTA_HDR *)(new_object(sizeof(DTA_HDR)));
+mwprintf("New header %d\n", AllocCount);
+	return (hp);
+	}
+
+/* ----------------------------------------------------------------------- */
 	static DTA_ELE *			/* Return a pointer to the new DTA element */
 new_element ()					/* Allocate an initialized DTA element */
 
 	{
 	DTA_ELE	 *ep;
 
-mwprintf("New element\n", AllocCount);
-	ep = (DTA_ELE *)(new_string(sizeof(DTA_ELE)));
-	ep->link	= NULL;
-	ep->wild	= NOT_WILD;
-	ep->state	= FRESH;
-	ep->last	= NULL;
-	ep->next	= NULL;
-	ep->search	= NULL;
-	ep->pattern = NULL;
-	ep->proto[0] = '\0';
-	ep->found[0] = '\0';
+	ep = (DTA_ELE *)(new_object(sizeof(DTA_ELE)));
+	ep->link	   = NULL;
+	ep->wild	   = NOT_WILD;
+	ep->state	   = FRESH;
+	ep->pLast	   = NULL;
+	ep->pNext	   = NULL;
+	ep->search[0]  = '\0';
+	ep->pattern[0] = '\0';
+	ep->proto[0]   = '\0';
+	ep->found[0]   = '\0';
+mwprintf("New element %d\n", AllocCount);
 	return (ep);
 	}
 
 /* ----------------------------------------------------------------------- */
 	static char *				/* Return a pointer to the new block */
-new_string (size)				/* Allocate a block of string memory */
+new_object (size)				/* Allocate a block of memory */
 	int	 size;					/* Size of memory to allocate */
 
 	{
 	char  *p;
 
-	if ((p = malloc(size)) == NULL)
+	if ((p = calloc(size, 1)) == NULL)
 		fat_err(1);
 #ifdef MEMORYWATCH
 	else
@@ -761,15 +766,14 @@ new_string (size)				/* Allocate a block of string memory */
 
 /* ----------------------------------------------------------------------- */
 	static char *				/* Always returns NULL */
-dispose (						/* Free a block of string memory */
-	char  *s)					/* Pointer to string to free */
+dispose_object (				/* Free a block of object memory */
+	char  *s)					/* Pointer to object to free */
 
 	{
 	if (s != NULL)
 		{
 		free(s);
 #ifdef MEMORYWATCH
-mwprintf("Free object\n", AllocCount);
 		--AllocCount;
 #endif
 		}
@@ -785,8 +789,8 @@ release_header (hp)				/* Release a header and all its elements */
 	while (hp->link != NULL)					/* Release all DTA elements */
 		hp->link = unnest_element(hp->link);
 
-mwprintf("Free header\n", AllocCount);
-	mwfree((char *)(hp));						/* Then, release the header */
+	dispose_object((char *)(hp));						/* Then, release the header */
+mwprintf("Free header %d\n", AllocCount);
 	}
 
 /* ----------------------------------------------------------------------- */
@@ -799,12 +803,9 @@ unnest_element (				/* Unnest a DTA element */
 
 	if (ep != NULL)
 		{
-		if (ep->search)							/* Release the search name */
-			mwfree((char *)(ep->search));
-		if (ep->pattern)						/* Release the pattern name */
-			mwfree((char *)(ep->pattern));
 		eplink = ep->link;						/* Point the successor */
-		mwfree((char *)(ep));					/* Release the element */
+		dispose_object((char *)(ep));					/* Then, release the element */
+mwprintf("Free element %d\n", AllocCount);
 		}
 	else
 		eplink = NULL;							/* There was no element */
@@ -936,13 +937,13 @@ e_disp(ep, s, flag)
 	if (ep->proto[0])
 		printf("Prototype__%s\n",	ep->proto);
 
-	if (ep->last)
-		printf("Last_______%3d\n",	ep->last - ep->proto);
+	if (ep->pLast)
+		printf("Last_______%3d\n",	ep->pLast - ep->proto);
 	else
 		printf("Last_______  0\n");
 
-	if (ep->next)
-		printf("Next_______%3d\n",	ep->next - ep->proto);
+	if (ep->pNext)
+		printf("Next_______%3d\n",	ep->pNext - ep->proto);
 	else
 		printf("Next_______  0\n");
 
@@ -959,8 +960,6 @@ e_disp(ep, s, flag)
 		{
 		printf("DTA.name___%s\n",	ep->dta.dta_name);
 		printf("DTA.type___%04X\n", ep->dta.dta_type);
-//		printf("DTA.time___%04X\n", ep->dta.dta_time);	// Field removed in past
-//		printf("DTA.date___%04X\n", ep->dta.dta_date);	// Field removed in past
 		printf("DTA.size___%u\n",	(int)(ep->dta.dta_size));
 		}
 
