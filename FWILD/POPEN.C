@@ -44,39 +44,38 @@ popen (					/* Build path and open() a file */
 	int    perm)		/* Create permission */
 
 	{
-	int    finished = 0;	/* Finished flag */
+	int    finished = 0;	/* Try once more after creating the directory string */
 	int    fd;				/* File number or error code */
-	int    SkipCount;		/* Ignore counter for the do loop */
 	char  *p;				/* Pointer into the temporary string */
 	char   temp [1024];		/* Temporary path/filename string */
 
 
-				/* Allow for possible UNC path */
-	SkipCount = (strncmp("\\\\", s, 2) == 0) ? (2) : (0);
-
+	strcpy(&temp[0], s);
+	p = PointPastPrefix(temp, TRUE);	// Skip over any prefix, single mode
 	for (;;)
 		{
-		if (((fd = open(s, mode, perm)) >= 0)  ||  finished++)
+		if (((fd = open(s, mode, perm)) >= 0) || finished++)
 			break;			// File successfully opened
 
 		if ((mode & (O_CREAT | O_WRONLY | O_RDWR)) == 0)
 			break;			// No intent to write, just report error
 
-		p = &temp[0];		// Attempt to build the path
+		// Failed; skip past a possible root separator,
+		// and attempt to build the path, one directory at a time
+
 		do  {
-			strcpy(&temp[0], s);
-			if ((p = strpbrk((p + 1), "/\\"))
-			&& (--SkipCount < 0))	/* Skip over the UNC part of the path */
+			if ((p = strpbrk((p + 1), "/\\")) != NULL)
 				{
 //printf("\npopen: (%d) \"%s\"  \"%d\"\n", count, &temp[0], (p - &temp[0]));
-				*p = '\0';
-				if (( ! fnchkdir(&temp[0]))
-				&& ((fd = mkdir(&temp[0])) != 0))
+				*p = '\0';							// Truncate the path
+				if (( ! fnchkdir(&temp[0]))			// Accept existing directory
+				&& ((fd = mkdir(&temp[0])) != 0))	// Make missing directory
 					break;	// Path building complete
 				}
-			} while (p);
+			strcpy(&temp[0], s);	// Recopy to reverse the truncation
+			} while (p); // do-while
+		} // for
 
-		}
 	return  (fd);
 	}
 

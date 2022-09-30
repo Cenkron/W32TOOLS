@@ -70,7 +70,6 @@ usagedoc [] = {
 /**********************************************************************/
 
 int	main         (int, char**);
-int	suffix       (char *s);
 void	catpth       (char *s, char *t);
 void	error        (char *filename, char *message);
 void	fatal        (char *filename, char *message);
@@ -221,18 +220,18 @@ main (
 	}
 
 /* ----------------------------------------------------------------------- */
-
-/* ----------------------------------------------------------------------- */
 	void
-filepair (		/* Process the pathnames */
-	char  *s1,			/* Pointer to the pathname1 string */
-	char  *dstpath)		/* Pointer to the pathname2 string */
+filepair (					/* Process the pathnames */
+	char  *s1,				/* Pointer to the pathname1 string */
+	char  *dstpath)			/* Pointer to the pathname2 string */
 
 	{
-	char  *srcname;		/* Pointer to the path1 pathname */
-	char  *dstname;		/* Pointer to the path2 pathname */
+	int    CatIndex;		/* Concatenation index of the path */
+	int    TermIndex;		/* Termination index of the path (not used here) */
+	char  *srcname;			/* Pointer to the path1 pathname */
+	char  *dstname;			/* Pointer to the path2 pathname */
 
-	const int index = suffix(s1);			/* Set pointer to construct path2 */
+	fnParse(s1, &CatIndex, &TermIndex);	/* Set pointer to construct path2 */
 
 	char *hp = fwinit(s1, attrib);		/* Find the first path1 file */
 	fwExclEnable(hp, TRUE);				/* Enable file exclusion */
@@ -247,7 +246,7 @@ filepair (		/* Process the pathnames */
 		if (optdata.flags.f)
 			dstname = fncatpth(dstpath, fntail(srcname));
 		else
-			dstname = fncatpth(dstpath, (srcname + index));
+			dstname = fncatpth(dstpath, (srcname + CatIndex));
 
 //debug(("before process('%s', '%s', '%s')\n", srcname, dstname, dstpath));
 
@@ -432,42 +431,6 @@ err_exit:
 	}
 
 /* ----------------------------------------------------------------------- */
-
-/* ----------------------------------------------------------------------- */
-	int				/* Return the index to the filename part */
-suffix (
-	char  *s)		/* Point the non-directory tail of path s */
-	{
-	int    index = 0;		/* Index to filename part of path s */
-	char   ch;			/* Temporary character variable */
-	char  *temp;		/* Pointer to a temporary string buffer */
-	char  *p;			/* Pointer to a temporary string buffer */
-
-	if ((p = temp = strdup(s)) != NULL)
-		{
-		fnreduce(temp);
-
-		do  {
-			if ((ch = *p) != '\0')
-				++p;
-			if ((ch == '\0') || (ch == ':') || (ch == '/') || (ch == '\\'))
-				{
-				const char cs = *p;
-				*p = '\0';
-				if (fnchkdir(temp))
-					index = (p - temp);
-				else
-					break;
-				*p = cs;
-				}
-			} while (ch);
-
-		free(temp);
-		}
-
-	return (index);
-	}
-
 /*--------------------------------------------------------------------*/
 	void
 catpth (

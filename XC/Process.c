@@ -119,44 +119,6 @@ move (
 
 /* ----------------------------------------------------------------------- */
 
-/* ----------------------------------------------------------------------- */
-	int                         /* Return the index to the filename part */
-suffix (                        /* Point the non-directory tail of path s */
-	char  *s)                   /* Pointer to the pathname string */
-
-	{
-	int    index = 0;           /* Index to filename part of path s */
-	char   ch;                  /* Temporary character variable */
-	char  *temp;                /* Pointer to a temporary string buffer */
-	char  *p;                   /* Pointer to a temporary string buffer */
-
-	if ((p = temp = strdup(s)) != NULL)
-		{
-		fnreduce(temp);
-
-		index = 0;
-		do  {
-			if ((ch = *p) != '\0')
-				++p;
-			if ((ch == '\0') || (ch == ':') || (ch == '/') || (ch == '\\'))
-				{
-				const char cs = *p;
-				*p = '\0';
-				if (fnchkdir(temp))
-					index = (p - temp);
-//				else				// This code breaks UNC copies
-//					break;
-// printf("test(%2d): \"%s\"\n", index, temp);
-				*p = cs;
-				}
-			} while (ch);
-
-		free(temp);
-		}
-
-	return index;
-	}
-
 /*--------------------------------------------------------------------*/
 	EXPORT void
 catpth (

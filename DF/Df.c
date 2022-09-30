@@ -46,6 +46,34 @@ usagedoc[] = {
 	"",
 	NULL};
 
+/**********************************************************************/
+	static void
+		PreparePath(			// Prepare the buffer
+			char* s)		// Ptr to the argument string
+
+	{
+	char* p;			// Pointer past after the prefix
+
+	if ((p = QueryUNCPrefix(s)) != NULL)
+		{
+		unc = TRUE;			// Remember this
+//		*p++ = '\\';		// Make it "UNC\"
+		*p = '\0';			// Terminate the string
+		}
+	else if ((p = QueryDrivePrefix(s, TRUE)) != NULL)	// Single mode
+		{
+		unc = FALSE;		// Remember this
+		*p++ = '\\';		// Make it "X;\"
+		*p = '\0';			// Terminate the string
+		}
+	else // (no prefix)
+		{
+		unc = FALSE;		// Remember this
+		sprintf(s, "%c:\\", (char)(((int)('A') + getdrive() - 1)));
+		}
+	return;
+	}
+
 /*------------------------------------------------------------------*/
 	int
 main (
@@ -76,14 +104,22 @@ main (
 
 	if (optind >= argc)
 		{
-		sprintf(PathName, "%c:\\", (char)(((int)('A') + getdrive() - 1)));
 		unc = FALSE;
+		sprintf(PathName, "%c:\\", (char)(((int)('A') + getdrive() - 1)));
 		result |= process();
 		}
 	else
 		{
 		while (optind < argc)
 			{
+			strcpy(PathName, argv[optind]);
+			PreparePath(PathName);	// Prepare the buffer
+			result |= process();
+			++optind;
+			}
+		}
+
+#if 0 // Old version
 			if ( ! fnchkunc(argv[optind]))
 				{
 				sprintf(PathName, "%c:\\", (char)(toupper(*argv[optind])));
@@ -96,10 +132,7 @@ main (
 				fnreduce(PathName);
 				unc = TRUE;
 				}
-			result |= process();
-			++optind;
-			}
-		}
+#endif
 	return (0);
 	}
 
@@ -121,7 +154,22 @@ process (void)
 	DWORD   Clusters          = 0;
 
 
-// This code now does comprehend UNC pathnames
+	if (unc)
+		{
+		INT64    dummy   = (-1);
+		if ( ! GetDiskFreeSpaceEx(PathName,
+				(PULARGE_INTEGER)(&userfreespace),
+				(PULARGE_INTEGER)(&dummy),
+				(PULARGE_INTEGER)(&dummy)))
+			{
+			fprintf(stderr, "\007DF: Disk free space test failed (%lu) for \"%s\"\n", GetLastError(), PathName);
+			return (1);
+			}
+		printf("%s  Total bytes\n", km_bytes(userfreespace));
+		return (1);
+		}
+
+
 
 	char *pszAbsolutePath = fnabspth(PathName);
 	if (pszAbsolutePath != NULL)

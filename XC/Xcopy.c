@@ -311,25 +311,29 @@ main (
 
 /* ----------------------------------------------------------------------- */
 	void
-filepair(          /* Process the pathnames */
-	char* s1,                  /* Pointer to the pathname1 string */
-	char* dstpath             /* Pointer to the pathname2 string */
+filepair(     				/* Process the pathname pairs */
+	char* s1,				/* Pointer to the pathname1 string */
+	char* dstpath			/* Pointer to the pathname2 string */
 	)
 
 	{
-	char* srcname;             /* Pointer to the path1 pathname */
-	char* dstname;             /* Pointer to the path2 pathname */
+	int    CatIndex;		/* Concatenation index of the path */
+	int    TermIndex;		/* Termination index of the path (not used here) */
+	char *srcname;          /* Pointer to the path1 pathname */
+	char *dstname;          /* Pointer to the path2 pathname */
+	char *hp;				/* FWILD object pointer */
 
-	const int index = suffix(s1);       /* Set pointer to construct path2 */
+	fnParse(s1, &CatIndex, &TermIndex);	/* Set pointer to construct path2 */
+	fnreduce(dstpath);
 
-	char* hp = fwinit(s1, mode);		/* Find the first path1 file */
+	hp = fwinit(s1, mode);				/* Find the first path1 file */
 	fwExclEnable(hp, TRUE);				/* Enable file exclusion */
 	if ((srcname = fwild(hp)) == NULL)	/* Process files */
 		{
 		hp = NULL;
 		notfound(s1);
 		}
-	
+
 	else do  
 		{				/* Process all path1 files */
 		filesize = (__int64)(fwsize(hp));
@@ -337,12 +341,13 @@ filepair(          /* Process the pathnames */
 // printf("src: \"%s\"\n", srcname);
 // printf("dp:  \"%s\"\n", dstpath);
 // printf("tail:\"%s\"\n", fntail(srcname));
-// printf("ndx: \"%s\"\n", (srcname + index));
+// printf("ndx: \"%s\"\n", (srcname + CatIndex));
+// fflush(stdout);
 
 		if (azFlags.f)
 			dstname = fncatpth(dstpath, fntail(srcname));
 		else
-			dstname = fncatpth(dstpath, (srcname + index));
+			dstname = fncatpth(dstpath, (srcname + CatIndex));
 
 		process(srcname, hp, dstname, dstpath);
 

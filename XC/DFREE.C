@@ -11,6 +11,8 @@ Copyright (c) 1986-2018 by J & M Software, Dallas TX - All Rights Reserved
 
 #include <windows.h>
 #include <stdio.h>
+
+#include "fwild.h"
 #include "xcopy.h"
 
 /**********************************************************************/
@@ -24,10 +26,28 @@ dfree (
 	INT64    retval  = (-1);
 	INT64    dummy;
 	char    *pBuffer;
+	char    *pPast;
 	char     buffer [1024];
 
 
 	strcpy(buffer, path);
+	if ((pPast = QueryUNCPrefix(buffer)) != NULL)
+		{
+		*pPast = '\0';					// Terminate the string
+		pBuffer = buffer;				// Point it
+		}
+	else if ((pPast = QueryDrivePrefix(buffer, TRUE)) != NULL)		// Single mode
+		{
+		*pPast++ = '\\';				// Make it "X;\"
+		*pPast = '\0';					// Terminate the string
+		pBuffer = buffer;				// Point it
+		}
+	else // (no prefix)
+		{
+		pBuffer = NULL;					// Pass NULL for current drive
+		}
+
+#if 0	// Old version
 	if ((buffer[0] == '\\')  &&  (buffer[1] == '\\'))	// If a UNC path...
 		{
 		int  Index = 2;				// Skip over the initial "\\"
@@ -38,6 +58,7 @@ dfree (
 		while ((buffer[Index] != '\\')  &&  (buffer[Index] != '\0'))
 			++Index;				// Skip over the first element
 		buffer[Index++] = '\\';		// Terminate it with a '\'
+
 		buffer[Index]   = '\0';		// Pass "\\compname\destprefix\" for a UNC path
 		pBuffer         = buffer;	// Point it
 		}
@@ -49,6 +70,7 @@ dfree (
 		}
 	else							// Not UNC and not X: => is a relative path
 		pBuffer   = NULL;			// Pass NULL to use current drive
+#endif
 
 	if ( ! GetDiskFreeSpaceEx(pBuffer,
 			(PULARGE_INTEGER)(&retval),

@@ -29,8 +29,7 @@ fntail (				/* Return pointer to the last component of path s */
 	{
 	char  *p;			/* Temporary pointer into the path string */
 
-	if (p = strchr(s, ':'))	/* Skip over the drive spec */
-		s = p + 1;
+	s = PointPastPrefix(s, TRUE);	/* Skip over the path prefix (drive spec) */
 
 				/* Skip over all path delimiters */
 

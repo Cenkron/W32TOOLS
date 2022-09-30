@@ -132,7 +132,6 @@ void	filepair2 (char *, char *);
 void	process   (char *, char *);
 void	cantfind  (char *);
 void	f_err     (char *);
-int		suffix    (char *s);
 int		putdiff   (int, char *);
 int		datacomp  (int fd1, int fd2);
 int		unixcomp  (int fd1, int fd2);
@@ -307,10 +306,23 @@ static	char   *optstring = "?aAbBdDeEhHlLnNoOqQrRsStT:TuUvVX:yYzZ";
 		fflush(stdout);
 		}
 
-	filepair1(fnp1, fnp2);
+	if (fnchkfil(fnp2))		// If two files specified,
+		{
+		if (fnchkfil(fnp1))
+			process(fnp1, fnp2);	// Compare the two files.
+		else
+			f_err("If pathname2 is a file, pathname1 must also be a file");
+		}
+	else // fnp2 is not a file; it is either a directory or is wild
+		{
+		if (fnchkfil(fnp1))
+			bi_flag = FALSE;		// No need to compare single file both ways
 
-	if (bi_flag)
-		filepair2(fnp1, fnp2);
+		filepair1(fnp1, fnp2);
+
+		if (bi_flag)
+			filepair2(fnp1, fnp2);
+		}
 
 	exit(ex_code);
 	}
@@ -318,32 +330,30 @@ static	char   *optstring = "?aAbBdDeEhHlLnNoOqQrRsStT:TuUvVX:yYzZ";
 /* ----------------------------------------------------------------------- */
 	void
 filepair1 (					/* Process the pathnames forward */
-	char  *s1,				/* Pointer to the pathname1 string */
-	char  *s2)				/* Pointer to the pathname2 string */
+	char  *s1,				/* Pointer to the pathname1 string (Search) */
+	char  *s2)				/* Pointer to the pathname2 string (Target) */
 
 	{
-	int    index;			/* Index to filename part of path1 */
-	int    dflag;			/* TRUE if path2 should be constructed */
+	int    CatIndex1;		/* Concatenation index of the path */
+	int    TermIndex1;		/* Termination index of the path (before concatenating) */
 	void  *hp;				/* Pointer to wild file data block */
 	char  *fnp1;			/* Pointer to the path1 pathname */
 	char  *fnp2;			/* Pointer to the path2 pathname */
-
+	char s2save[1024];
+	strcpy(s2save, s2);
 
 	if (iswild(s2))			/* Ensure non-wild path2 */
 		f_err("Path2 cannot be wild");
 
-	if ((dflag = fnchkdir(s2)) != FALSE)
-		index  = suffix(s1);		/* Set flag to construct path2 */
-	else
-		fnreduce(s2);
+	fnParse(s1, &CatIndex1, &TermIndex1);
+	fnreduce(s2);
+
+// printf("1 pattern: \"%s\"\n", s1);
+// printf("1 s2save:  \"%s\"\n", s2save);
+// printf("1 s2:      \"%s\"\n", s2);
 
 	hp = fwinit(s1, filetypes);		/* Find the first path1 file */
-
-// printf("1 p1:\"%s\"\n", s1);
-// printf("1 hp: %p\n", hp);
-// fflush(stdout);
-
-	fwExclEnable(hp, TRUE);				/* Enable file exclusion */
+	fwExclEnable(hp, TRUE);			/* Enable file exclusion */
 	if ((fnp1 = fwild(hp)) == NULL)
 		{
 		hp = NULL;
@@ -351,22 +361,17 @@ filepair1 (					/* Process the pathnames forward */
 			cantfind(s1);
 		}
 
-	else do
-		{				/* Process all path1 files */
-		if (dflag)
-			{
-			fnp2 = fncatpth(s2, (fnp1 + index));
+	else do							/* Process all path1 files */
+		{
+		fnp2 = fncatpth(s2, (fnp1 + CatIndex1));
 
-// printf("1 fnp1:  %s\n", fnp1);
-// printf("1 fnp2:  %s\n", fnp2);
-// printf("1 index: %d\n", index);
+// printf("  fnp1:  %s\n", fnp1);
+// printf("  fnp2:  %s\n", fnp2);
 // fflush(stdout);
 
-			process(fnp1, fnp2);
-			free(fnp2);
-			}
-		else
-			process(fnp1, s2);
+		process(fnp1, fnp2);
+
+		free(fnp2);
 		} while ((fnp1 = fwild(hp)));
 	hp = NULL;
 	}
@@ -374,12 +379,14 @@ filepair1 (					/* Process the pathnames forward */
 /* ----------------------------------------------------------------------- */
 	void
 filepair2 (					/* Process the pathnames backward */
-	char  *s1,				/* Pointer to the pathname1 string */
-	char  *s2)				/* Pointer to the pathname2 string */
+	char  *s1,				/* Pointer to the pathname1 string (target) */
+	char  *s2)				/* Pointer to the pathname2 string (search) */
 
 	{
-	int    index1;			/* Index to filename part of path1 */
-	int    index2;			/* Index to filename part of path2 */
+	int    CatIndex1;		/* Concatenation index of path 1 */
+	int    TermIndex1;		/* Termination index of path 1 (before concatenating) */
+	int    CatIndex2;		/* Concatenation index of path 2 */
+	int    TermIndex2;		/* Termination index of path 2 (before concatenating) */
 	void  *hp;				/* Pointer to wild file data block */
 	char  *fnp1;			/* Pointer to the path1 pathname */
 	char  *fnp2;			/* Pointer to the path2 pathname */
@@ -389,27 +396,26 @@ filepair2 (					/* Process the pathnames backward */
 	if (iswild(s2))			/* Ensure non-wild path2 */
 		f_err("Path2 cannot be wild");
 
-	if ((fnchkfil(s1))		/* If path1 is a file, don't check */
-	||  (fnchkfil(s2)))		/* If path2 is a file, don't check */
-		return;
-
-	e_flag  = TRUE;		/* Do    check the existence */
+	e_flag  = TRUE;			/* Do    check the existence */
 	d_flag  = FALSE;		/* Don't check the data */
 	s_flag  = FALSE;		/* Don't check the size */
 	t_flag  = FALSE;		/* Don't check the timedate */
 
-	index1  = suffix(s1);	/* Determine the wild path1 offset */
-	index2  = suffix(s2);	/* Determine the wild path2 offset */
-	fnppat2 = fncatpth(s2, (s1 + index1));	/* Build the pattern */
-	*(s1 + index1) = '\0';	/* Truncate the suffix from path1 */
+	fnParse(s1, &CatIndex1, &TermIndex1);	/* Determine the path1 offsets */
+	fnParse(s2, &CatIndex2, &TermIndex2);	/* Determine the path2 offsets */
 
-// printf("2 Pattern: %s\n", fnppat2);
-// printf("2 Path 1:  %s\n", s1);
-// printf("2 Path 2:  %s\n", s2);
-// printf("2 Index 1:  %d\n", index1);
-// printf("2 Index 2:  %d\n", index2);
-// printf("2 CatPath 2: %s\n", fnppat2);
-// fflush(stdout);
+	fnppat2 = fncatpth(s2, (s1 + CatIndex1));	/* Build the search pattern */
+
+	*(s1 + TermIndex1) = '\0';		// (does not delete a possible root separator
+
+// printf("2 s1:      \"%s\"\n", s1);
+// printf("2 Index 1:  %d\n",    CatIndex1);
+// printf("2 Term  1:  %d\n",    TermIndex1);
+// printf("2 s2:      \"%s\"\n", s2);
+// printf("2 Index 2:  %d\n",    CatIndex2);
+// printf("2 Term  2:  %d\n",    TermIndex1);
+// printf("2 Pattern: \"%s\"\n", fnppat2);
+//   fflush(stdout);
 
 	if (strlen(fnppat2) == 0)		// Handle cat -b .. . case
 		fnppat2 = ".";
@@ -417,57 +423,19 @@ filepair2 (					/* Process the pathnames backward */
 	fwExclEnable(hp, TRUE);				/* Enable file exclusion */
 	while ((fnp2 = fwild(hp)) != NULL)
 		{
-		fnp1 = fncatpth(s1, (fnp2 + index2));
+		fnp1 = fncatpth(s1, (fnp2 + CatIndex2));
 
-// printf("2 CatPath1:  %s\n", s1);
-// printf("2 CatPath2:  %s\n", fnp2);
-// printf("2 CatPath3:  %s\n", fnp2 + index2);
-// printf("2 CatPath4:  %s\n", fnp1);
-// fflush(stdout);
+// printf("3 Pattern: \"%s\"\n", fnppat2);
+// printf("3 File B:    \"%s\"\n", fnp2);
+// printf("3 File A:    \"%s\"\n", fnp1);
+//fflush(stdout);
 
 		process(fnp1, fnp2);
 		free(fnp1);
+//exit(1);
 		}
-
 	hp = NULL;
 	free(fnppat2);
-	}
-
-/* ----------------------------------------------------------------------- */
-	int					/* Return the index to the filename part */
-suffix (				/* Point the non-directory tail of path s */
-	char  *s)			/* Pointer to the pathname string */
-
-	{
-	int    index;		/* Index to filename part of path s */
-	char   ch;			/* Temporary character variable */
-	char   cs;			/* Temporary character save variable */
-	char  *temp;		/* Pointer to a temporary string buffer */
-	char  *p;			/* Pointer to a temporary string buffer */
-
-
-	p = temp = fmalloc(strlen(s) + 1);
-	strcpy(temp, s);
-	fnreduce(temp);
-
-	index = 0;
-	do  {
-		if (ch = *p)
-			++p;
-		if ((ch == '\0') || (ch == ':') || (ch == '/') || (ch == '\\'))
-			{
-			cs = *p;
-			*p = '\0';
-			if (fnchkdir(temp))
-				index = (p - temp);
-//	    else                        // This code breaks UNC filenames
-//		break;
-			*p = cs;
-			}
-		} while (ch);
-
-	free(temp);
-	return (index);
 	}
 
 /* ----------------------------------------------------------------------- */
@@ -585,7 +553,11 @@ process (				/* Compare one pair one of input files */
 				if (dir1)
 					fputs("  File 1 is a directory", stdout);
 				else
+					{
 					fputs("  File 1 is missing", stdout);
+//					printf("\nFile1 \"%s\"\n", fnp1);
+//					printf("File2 \"%s\"\n", fnp2);
+					}
 				}
 			}
 		else if (! exist2)

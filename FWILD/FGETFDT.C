@@ -52,30 +52,23 @@ fgetfdt (
 		char    Buffer     [1024];		// Path prefix
 
 		strcpy(Buffer, fnp);
-		if ((Buffer[0] == '\\')  &&  (Buffer[1] == '\\'))	// If a UNC path...
+		if ((pBuffer = QueryUNCPrefix(Buffer)) != NULL)
 			{
-			int  Index = 2;				// Skip over the initial "\\"
-			while ((Buffer[Index] != '\\')  &&  (Buffer[Index] != '\0'))
-				++Index;				// Find the next '\'
-			if (Buffer[Index] != '\0')
-				++Index;				// Advance to the first destination path element (or name)
-			while ((Buffer[Index] != '\\')  &&  (Buffer[Index] != '\0'))
-				++Index;				// Skip over the first element
-			Buffer[Index++] = '\\';		// Terminate it with a '\'
-			Buffer[Index]   = '\0';		// Pass "\\compname\destprefix\" for a UNC path
-			pBuffer         = Buffer;	// Point it
+            *pBuffer = '\0';
 			}
-		else if ((isalpha(Buffer[0]))  &&  (Buffer[1] == ':'))	// If a X: path
+		else if ((pBuffer = QueryDrivePrefix(Buffer, TRUE)) != NULL)	// Single mode
 			{
-			Buffer[2] = '\\';			// Pass "X:\" for an explicit drive letter spec
-			Buffer[3] = '\0';
-			pBuffer   = Buffer;			// Point it
+            *pBuffer++ = '\\';
+            *pBuffer   = '\0';
 			}
-		else							// Not UNC and not X: => is a relative path
-			pBuffer   = NULL;			// Pass NULL to use current drive
+		else // No prefix, build path from default drive
+			{
+			sprintf(Buffer, "%c:\\", (char)(((int)('A') + getdrive() - 1)));
+			}
+
 
 		if ( ! GetVolumeInformation(
-				pBuffer,
+				Buffer,
 				NULL,
 				0,
 				NULL,

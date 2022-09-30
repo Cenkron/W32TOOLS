@@ -42,8 +42,9 @@
 
 #include  "fwild.h"
 
-// #define	VERBOSEOUT	 1	  // Define this in the makefile for verbose output
-// #define	MEMORYWATCH	 1	  // Define this in the makefile to watch for memory leaks
+// #define  SHOWSRCH		// Define this to show search progress
+// #define	VERBOSEOUT	 1	// Define this in the makefile for verbose output
+// #define	MEMORYWATCH	 1	// Define this in the makefile to watch for memory leaks
 
 #ifdef	MEMORYWATCH
 #define	 mwprintf(a,b)	printf(a,b)
@@ -51,13 +52,19 @@
 #define	 mwprintf(a,b)
 #endif
 
-//define  SHOWSRCH
-
 #ifdef	VERBOSEOUT
 static void		m_disp (char *s1, char *s2);
-static void		h_disp (DTA_HDR *p, char *s);
-static void		e_disp (DTA_ELE *p, char *s, int flag);
+static void		h_disp (PDTA_HDR p, char *s);
+static void		e_disp (PDTA_ELE p, char *s, int flag);
 #endif
+//BWJ
+//static void		pc_disp(PDTA_HDR p);
+
+// States
+
+// -----------------------------------------------------------------------
+// Private definitions
+// -----------------------------------------------------------------------
 
 #define	 FRESH		0					/* Initial state of DTA_ELE */
 #define	 NONW_FX	1					/* Do findf for not wild (.* added) */
@@ -77,43 +84,438 @@ static void		e_disp (DTA_ELE *p, char *s, int flag);
 #define	 FW_ALL		(FW_HIDDEN | FW_SYSTEM | FW_SUBD)
 #define	 FW_FLS		(FW_HIDDEN | FW_SYSTEM | FW_FILE)
 
-static  char	 rwild_str [] = "/**";
-static  char	 owild_str [] = "/*.*";
+#define PATHCH	('\\')
+#define NULCH	('\0')
 
-// -----------------------------------------------------------------------
-// Private methods
-// -----------------------------------------------------------------------
-
-static	void	 build_fn (DTA_ELE *);
-static	void	 copyn (char *, char *, int);
-static  DTA_HDR *new_header (void);
-static	DTA_ELE *new_element (void);
-static	char	*new_object (int);
-static	char	*dispose_object (char *);
-static	void	 release_header (DTA_HDR *);
-static	DTA_ELE *unnest_element (DTA_ELE *);
-static	void	 fat_err (int);
-static 	void     CheckVersion (void);
-
-#ifdef MEMORYWATCH
-static	unsigned int	AllocCount = 0;
-#endif
+typedef enum		// Internal error codes
+	{
+	NO_MEM = 1,		// Insufficient memory
+	EP_ERR,			// Element ptr error
+	INV_STATE,		// Invalid state
+	INV_UNC,		// Invalid UNC syntax
+	INV_DRV,		// Invalid drive syntax
+	INV_RWILD,		// Invalid RWILD syntax
+	INV_PATH		// Invalid path syntax
+	} ERR_CODE;
 
 // -----------------------------------------------------------------------
 // Private variables
 // -----------------------------------------------------------------------
 
+#ifdef MEMORYWATCH
+static	unsigned int	AllocCount = 0;
+#endif
+
+static  char	 rwild_str [] = "/**";
+static  char	 owild_str [] = "/*.*";
+
 int			    xporlater = 0;					// TRUE if Windows XP or later (global)
 
-// Default file exclusion management
 
 /* ----------------------------------------------------------------------- */
+// Default file exclusion management
 
 // Force the inclusion of the corrected DTOXTIME library file
 // Removed because no longer in use
 //extern int	ForceDtoxtime;
 //static int *pForceDtoxtime = &ForceDtoxtime;
-
+
+// -----------------------------------------------------------------------
+// Private methods
+// -----------------------------------------------------------------------
+
+/* ----------------------------------------------------------------------- */
+	static void
+fat_err (						// Report fatal internal error and die
+	ERR_CODE ec,				// Error code
+	char    *s)					// Relevent path string
+
+	{
+	char  *p;
+
+	switch (ec)
+		{
+		case NO_MEM:
+			p = "Insufficient memory";	break;
+
+		case EP_ERR:
+			p = "Element ptr error";	break;
+
+		case INV_STATE:
+			p = "Invalid state";		break;
+
+		case INV_UNC:
+			p = "Invalid UNC";			break;
+
+		case INV_DRV:
+			p = "Invalid drive";		break;
+
+		case INV_RWILD:
+			p = "Invalid RWILD";		break;
+
+		case INV_PATH:
+			p = "Invalid path";			break;
+
+		default:
+			p = "Invalid error code";
+		}
+	fprintf(stderr, "Fwild-F-%s\n\7", p);
+
+	if (s)
+		fprintf(stderr, "%s\n", s);
+
+	exit(1);
+	}
+
+/* ----------------------------------------------------------------------- *\
+|  Copy n bytes
+\* ----------------------------------------------------------------------- */
+	static void
+copyn (p2, p1, n)				/* Copy n bytes from p1 to p2 */
+	char  *p2;					/* and NULL terminate the string */
+	char  *p1;
+	int	   n;
+
+	{
+	while (n--)
+		*(p2++) = *(p1++);
+	*p2 = '\0';
+	}
+
+/* ----------------------------------------------------------------------- */
+	static char *				/* Return a pointer to the new block */
+new_object (size)				/* Allocate a block of memory */
+	int	 size;					/* Size of memory to allocate */
+
+	{
+	char  *p;
+
+	if ((p = calloc(size, 1)) == NULL)
+		fat_err(NO_MEM, NULL);
+#ifdef MEMORYWATCH
+	else
+		++AllocCount;
+#endif
+	return (p);
+	}
+
+/* ----------------------------------------------------------------------- */
+	static char *				/* Always returns NULL */
+dispose_object (				/* Free a block of object memory */
+	char  *s)					/* Pointer to object to free */
+
+	{
+	if (s != NULL)
+		{
+		free(s);
+#ifdef MEMORYWATCH
+		--AllocCount;
+#endif
+		}
+	return (NULL);
+	}
+
+/* ----------------------------------------------------------------------- */
+	static DTA_HDR *			/* Return a pointer to the new DTA header */
+new_header ()
+
+	{
+	DTA_HDR *hp = (DTA_HDR *)(new_object(sizeof(DTA_HDR)));
+mwprintf("New header %d\n", AllocCount);
+	return (hp);
+	}
+
+/* ----------------------------------------------------------------------- */
+	static DTA_ELE *			/* Return a pointer to the new DTA element */
+new_element ()					/* Allocate an initialized DTA element */
+
+	{
+	DTA_ELE	 *ep;
+
+	ep = (DTA_ELE *)(new_object(sizeof(DTA_ELE)));
+	ep->pLink	   = NULL;
+	ep->wild	   = NOT_WILD;
+	ep->state	   = FRESH;
+	ep->pLast	   = NULL;
+	ep->pNext	   = NULL;
+	ep->search[0]  = '\0';
+	ep->pattern[0] = '\0';
+	ep->proto[0]   = '\0';
+	ep->found[0]   = '\0';
+mwprintf("New element %d\n", AllocCount);
+	return (ep);
+	}
+
+/* ----------------------------------------------------------------------- */
+	static DTA_ELE *			/* Returned pointer to the successor element */
+unnest_element (				/* Unnest a DTA element */
+	DTA_ELE	 *ep)				/* Pointer to the element */
+
+	{
+	DTA_ELE	 *epLink;			/* Pointer to the next element */
+
+	if (ep != NULL)
+		{
+		epLink = ep->pLink;						/* Point the successor */
+		dispose_object((char *)(ep));			/* Then, release the element */
+mwprintf("Free element %d\n", AllocCount);
+		}
+	else
+		epLink = NULL;							/* There was no element */
+
+	return (epLink);
+	}
+
+/* ----------------------------------------------------------------------- */
+	static void
+release_header (hp)				/* Release a header and all its elements */
+	DTA_HDR	 *hp;				/* Pointer to the header */
+
+	{
+	while (hp->pLink != NULL)					/* Release all DTA elements */
+		hp->pLink = unnest_element(hp->pLink);
+
+	dispose_object((char *)(hp));						/* Then, release the header */
+mwprintf("Free header %d\n", AllocCount);
+	}
+
+/* ----------------------------------------------------------------------- */
+	static void
+CheckVersion (void)
+
+	{
+	xporlater = IsWindowsXPOrGreater();
+    }
+
+/* ----------------------------------------------------------------------- *\
+|  build_fn () - Build the found pathname from the DTA
+\* ----------------------------------------------------------------------- */
+	static void
+build_fn (ep)					/* Build the found filename in the DTA */
+	DTA_ELE	 *ep;
+
+	{
+	int	  n;
+	char  ch;
+
+	if (ep->pLast)
+		{
+		n = ep->pLast - ep->proto + 1;
+		copyn(ep->found, ep->proto, n);
+		if (strlen(ep->found) > 0)
+			{
+			ch = ep->found[strlen(ep->found) - 1];
+			if ((ch != ':')	&&	(ch != '/')	&&	(ch != '\\'))
+				strcat(ep->found, "\\");
+			}
+		strcat(ep->found, ep->dta.dta_name);
+		}
+	else
+		{
+		strcpy(ep->found, ep->dta.dta_name);
+		}
+	}
+
+// ------------------------------------------------------------------------------------------------
+// Pattern compiler
+// ------------------------------------------------------------------------------------------------
+	static void
+PatternCompiler (				// Compile the caller's pattern
+	DTA_HDR	 *hp)				// Pointer to the DTA header
+
+	{
+	char  *pRawPattern = hp->rawPattern;	// Ptr to the caller's raw search pattern
+	int    insertSeparator = FALSE;			// Set TRUE to prefix a path char before a segment copy
+
+
+	int			level	 = 0;					// Start in level 0
+	PDTA_SEG	pSeg	 = &hp->segment[level];	// Pointer to path origin
+	char	   *pSegBuff = pSeg->segBuffer;		// Pointer to the current segment
+
+	char	   *pPatSrc;					// Ptr to rawPattern copy origin
+	char	   *pScan;						// Scan Ptr into the origin string
+	char	   *pSegDst;					// Ptr to segment destination buffer string
+	char	   *pResult;					// Temporary result value
+
+//?? Deal with quotes here ?
+
+	pScan = hp->rawPattern;
+
+	// Compile level 0 (if a UNC spec)
+
+	if ((pResult = QueryUNCPrefix(pScan)) != NULL)
+		{
+//		(pScan == hp->rawPattern now)		// pScan is already initialized
+		pSeg->type = TYPE_UNC;				// Set segment 0 to UNC type
+		pScan      = pResult;				// (pScan now points past the prefix)
+
+		pPatSrc	   = hp->rawPattern;
+		pSegDst	   = pSegBuff;				// Point the segment string begin
+		while (pPatSrc < pScan)				// Copy the UNC prefix string
+			*(pSegDst++) = *(pPatSrc++);
+		*pSegDst = NULCH;					// Terminate the segment string
+
+		pSeg->pEnd   = pSegDst;					// Points to string trailing NUL
+		pSeg->length = (pSegDst - pSegBuff);	// Standard string length
+
+		hp->rooted = TRUE;					// All UNC paths are rooted, by definition
+		}
+
+	// Compile level 0 (if a drive spec(s)
+
+	else if ((pResult = QueryDrivePrefix(pScan, FALSE)) != NULL)	// Multiple mode
+		{
+//		(pScan == hp->rawPattern now)		// pScan is already initialized
+		pSeg->type = TYPE_DRIVE;			// Set segment 0 to DRIVE type
+		pScan      = pResult;				// (pScan now points past the prefix)
+
+		pPatSrc	   = hp->rawPattern;
+		pSegDst	   = pSegBuff;				// Point the segment string begin
+		while (pPatSrc < pScan-1)			// Copy the DRIVE prefix string (but not the ':')
+			*(pSegDst++) = *(pPatSrc++);
+		*pSegDst = NULCH;					// Terminate the segment string
+
+		pSeg->pEnd   = pSegDst;					// Points to string trailing NUL
+		pSeg->length = (pSegDst - pSegBuff);	// Standard string length
+
+		hp->rooted = (*pScan == PATHCH);	// Check if rooted
+		if (hp->rooted)
+			++pScan;						// Skip over the root separator
+		}
+
+	// Compile level 0 (if no prefix (other than a possible root separator) present)
+
+	else
+		{
+//		(pScan == hp->rawPattern now)		// pScan is already initialized
+		pSeg->type   = TYPE_EMPTY;
+		pSeg->pEnd   = NULL;
+		pSeg->length = 0;
+		pSegBuff[0]  = NULCH;
+		hp->rooted   = (*pScan == PATHCH);	// Check if rooted
+		if (hp->rooted)
+			++pScan;						// Skip over the root separator
+		}
+
+	// End of level 0 compilation
+
+	// Compile level 1 and above, if present
+
+//	(pScan points the first character of the first segment following the UNC/DRIVE/Root specs
+	for (;;)								// Compile all remaining levels
+		{
+		if (*pScan == NULCH)				// Pattern exhausted,
+			{
+			pSeg->terminal = TRUE;			// Mark (still prev) segment terminal if no further pattern now
+			break;							// Compiling is complete
+			}
+		if (*pScan == PATHCH)				// Should be a path char (except the first time)
+			++pScan;						// Skip over the path char
+
+		pSeg	 = &hp->segment[++level];	// Advance to the next segment level
+		pSegBuff = pSeg->segBuffer;
+		pPatSrc  = pScan;
+
+		// Process a possible recursive wild segment
+		// pScan points to the first char after the separator (if any)
+
+		if ((((*(pPatSrc+0)) == '*')   &&   ((*(pPatSrc+1)) == '*'))
+		&&  (((*(pPatSrc+2)) == NULCH)  ||  ((*(pPatSrc+2)) == PATHCH)))
+			{
+			pScan += 2;						// Recursive wild segment found
+
+			pSeg->type = TYPE_RWILD;
+			pSegDst    = pSegBuff;
+
+			while (pPatSrc < pScan)				// Copy the segment body string
+				*(pSegDst++) = *(pPatSrc++);
+			*pSegDst = NULCH;					// Terminate the segment string
+
+			pSeg->pEnd   = pSegDst;					// Points to trailing NUL
+			pSeg->length = (pSegDst - pSegBuff);	// Standard string length
+
+			// At runtime, we will copy segments with a preceding separator when...
+
+			pSeg->separator = 
+				   ((level > 1)
+				|| ((level == 1)  &&  (hp->segment[0].type != TYPE_UNC)  &&  (hp->rooted)));
+			continue;
+			}
+
+		// Process a nonrecursive segment
+		// pScan points to the first char after the separator (if any)
+
+		pSeg->type = TYPE_NONWILD;	// Starting assumption, until determined wrong
+		pPatSrc    = pScan;
+
+		for (char ch; (isValidPath(ch = *pScan)); ++pScan)
+			{
+			if (ch == PATHCH)
+				break;
+
+			else if (ch == '?')
+				pSeg->type = TYPE_WILD;			// '?' makes it wild
+
+			else if (ch == '*')
+				{
+				pSeg->type = TYPE_WILD;			// '*' makes it wild,
+
+				if (*(pScan + 1) == '*')		// but, can't be recursive
+					fat_err(INV_RWILD, hp->rawPattern);	// Report invalid RWILD syntax
+				}
+			}	// Scan complete
+
+//printf("scanned %X %X\n\n", (UINT)pPatSrc, (UINT)pScan);
+
+		if ((*pScan != NULCH)  &&  (*pScan != PATHCH))
+			fat_err(INV_PATH, hp->rawPattern);	// Report invalid path syntax
+
+		// If this segment and the preceding segment are both TYPE_NONWILD, and
+		// the preceding segment will not be a search term for a preceding wild
+		// segment, concatenate this segment to the preceding segment (with separator)
+		// (and, don't consult level 0.)
+
+		if ((level >= 2)
+		&&  (hp->segment[level  ].type == TYPE_NONWILD)
+		&&  (hp->segment[level-1].type == TYPE_NONWILD)
+		&&  ((level <= 2)  ||  (hp->segment[level-2].type != TYPE_RWILD)))
+			{
+			pSeg	 = &hp->segment[--level];	// Return to the previous level
+			pSegBuff = pSeg->segBuffer;
+
+			pSegDst = pSeg->pEnd;				// Concatenate to previous segment level
+			insertSeparator = TRUE;				// Require separator for concatenation
+//printf("prev\n\n");
+			}
+		else
+			{
+			pSegDst = pSegBuff;					// Copy into the current level
+			insertSeparator = FALSE;			// Require separator for concatenation
+//printf("cur\n\n");
+			}
+
+		// Copy this segment string to the selected segment
+
+		if (insertSeparator)
+			*pSegDst++ = PATHCH;				// Write a required separator
+
+		while (pPatSrc < pScan)					// Copy the segment body string
+			*(pSegDst++) = *(pPatSrc++);
+		*pSegDst = NULCH;						// Terminate the segment string
+//printf("copied %X\n\n", (UINT)pSegDst);
+		pSeg->pEnd   = pSegDst;					// Points to trailing NUL
+		pSeg->length = (pSegDst - pSegBuff);	// Standard string length
+
+		// At runtime, we will copy segments with a preceding separator when...
+
+		pSeg->separator = 
+			   ((level > 1)
+			|| ((level == 1)  &&  (hp->segment[0].type != TYPE_UNC)  &&  (hp->rooted)));
+		continue;
+		}
+
+//BWJ pc_disp(hp);										// Display data on the way out
+	}
 
 /* ----------------------------------------------------------------------- *\
 |  fwinit () - Initialize the fwild system for a wild search
@@ -124,16 +526,16 @@ fwinit (						/* Initialize the wild filename system */
 	int fmode)					/* Find search mode to use */
 
 	{
-	DTA_HDR	 *hp;
-	DTA_ELE	 *ep;
-	char	  ch;
-	char	 *p;
+	PDTA_HDR	hp;
+	PDTA_ELE	ep;
+	char	   *p;
 
 		// Allocate a DTA header, and allocate the first DTA element for
 		// the DTA list.  Initialize the first element with the supplied
 		// prototype file name pattern.
 
-	if (fwvalid(pattern) != FWERR_NONE)
+	int errCode = fwvalid(pattern);
+	if ((errCode != FWERR_NONE)  &&  (errCode != FWERR_TRAIL))
 		return	(NULL);
 
 	CheckVersion();
@@ -141,29 +543,35 @@ fwinit (						/* Initialize the wild filename system */
 	hp = new_header();
 	hp->xmode = 0;					// File exclusion mode, updated by fexclude
 	hp->mode  = fmode;				// Find mode to use
-	hp->link  = ep = new_element();
-	strcpy(ep->proto, pattern);
-	fnreduce(ep->proto);
+	hp->pLink = ep = new_element();
+	p         = hp->rawPattern;
+	strcpy(p, pattern);
 
-		// Fix up the file name pattern string if it is not complete.
+	// If the pattern is completely not wild, reduce it to remove redundance
+	fnreduce(p);						// Simplify any redundance
+
+		// Fix up the file name pattern string if it is incomplete.
 		// If the file name ends with ':', '/', or '\', then it has an
-		// implied "*.*" file name, so append "*.*" to the pattern file
-		// name string.	 If the string is empty, fnreduce() has stripped
-		// off the ".", so convert it to "*.*".	 If the string is "..",
-		// append "\*.*" to it.	 In every case, space for this was
-		// allotted when the prototype string was allocated.
+		// implied "*.*" file name, so append "*.*" to the pattern file name
+		// string.	 If the string ends in "..", or ".", append "\*.*" to it.
+		// fnreduce() can leave an empty string, so make it "*.*.
 
-	p = ep->proto;
-	if (*p)
+	if (*p == NULCH)
+		strcpy(p, "*.*");	// Usually because of fnreduce()
+	else
 		{
-		ch = p[strlen(p) - 1];			/* Guaranteed non-null here */
+		char ch = p[strlen(p) - 1];			/* Guaranteed non-null here */
 		if (ch == '/' || ch == ':' || ch == '\\')
 			strcat(p, "*.*");
-		else if (strcmp(fntail(p), "..") == MATCH)
+		else if ((strcmp(fntail(p), "..") == MATCH)
+		     ||  (strcmp(fntail(p), "." ) == MATCH))
 			strcat(p, "\\*.*");
 		}
-	else
-		strcpy(p, "*.*");
+
+	PatternCompiler(hp);				// Compile the caller's pattern
+
+//BWJ to be removed eventually
+	strcpy(ep->proto, p);
 
 	fexcludeInit(&(hp->xmode));	// Init the file exclusion system, effective once only
 
@@ -191,18 +599,8 @@ mwprintf("Allocs (done) %d\n", AllocCount);
 /* ----------------------------------------------------------------------- */
 
 /* ----------------------------------------------------------------------- *\
-|  fwExclEnable () - Enable the file exclusion mechanism for the fwild object
+|  Public Methods
 \* ----------------------------------------------------------------------- */
-	void
-fwExclEnable (			// Enable/disable file exclusion
-	DTA_HDR	 *hp,		// Pointer to the DTA header
-	int       enable)	// TRUE to enable exclusion
-
-	{
-	if (hp)
-		hp->exActive = enable;
-	}
-
 /* ----------------------------------------------------------------------- *\
 |  fwild () - Request the next (first) matching pathname
 \* ----------------------------------------------------------------------- */
@@ -222,8 +620,8 @@ fwild (							/* Find the next filename */
 	if (hp == NULL)
 		return (NULL);
 
-	if ((ep = hp->link) == NULL)
-		fat_err(2);
+	if ((ep = hp->pLink) == NULL)
+		fat_err(EP_ERR, NULL);
 
 	for (;;)
 		{
@@ -364,7 +762,7 @@ printf("srch:  %s\n", ep->search ? ep->search : "null" );
 
 				if (findFail )						/* If no file found... */
 					{
-					if ((hp->link = ep = unnest_element(ep)) == NULL)
+					if ((hp->pLink = ep = unnest_element(ep)) == NULL)
 						{
 						fwfree(hp);				/* Terminate the object */
 						return (NULL);			/* Return failure */
@@ -461,8 +859,8 @@ e_disp(ep, "RECW", TRUE);
 					{			/* Wild "." and ".." don't nest */
 					build_fn(ep);
 					xep = ep;			/* Nest the DTA element list */
-					hp->link = ep = new_element();
-					ep->link = xep;
+					hp->pLink = ep = new_element();
+					ep->pLink = xep;
 					strcpy(ep->proto, xep->found);
 					strcat(ep->proto, rwild_str);
 					strcat(ep->proto, xep->pNext);
@@ -491,7 +889,7 @@ printf("srch:  %s\n", ep->search ? ep->search : "null" );
 
 				if (findFail )						/* If no file found... */
 					{
-					if ((hp->link = ep = unnest_element(ep)) == NULL)
+					if ((hp->pLink = ep = unnest_element(ep)) == NULL)
 						{
 						fwfree(hp);				/* Terminate the object */
 						return (NULL);			/* Return failure */
@@ -524,8 +922,8 @@ e_disp(ep, "WILD", TRUE);
 						if (hp->exActive && (hp->xmode & XD_BYPATH) && fexcludeCheck(ep->found))
 							break;
 						xep = ep;				/* Nest the DTA element list */
-						hp->link = ep = new_element();
-						ep->link = xep;
+						hp->pLink = ep = new_element();
+						ep->pLink = xep;
 						strcpy(ep->proto, xep->found);
 						strcat(ep->proto, xep->pNext);
 						}
@@ -603,7 +1001,7 @@ printf("srch:  %s\n", ep->search ? ep->search : "null" );
 
 				if (findFail )						/* If no file found... */
 					{
-					if ((hp->link = ep = unnest_element(ep)) == NULL)
+					if ((hp->pLink = ep = unnest_element(ep)) == NULL)
 						{
 						fwfree(hp);				/* Terminate the object */
 						return (NULL);			/* Return failure */
@@ -654,8 +1052,8 @@ e_disp(ep, "NONW", TRUE);
 					{
 // printf("\nNONW_T: nesting\n");
 					xep = ep;			/* Nest the DTA element list */
-					hp->link = ep = new_element();
-					ep->link = xep;
+					hp->pLink = ep = new_element();
+					ep->pLink = xep;
 					strcpy(ep->proto, xep->found);
 					strcat(ep->proto, owild_str);
 					}
@@ -664,7 +1062,7 @@ e_disp(ep, "NONW", TRUE);
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 			default:
-				fat_err(3);
+				fat_err(INV_STATE, NULL);
 			}					// End of the state switch table
 		}						// Return to top of the state loop
 
@@ -672,181 +1070,21 @@ e_disp(ep, "NONW", TRUE);
 	return	(NULL);				// Dummy to make the compiler happy, never taken
 	}
 
+/* ----------------------------------------------------------------------- *\
+|  fwExclEnable () - Enable the file exclusion mechanism for the fwild object
+\* ----------------------------------------------------------------------- */
+	void
+fwExclEnable (			// Enable/disable file exclusion
+	DTA_HDR	 *hp,		// Pointer to the DTA header
+	int       enable)	// TRUE to enable exclusion
+
+	{
+	if (hp)
+		hp->exActive = enable;
+	}
+
 /* ----------------------------------------------------------------------- */
 
-/* ----------------------------------------------------------------------- *\
-|  build_fn () - Build the found pathname from the DTA
-\* ----------------------------------------------------------------------- */
-	static void
-build_fn (ep)					/* Build the found filename in the DTA */
-	DTA_ELE	 *ep;
-
-	{
-	int	  n;
-	char  ch;
-
-	if (ep->pLast)
-		{
-		n = ep->pLast - ep->proto + 1;
-		copyn(ep->found, ep->proto, n);
-		if (strlen(ep->found) > 0)
-			{
-			ch = ep->found[strlen(ep->found) - 1];
-			if ((ch != ':')	&&	(ch != '/')	&&	(ch != '\\'))
-				strcat(ep->found, "\\");
-			}
-		strcat(ep->found, ep->dta.dta_name);
-		}
-	else
-		{
-		strcpy(ep->found, ep->dta.dta_name);
-		}
-	}
-
-/* ----------------------------------------------------------------------- */
-	static void
-copyn (p2, p1, n)				/* Copy n bytes from p1 to p2 */
-	char  *p2;					/* and NULL terminate the string */
-	char  *p1;
-	int	   n;
-
-	{
-	while (n--)
-		*(p2++) = *(p1++);
-	*p2 = '\0';
-	}
-
-/* ----------------------------------------------------------------------- */
-	static DTA_HDR *			/* Return a pointer to the new DTA header */
-new_header ()
-
-	{
-	DTA_HDR *hp = (DTA_HDR *)(new_object(sizeof(DTA_HDR)));
-mwprintf("New header %d\n", AllocCount);
-	return (hp);
-	}
-
-/* ----------------------------------------------------------------------- */
-	static DTA_ELE *			/* Return a pointer to the new DTA element */
-new_element ()					/* Allocate an initialized DTA element */
-
-	{
-	DTA_ELE	 *ep;
-
-	ep = (DTA_ELE *)(new_object(sizeof(DTA_ELE)));
-	ep->link	   = NULL;
-	ep->wild	   = NOT_WILD;
-	ep->state	   = FRESH;
-	ep->pLast	   = NULL;
-	ep->pNext	   = NULL;
-	ep->search[0]  = '\0';
-	ep->pattern[0] = '\0';
-	ep->proto[0]   = '\0';
-	ep->found[0]   = '\0';
-mwprintf("New element %d\n", AllocCount);
-	return (ep);
-	}
-
-/* ----------------------------------------------------------------------- */
-	static char *				/* Return a pointer to the new block */
-new_object (size)				/* Allocate a block of memory */
-	int	 size;					/* Size of memory to allocate */
-
-	{
-	char  *p;
-
-	if ((p = calloc(size, 1)) == NULL)
-		fat_err(1);
-#ifdef MEMORYWATCH
-	else
-		++AllocCount;
-#endif
-	return (p);
-	}
-
-/* ----------------------------------------------------------------------- */
-	static char *				/* Always returns NULL */
-dispose_object (				/* Free a block of object memory */
-	char  *s)					/* Pointer to object to free */
-
-	{
-	if (s != NULL)
-		{
-		free(s);
-#ifdef MEMORYWATCH
-		--AllocCount;
-#endif
-		}
-	return (NULL);
-	}
-
-/* ----------------------------------------------------------------------- */
-	static void
-release_header (hp)				/* Release a header and all its elements */
-	DTA_HDR	 *hp;				/* Pointer to the header */
-
-	{
-	while (hp->link != NULL)					/* Release all DTA elements */
-		hp->link = unnest_element(hp->link);
-
-	dispose_object((char *)(hp));						/* Then, release the header */
-mwprintf("Free header %d\n", AllocCount);
-	}
-
-/* ----------------------------------------------------------------------- */
-	static DTA_ELE *			/* Returned pointer to the successor element */
-unnest_element (				/* Unnest a DTA element */
-	DTA_ELE	 *ep)				/* Pointer to the element */
-
-	{
-	DTA_ELE	 *eplink;			/* Pointer to the next element */
-
-	if (ep != NULL)
-		{
-		eplink = ep->link;						/* Point the successor */
-		dispose_object((char *)(ep));					/* Then, release the element */
-mwprintf("Free element %d\n", AllocCount);
-		}
-	else
-		eplink = NULL;							/* There was no element */
-
-	return (eplink);
-	}
-
-/* ----------------------------------------------------------------------- */
-	static void
-fat_err (n)						/* Report fatal internal error and die */
-	int	 n;						/* Error number */
-
-	{
-	char  *s;
-
-	switch (n)
-		{
-		case 1:
-			s = "Insufficient memory";	 break;
-
-		case 2:
-			s = "Element ptr error";	  break;
-
-		case 3:
-			s = "Invalid state"; break;
-
-		default:
-			s = "Invalid error code";
-		}
-	fprintf(stderr, "Fwild-F-%s\n\7", s);
-	exit(1);
-	}
-
-/* ----------------------------------------------------------------------- */
-	void
-CheckVersion (void)
-
-	{
-	xporlater = IsWindowsXPOrGreater();
-    }
-
 /* ----------------------------------------------------------------------- */
 #ifdef	VERBOSEOUT
 	static void
@@ -884,7 +1122,7 @@ h_disp(hp, s)
 	printf("\n");
 	printf("From: %s\n", s);
 	printf("Pointer....%04x\n", (int)(hp));
-	printf("Link.......%04x\n", (int)(hp->link));
+	printf("Link.......%04x\n", (int)(hp->pLink));
 	printf("Mode.......%04x\n", (int)(hp->mode));
 	printf("\n");
 	fflush(stdout);
@@ -909,7 +1147,7 @@ e_disp(ep, s, flag)
 
 	printf("Pointer____%04x\n", (int)(ep));
 
-	printf("Link_______%04x\n", (int)(ep->link));
+	printf("Link_______%04x\n", (int)(ep->pLink));
 
 	switch (ep->wild)
 		{
@@ -965,6 +1203,45 @@ e_disp(ep, s, flag)
 
 	printf("\n");
 	fflush(stdout);
+	}
+
+#endif
+/* ----------------------------------------------------------------------- */
+#if 1	//VERBOSEOUT
+	static void
+pc_disp (
+	PDTA_HDR  hp)				/* Pointer to the DTA element */
+
+	{
+	printf("\n");
+
+	printf("Raw pattern: \"%s\"\n", hp->rawPattern);
+	printf("Rooted:      %s\n\n", (hp->rooted ? "TRUE" : "FALSE"));
+
+	for (int i = 0; (i < LEVEL_MAX); ++i)
+		{
+		PDTA_SEG pSeg = &hp->segment[i];
+		SegType  t = pSeg->type;
+
+		if ((i >= 2)  &&  (pSeg->pEnd == 0))
+			break;
+
+		printf("Level     %d\n", i);
+		printf("Type      %s\n", (	(t == TYPE_UNKNOWN)	? "Unknown" :
+									(t == TYPE_EMPTY)	? "Empty"   :
+									(t == TYPE_DRIVE)	? "Drive"   :
+									(t == TYPE_UNC)		? "UNC"     :
+									(t == TYPE_NONWILD)	? "NONWILD" :
+									(t == TYPE_WILD)	? "WILD"    :
+									(t == TYPE_RWILD)	? "RWILD"   : "Bad"));
+		printf("Terminal:  %s\n", (pSeg->terminal ? "TRUE" : "FALSE"));
+		printf("Separator: %s\n", (pSeg->separator ? "TRUE" : "FALSE"));
+		printf("Length:    %d\n", pSeg->length);
+		printf("pEnd:      %X\n", (UINT)(pSeg->pEnd));
+		printf("Buffer:    %X\n", (UINT)(pSeg->segBuffer));
+		printf("String:    \"%s\"\n", pSeg->segBuffer);
+		printf("\n");
+		}
 	}
 
 #endif

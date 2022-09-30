@@ -38,8 +38,6 @@ typedef unsigned __int64  UINT64, *PUINT64;
 |  fwild() internal / external definitions
 \* ------------------------------------------------------------------------ */
 
-#define FWP_PATH	(500)	// Fwild path buffers are larger than just barely adequate
-
 /* Mode request bit definitions */
 
 #define  FW_FILE      1			/* Ordinary file request */
@@ -69,65 +67,96 @@ typedef unsigned __int64  UINT64, *PUINT64;
 #define  ATT_SUBD    16			/* Subdirectory file */
 #define  ATT_ARCH    32			/* File not archived */
 
+// ------------------------------------------------------------------------------------------------
+
 #ifdef  FWILD_INTERNAL
 
-#define  f_type  link->dta.dta_type	/* File attribute, type */
-#define  f_fdt   link->fdt		/* File attribute, timestamp */
-#define  f_size  link->dta.dta_size	/* File attribute, size */
+#define  f_type  pLink->dta.dta_type	/* File attribute, type */
+#define  f_fdt   pLink->fdt		/* File attribute, timestamp */
+#define  f_size  pLink->dta.dta_size	/* File attribute, size */
 
-typedef				/* The DTA used by findf/finfn/findc */
+#define FWP_MAX		(500)	// Fwild path buffers are larger than just barely adequate
+#define LEVEL_MAX	(30)	// Number of fwild segment buffers
+
+
+typedef	enum
+	{
+	TYPE_UNKNOWN = 0,	// Type not yet set                (segment 0  only)
+	TYPE_EMPTY,			// No prefix spec, (drive nor UNC) (segment 0  only)
+	TYPE_DRIVE,			// Explicit or implicit drive spec (segment 0  only)
+	TYPE_UNC,			// UNC path                        (segment 0  only)
+	TYPE_NONWILD,		// Non-wild segment				   (segment 1+ only)
+	TYPE_WILD,			// Wild segment					   (segment 1+ only)
+	TYPE_RWILD			// Recursive wild segment		   (segment 1+ only)
+	} SegType;
+
+
+typedef				/* The DTA object used by findf/finfn/findc */
 	struct
 		{
-		char      dta_type;				/* File attribute, type */
-		UINT64    dta_size;				/* File attribute, size */
-		char      dta_name [FWP_PATH];	/* The found filename */
-
-		/* NT support */
-
-		int       result;				/* The returned result */
-		int       SearchAttr;			/* The original search attributes */
-		HANDLE    sh;					/* The WIN32 search handle */
-		WIN32_FIND_DATA	 wfd;			/* The WIN32 FIND_DATA structure */
-		}  DTA_BLK;
+		char		dta_type;				// File attribute, type
+		UINT64		dta_size;				// File attribute, size
+		char		dta_name [MAX_PATH];	// The found filename
+		int			result;					// The returned result
+		int			SearchAttr;				// The original search attributes
+		HANDLE		sh;						// The WIN32 search handle
+		WIN32_FIND_DATA	 wfd;				// The WIN32 FIND_DATA structure
+		}  DTA_BLK, *PDTA_BLK;
 
 
-typedef				/* Recursive DTA list element */
+typedef				// Recursive DTA list element object
 	struct dtaele
 		{
-		struct dtaele  *link;			/* Link to the next (inactive) DTA_ELE */
-		int		wild;					/* Current wild search mode */
-		int		state;					/* Current state */
-		long	fdt;					/* The file timestamp */
-		char   *pLast;					/* Pointer to prototype string, block delimiter */
-		char   *pNext;					/* Pointer to prototype string, next char */
-		char	search  [FWP_PATH];		/* Pointer to current search filename */
-		char	pattern [FWP_PATH];		/* Pointer to current pattern filename */
-		char    proto   [FWP_PATH];		/* Curent prototype string, first char */
-		char    found   [FWP_PATH];		/* Current found filename */
-		DTA_BLK   dta;					/* The DTA used by findf/findn/findc */
-		}  DTA_ELE;
+	struct dtaele  *pLink;					// Link to the next (inactive) DTA_ELE
+		int			wild;					// Current wild search mode
+		int			state;					// Current state
+		long		fdt;					// The file timestamp
+		char	   *pLast;					// Pointer to prototype string, block delimiter
+		char	   *pNext;					// Pointer to prototype string, next char
+		char		search  [FWP_MAX];		// Pointer to current search filename
+		char		pattern [FWP_MAX];		// Pointer to current pattern filename
+		char		proto   [FWP_MAX];		// Curent prototype string, first char
+		char	    found   [FWP_MAX];		// Current found filename
+		DTA_BLK		dta;					// The DTA used by findf/findn/findc
+		} DTA_ELE, *PDTA_ELE;				// Initialized to zero by fwinit()
 
 
-typedef				/* DTA list header */
-    struct
+typedef				// Segment object
+	struct
 		{
-		DTA_ELE  *link;					/* Link to active DTA_ELE element chain */
-		int	      exActive;				/* Enable file exclusion processing */
-		int       xmode;				/* File exclusion mode */
-		int       mode;					/* Find search file attribute */
-		}  DTA_HDR;
+		SegType		type;					// The segment type
+		int			terminal;				// TRUE if the terminal level of the pattern
+		int			separator;				// if TRUE, concat with separator
+		int			length;					// String length of the segment text
+		char	   *pEnd;					// Ptr to the segment string end NUL
+		char		segBuffer [FWP_MAX];	// The segment string buffer
+		} DTA_SEG, *PDTA_SEG;				// Initialized to zero by fwinit()
+
+
+typedef				// Basic fwild data root object
+	struct
+		{
+		PDTA_ELE	pLink;					// Ptr to the active DTA_ELE element chain
+		int			level;					// 0 to highest level compiled
+		int			rooted;					// The path is a root path
+		int			exActive;				// Enable file exclusion processing
+		int			xmode;					// File exclusion mode
+		int			mode;					// Find search file attribute
+		char		rawPattern [FWP_MAX];	// Raw pattern string from fwinit()
+		DTA_SEG		segment  [LEVEL_MAX];	// Segment level array
+		} DTA_HDR, *PDTA_HDR;				// Initialized to zero by fwinit()
 
 
 typedef				/* File Pair (FP) structure */
 	struct
 		{
-		int       sentinel;				/* Sentinel to detect free() error */
-		int       index;				/* Index into fnp1 for tail part */
-		int       dflag;				/* TRUE if fnp2 should be constructed */ 
-		DTA_HDR  *hp;					/* Pointer to fwild structure */
-		char     *s2;					/* Pointer to dest path */
-		char     *fnp1;					/* Pointer to first filename */
-		char     *fnp2;					/* Pointer to second filename */
+		int			sentinel;				// Sentinel to detect free() error
+		int			index;					// Index into fnp1 for tail part
+		int			dflag;					// TRUE if fnp2 should be constructed
+		DTA_HDR	   *hp;						// Pointer to fwild structure
+		char	   *s2;						// Pointer to dest path
+		char	   *fnp1;					// Pointer to first filename
+		char	   *fnp2;					// Pointer to second filename
 		}  FP;
 
 
@@ -219,6 +248,7 @@ extern  void	fnreduce (char *);			/* Reduce a filename */
 extern  int	fndot (char *);					/* Test if a "dot" directory */
 extern	int	fnmatch (char *, char *, int);	/* Match a wild file name */
 extern  int	iswild (char *);				/* Test if a "wild" path */
+extern	void	fnParse (char *, int *, int *);	/* Parse a filename path */
 extern	int	pmatch (char *, char *, int);	/* Test two fnames for match */
 extern	int	psubmatch (char *, char *, int);	/* Test two fnames for submatch */
 
@@ -226,6 +256,9 @@ extern	int	pathmake (char *);				/* Build a path */
 extern	int	pcreat (char *, int);			/* Build path and creat() a file */
 extern	int	popen (char *, int, ...);		/* Build path and open() a file */
 extern	int	prename (char *, char *);		/* Build path and rename() a file */
+extern	char   *QueryDrivePrefix (char *s, int);	/* Query if s points a drive spec */
+extern	char   *QueryUNCPrefix (char *s);			/* Query if s points a UNC spec */
+extern	char   *PointPastPrefix (char *s, int);		/* Returns ptr past any prefix */
 
 #ifdef _FILE_DEFINED
 extern  FILE  *pfopen (const char *pathname, const char *mode);
@@ -235,6 +268,8 @@ extern	void	HexDump (FILE *, void *, unsigned); /* Perform hexdump to file */
 extern  char	strpath (char *);			/* Return the path char of the fn */
 extern  void	strsetp (char *, char);		/* Set the path char in a string */
 
+extern	int		isValidPath (char);			/* Validates path characters */
+extern	int		isValidUNC (char);			/* Validates UNC \\server\share characters */
 extern  char	egetpath (void);			/* Return the path char of the env */
 extern  char	getpath (void);				/* Return the path char of DOS */
 extern  char	egetswch (void);			/* Return the switch char of the env */

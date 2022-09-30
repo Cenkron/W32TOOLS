@@ -64,7 +64,6 @@ extern  void    notfound (char *fn);
 extern  void    process (char *src, char *hp, char *dst, char *path);
 extern  int     set_readonly (char *filename);
 extern  int     should_copy (char *src, char *hp, char *dst);
-extern  int     suffix (char *s);
 extern  int     verify (char *, char *, char *);
 
 extern	void	notify (int operation, char *src, char *path, char *dst);

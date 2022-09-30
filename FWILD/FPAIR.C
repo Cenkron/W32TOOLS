@@ -20,45 +20,6 @@
 
 #include  "fwild.h"
 
-static	int	suffix (char *s);
-
-/* ----------------------------------------------------------------------- */
-	static int			/* Return the index to the filename part */
-suffix (				/* Point the non-directory tail of path s */
-	char  *s)			/* Pointer to the pathname string */
-
-	{
-	int    index;		/* Index to filename part of path s */
-	char   ch;			/* Temporary character variable */
-	char   cs;			/* Temporary character save variable */
-	char  *temp;		/* Pointer to a temporary string buffer */
-	char  *p;			/* Pointer to a temporary string buffer */
-
-
-	p = temp = fmalloc(strlen(s) + 1);
-	strcpy(temp, s);
-	fnreduce(temp);
-
-	index = 0;
-	do  {
-		if (ch = *p)
-			++p;
-		if ((ch == '\0') || (ch == ':') || (ch == '/') || (ch == '\\'))
-			{
-			cs = *p;
-			*p = '\0';
-			if (fnchkdir(temp))
-				index = (p - temp);
-//			else					// This code breaks UNC filenames
-//				break;
-			*p = cs;
-			}
-		} while (ch);
-
-	free(temp);
-	return (index);
-	}
-
 /* ----------------------------------------------------------------------- */
 	int
 fp_init (					/* Initialize the FP system */
@@ -68,14 +29,15 @@ fp_init (					/* Initialize the FP system */
 	char  *s2)				/* Pointer to the pathname2 string */
 
 	{
+	int    CatIndex = 0;	/* Concatenation index of the path */
+	int    TermIndex;		/* Termination index of the path (not used here) */
 	int    result;			/* Returned result */
-	int    index;			/* Suffix index into s1 */
 	int    dflag;			/* TRUE if path 2 should be constructed */
 	FP    *fp;				/* Pointer to the FP structure */
 
 
 	result = FPR_SUCCESS;		/* Assume success */
-		fp     = NULL;			/* Init the FP pointer */
+	fp     = *fpp;				/* Init the FP pointer */
 	if (iswild(s2))				/* Ensure non-wild path2 */
 		{
 		result = FPR_P2WILD;
@@ -85,7 +47,7 @@ fp_init (					/* Initialize the FP system */
     if (fnchkdir(s2))
 		{
 		dflag  = TRUE;			/* Using s2 as a path, constructing fnp2 */
-		index  = suffix(s1);	/* Save the suffix ptr into s1 */
+		fnParse(s1, &CatIndex, &TermIndex);	/* Set pointer to construct path2 */
 		}
 	else if ( ! PermitFile)
 		{
@@ -120,14 +82,14 @@ fp_init (					/* Initialize the FP system */
 	if (result == FPR_SUCCESS)
 		{
 		fp->sentinel = 0x55AA;
-		fp->index    = index;
+		fp->index    = CatIndex;
 		fp->dflag    = dflag;
 		fp->fnp2     = NULL;
 		fp->s2       = s2;
 		}
 
 exit:
-	*fpp = fp;
+//	*fpp = fp;
 	return (result);
 	}
 
