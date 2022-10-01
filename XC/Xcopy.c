@@ -139,6 +139,7 @@ time_t          o_time          = 0L;
 char            path_char	= 0;
 char            temp_name [80]	= "";
 time_t          y_time          = 0L;
+int				copy_rename		= 0;	// Enables direct copy and rename option
 
 /* ----------------------------------------------------------------------- */
 
@@ -273,7 +274,7 @@ main (
 		if (fwvalid(dst) != FWERR_NONE)
 			fatal("Invalid destination path specification");
 		else if (fnchkfil(dst))
-			fatal("Destination cannot be a file");
+			fatal("Destination cannot be an existing file");
 		else if (iswild(dst))
 			fatal("Cannot have wildcards in the destination");
 
@@ -283,11 +284,23 @@ main (
 			{
 			strcpy(src, argv[optind]);
 
-			if (fwvalid(src) != FWERR_NONE)
+			// if src is a file, and dst could be a valid filename after copying
+			// then treat it as a file copy with rename of the dst name
+
+			if (fnchkfil(src)
+			&&  !iswild(dst)
+			&&  !fnchkfil(dst)
+			&&  !fnchkdir(dst)
+			&&  fnValidName(dst))
+				copy_rename	= TRUE;
+
+			else if (fwvalid(src) != FWERR_NONE)
 				fatal("Invalid source file specification");
+
 			else if ((fnchkdir(src))			// if src is a directory,    assume *.*
 				 ||  (strcmp(fntail(src), "**") == 0))	// if src is recurse wild,   assume *.*
 				catpth(src,"*.*");
+
 			else if (strchr(fntail(src), '.') == NULL)	// if src specifies no type, assume  .*     */
 				strcat(src,".*");
 
@@ -310,15 +323,28 @@ main (
 /* ----------------------------------------------------------------------- */
 
 /* ----------------------------------------------------------------------- */
+// doFileCopy ()
+/* ----------------------------------------------------------------------- */
+	static void
+directCopy (
+	char *src,				// Src pathname
+	char *dst)				// Dst pathname
+
+	{
+	copy(src, dst, "");
+	}
+
+/* ----------------------------------------------------------------------- */
+// filepair ()
+/* ----------------------------------------------------------------------- */
 	void
 filepair(     				/* Process the pathname pairs */
 	char* s1,				/* Pointer to the pathname1 string */
-	char* dstpath			/* Pointer to the pathname2 string */
-	)
+	char* dstpath)			/* Pointer to the pathname2 string */
 
 	{
-	int    CatIndex;		/* Concatenation index of the path */
-	int    TermIndex;		/* Termination index of the path (not used here) */
+	int   CatIndex;			/* Concatenation index of the path */
+	int   TermIndex;		/* Termination index of the path (not used here) */
 	char *srcname;          /* Pointer to the path1 pathname */
 	char *dstname;          /* Pointer to the path2 pathname */
 	char *hp;				/* FWILD object pointer */
@@ -338,14 +364,18 @@ filepair(     				/* Process the pathname pairs */
 		{				/* Process all path1 files */
 		filesize = (__int64)(fwsize(hp));
 
-// printf("src: \"%s\"\n", srcname);
-// printf("dp:  \"%s\"\n", dstpath);
+// printf("srcn: \"%s\"\n", srcname);
+// printf("dstp: \"%s\"\n", dstpath);
 // printf("tail:\"%s\"\n", fntail(srcname));
 // printf("ndx: \"%s\"\n", (srcname + CatIndex));
 // fflush(stdout);
 
-		if (azFlags.f)
+		if (copy_rename)
+				copy(srcname, dstpath, "");
+
+		else if (azFlags.f)
 			dstname = fncatpth(dstpath, fntail(srcname));
+
 		else
 			dstname = fncatpth(dstpath, (srcname + CatIndex));
 

@@ -245,6 +245,7 @@ extern	int	fnchkdir (char *);				/* Test if a directory exists */
 extern	int	fnchkfil (char *);				/* Test if a file exists */
 extern  int     fnchkunc (char *);			/* Test if a UNC root */
 extern  void	fnreduce (char *);			/* Reduce a filename */
+extern	int	fnValidName (char *);			/* Test if a path is valid nonwild filename syntax */
 extern  int	fndot (char *);					/* Test if a "dot" directory */
 extern	int	fnmatch (char *, char *, int);	/* Match a wild file name */
 extern  int	iswild (char *);				/* Test if a "wild" path */
@@ -354,45 +355,45 @@ extern	void	fmemdump  (					/* Dump n bytes of memory */
 /* Result (value) */
 
 #define  FCR_SUCCESS	(0)	/* Successful copy */
-#define  FCR_RO		(1)	/* RO and not FCF_ROK */
-#define  FCR_OPN1	(2)	/* Can't open file 1 (src) */
-#define  FCR_OPN2	(3)	/* Can't open file 2 (dest) */
-#define  FCR_READ	(4)	/* Error reading file 1 (src) */
-#define  FCR_WRITE	(5)	/* Error writing file 2 (dest) */
-#define  FCR_GFDT	(6)	/* Unable to get src datetime */
-#define  FCR_GATTR	(7)	/* Unable to get src attribute */
-#define  FCR_SFDT	(8)	/* Unable to set dest datetime */
-#define  FCR_SATTR	(9)	/* Unable to set dest attribute */
+#define  FCR_RO			(1)	/* RO and not FCF_ROK */
+#define  FCR_OPN1		(2)	/* Can't open file 1 (src) */
+#define  FCR_OPN2		(3)	/* Can't open file 2 (dest) */
+#define  FCR_READ		(4)	/* Error reading file 1 (src) */
+#define  FCR_WRITE		(5)	/* Error writing file 2 (dest) */
+#define  FCR_GFDT		(6)	/* Unable to get src datetime */
+#define  FCR_GATTR		(7)	/* Unable to get src attribute */
+#define  FCR_SFDT		(8)	/* Unable to set dest datetime */
+#define  FCR_SATTR		(9)	/* Unable to set dest attribute */
 
 #define  FPR_SUCCESS	(0)	/* Successful */
-#define  FPR_NOFILE	(1)	/* No file pair returned */
-#define  FPR_P2WILD	(2)	/* Path2 cannot be wild */
-#define  FPR_P2FILE	(3)	/* Path2 cannot be a file */
-#define  FPR_MEMORY	(4)	/* Insufficient memory */
+#define  FPR_NOFILE		(1)	/* No file pair returned */
+#define  FPR_P2WILD		(2)	/* Path2 cannot be wild */
+#define  FPR_P2FILE		(3)	/* Path2 cannot be a file */
+#define  FPR_MEMORY		(4)	/* Insufficient memory */
 #define  FPR_FWERROR	(5)	/* fwild() error */
 
 /* ------------------------------------------------------------------------ *\
 |  fwerrno definitions
 \* ------------------------------------------------------------------------ */
 
-#define  FWERR_NONE	 (0)		// No error, pathname is good
-#define  FWERR_NULL	 (1)		// NULL pathname pointer passed
-#define  FWERR_EMPTY	 (2)		// Empty pathname passed
-#define  FWERR_DRIVE	 (3)		// Improper drive spec
-#define  FWERR_SEPARATOR (4)		// Improper separator spec
-#define  FWERR_ELEMENT	 (5)		// Improper path element spec
-#define  FWERR_SIZE	 (6)		// Invalid name field size
-#define  FWERR_TRAIL	 (7)		// Trailing "\" following element
+#define  FWERR_NONE			(0)		// No error, pathname is good
+#define  FWERR_NULL			(1)		// NULL pathname pointer passed
+#define  FWERR_EMPTY		(2)		// Empty pathname passed
+#define  FWERR_DRIVE		(3)		// Improper drive spec
+#define  FWERR_SEPARATOR	(4)		// Improper separator spec
+#define  FWERR_ELEMENT		(5)		// Improper path element spec
+#define  FWERR_SIZE			(6)		// Invalid name field size
+#define  FWERR_TRAIL		(7)		// Trailing "\" following element
 
 /* ------------------------------------------------------------------------ *\
 |  Exit code definitions
 \* ------------------------------------------------------------------------ */
 
-#define  FWEXIT_SUCCESS			(0)	// Never fatal
+#define  FWEXIT_SUCCESS				(0)	// Never fatal
 #define  FWEXIT_FILE_NOT_FOUND		(1)	// Optional fatal
-#define  FWEXIT_MINOR_ERROR		(2)	// Optional fatal
+#define  FWEXIT_MINOR_ERROR			(2)	// Optional fatal
 
-#define  FWEXIT_MAJOR_ERROR		(3)	// Always fatal
+#define  FWEXIT_MAJOR_ERROR			(3)	// Always fatal
 #define  FWEXIT_COMMAND_LINE		(4)	// Always fatal
 #define  FWEXIT_PROGRAM_NOT_FOUND	(5)	// Always fatal
 
