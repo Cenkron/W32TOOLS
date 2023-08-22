@@ -2,4 +2,4 @@ Building this repository requires Visual Studio 2019 Community Edition.
 It requires the current VS C/C++ and MFC components.
 
 This builld is 32 bit for compatiibility with old Windows versions.
-The 32 bit buld is fully compatible with X64 Windows.
+The 32 bit build is fully compatible with X64 Windows.
