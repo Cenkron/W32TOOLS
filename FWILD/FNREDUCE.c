@@ -178,7 +178,7 @@ fnreduce (				// Eliminate pathname redundancy
     char  *s)			// Pointer to the pathname string
 
 	{
-	char  *p = s;		// Pointer to the path following the prefix and root separator
+	char  *p = s;		// Pointer to the path following any prefix and root separator
 	char  *pTemp;		// Returned result from prefix queries
 
 	if (s == NULL)
@@ -199,7 +199,7 @@ fnreduce (				// Eliminate pathname redundancy
 	else if ((pTemp = QueryUNCPrefix(s)) != NULL)
 		{
 		p = pTemp;
-		rooted = TRUE;				// We are by default rooted (absolute path)
+		rooted = TRUE;				// UNC header is by definition rooted (absolute path)
 		}
 
 	else if (ispath(*p))			// No prefix found; if we have a root separator
@@ -214,6 +214,20 @@ fnreduce (				// Eliminate pathname redundancy
 		StripLeadingDots(p);		// eliminate any preceding "." or ".." prefixes
 
 	condense(p, 0);					// Condense the path elements
+
+	// Delete improper trailing path character
+
+	char *pTail;
+	int   len = strlen(p);
+	
+	if (len > 0)
+		{
+		pTail = p + len - 1;
+		if (ispath(*pTail))					// It must not be a path character
+			*pTail = '\0';
+		}
+
+	return;
 	}
 
 /* ----------------------------------------------------------------------- */

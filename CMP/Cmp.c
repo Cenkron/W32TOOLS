@@ -99,7 +99,7 @@ int	L_flag	= FALSE;		/* Use Long form when listing files */
 int	q_flag	= FALSE;		/* quiet flag */
 int	Q_flag	= TRUE;			/* quote names with spaces flag */
 int	u_flag	= FALSE;		/* UNIX mode (text translation) */
-int	v_flag	= FALSE;		/* Verbose information flag */
+int	v_flag	= 0;			/* Verbose information flag */
 int	y_flag	= FALSE;		/* Report only younger flag */
 int	z_flag	= FALSE;		/* Return zero even if error flag */
 
@@ -294,12 +294,18 @@ static	char   *optstring = "?aAbBdDeEhHlLnNoOqQrRsStT:TuUvVX:yYzZ";
 	if (nargs > 2)
 		f_err("Only two pathnames are allowed");
 
+	if (v_flag >= 1)
+		{
+		printf("v_flag = %d\n", v_flag);
+		fflush(stdout);
+		}
+
 	fnp1 = argv[optind++];
 
 	if ((nargs != 2)  ||  ((fnp2 = argv[optind]) == NULL))
 		fnp2 = ".";
 
-	if (v_flag)
+	if (v_flag >= 1)
 		{
 		printf("Comparing \"%s\" and \"%s\"%s\n",
 			fnp1, fnp2, (bi_flag ? " (bidirectionally)" : ""));
@@ -346,7 +352,20 @@ filepair1 (					/* Process the pathnames forward */
 		f_err("Path2 cannot be wild");
 
 	fnParse(s1, &CatIndex1, &TermIndex1);
+// remove
+	if (v_flag >= 3)
+		{
+		printf("Pat F1 ('%s')  F2 ('%s')\n", s1, s2);
+		fflush(stdout);
+		}
+
 	fnreduce(s2);
+
+	if (v_flag >= 3)
+		{
+		printf("Pat F1 ('%s')  F2 ('%s')\n", s1, s2);
+		fflush(stdout);
+		}
 
 // printf("1 pattern: \"%s\"\n", s1);
 // printf("1 s2save:  \"%s\"\n", s2save);
@@ -368,6 +387,12 @@ filepair1 (					/* Process the pathnames forward */
 // printf("  fnp1:  %s\n", fnp1);
 // printf("  fnp2:  %s\n", fnp2);
 // fflush(stdout);
+
+		if (v_flag >= 4)
+			{
+			printf("FNP F1 ('%s')  F2 ('%s')\n", fnp1, fnp2);
+			fflush(stdout);
+			}
 
 		process(fnp1, fnp2);
 
@@ -395,6 +420,12 @@ filepair2 (					/* Process the pathnames backward */
 
 	if (iswild(s2))			/* Ensure non-wild path2 */
 		f_err("Path2 cannot be wild");
+
+	if (v_flag >= 3)
+		{
+		printf("Pat F1 ('%s')  F2 ('%s')\n", s1, s2);
+		fflush(stdout);
+		}
 
 	e_flag  = TRUE;			/* Do    check the existence */
 	d_flag  = FALSE;		/* Don't check the data */
@@ -429,6 +460,12 @@ filepair2 (					/* Process the pathnames backward */
 // printf("3 File B:    \"%s\"\n", fnp2);
 // printf("3 File A:    \"%s\"\n", fnp1);
 //fflush(stdout);
+
+		if (v_flag >= 4)
+			{
+			printf("FNP F1 ('%s')  F2 ('%s')\n", fnp1, fnp2);
+			fflush(stdout);
+			}
 
 		process(fnp1, fnp2);
 		free(fnp1);
@@ -647,17 +684,17 @@ unixcomp (				/* Compare the data of two open files */
 		{
 		len1 = fread(buff1, sizeof(char), DATASIZE, fp1);
 		len2 = fread(buff2, sizeof(char), DATASIZE, fp2);
-		if (v_flag > 2)
+		if (v_flag >= 2)
 			printf("len1: %d  len2: %d\n", len1, len2);
 
 		if (len1 > len2)			/* (len1 > len2), done */
 			{
-			if (v_flag > 2)
+			if (v_flag >= 2)
 				printf("larger\n");
 			result |= DC_LARGER;
 			if ((len2 > 0)  &&  memcmp(buff1, buff2, len2))
 				{
-				if (v_flag > 2)
+				if (v_flag >= 2)
 					printf("different (l)\n");
 				result |= DC_DIFFERENT;
 				}
@@ -666,12 +703,12 @@ unixcomp (				/* Compare the data of two open files */
 
 		if (len1 < len2)			/* (len1 < len2), done */
 			{
-			if (v_flag > 2)
+			if (v_flag >= 2)
 				printf("smaller\n");
 			result |= DC_SMALLER;
 			if ((len1 > 0)  &&  memcmp(buff1, buff2, len1))
 				{
-				if (v_flag > 2)
+				if (v_flag >= 2)
 					printf("different (s)\n");
 				result |= DC_DIFFERENT;
 				}
@@ -680,19 +717,19 @@ unixcomp (				/* Compare the data of two open files */
 
 		if (len1 == 0)				/* (len1 == len2 == 0), done */
 			{
-			if (v_flag > 2)
+			if (v_flag >= 2)
 				printf("zero\n");
 			break;
 			}
 
 		if (memcmp(buff1, buff2, len1))		/* (len1 == len2 != 0), cont */
 			{
-			if (v_flag > 2)
+			if (v_flag >= 2)
 				printf("different ()\n");
 			result |= DC_DIFFERENT;
 			}
 
-		if (v_flag > 2)
+		if (v_flag >= 2)
 			printf("equal\n");
 		}
 
