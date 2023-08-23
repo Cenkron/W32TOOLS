@@ -3,3 +3,7 @@ It requires the current VS C/C++ and MFC components.
 
 This builld is 32 bit for compatiibility with old Windows versions.
 The 32 bit build is fully compatible with X64 Windows.
+
+Windows X64 build capability is provided, but it is provisional
+because there are many compiler warnings related to casts between
+integer variables of different size.  This is a work in progress.
