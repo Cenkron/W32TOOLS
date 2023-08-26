@@ -682,8 +682,8 @@ unixcomp (				/* Compare the data of two open files */
 
 	for (;;)
 		{
-		len1 = fread(buff1, sizeof(char), DATASIZE, fp1);
-		len2 = fread(buff2, sizeof(char), DATASIZE, fp2);
+		len1 = (int)(fread(buff1, sizeof(char), DATASIZE, fp1));
+		len2 = (int)(fread(buff2, sizeof(char), DATASIZE, fp2));
 		if (v_flag >= 2)
 			printf("len1: %d  len2: %d\n", len1, len2);
 

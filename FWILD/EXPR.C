@@ -310,7 +310,7 @@ error (
 		case ERROR_SYNTAX:			p = "bad syntax";	break;
 		}
 
-	sprintf(errmsg, "%s at character %d", p, (1 + s_current - s_initial));
+	sprintf(errmsg, "%s at character %d", p, (int)((1 + s_current - s_initial)));
 	errorcode = err_value;		/* Remember the error code */
 	}
 

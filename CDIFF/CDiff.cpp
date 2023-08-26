@@ -1406,11 +1406,19 @@ CDiff :: DisplayFileInfo (
 
 	printf("(%d) Filename:  \"%s\"\n", Index, (LPCTSTR)(p->FileName));
 	printf("    pData     Length  Lines  CREOL  NLEOF  Handle\n");
-	printf("    %08X   %3d     %3d   %-5.5s  %-5.5s  %08X\n",
-		(int)(p->pFileData), p->FileLength, p->Lines,
+#ifdef _WIN64
+	printf("    %08llX   %3d     %3d   %-5.5s  %-5.5s  %08llX\n",
+		(UINT64)(p->pFileData), p->FileLength, p->Lines,
 		(p->CR_EOL ? "true" : "false"),
 		(p->NL_EOL ? "true" : "false"),
-		(UINT)(p->hFile));
+		(UINT64)(p->hFile));
+#else
+	printf("    %08X   %3d     %3d   %-5.5s  %-5.5s  %08X\n",
+		(UINT32)(p->pFileData), p->FileLength, p->Lines,
+		(p->CR_EOL ? "true" : "false"),
+		(p->NL_EOL ? "true" : "false"),
+		(UINT32)(p->hFile));
+#endif
 	}
 
 /* ----------------------------------------------------------------------- *\
@@ -1471,8 +1479,13 @@ CDiff :: DisplayLineInfo (
 			Str += *s;
 		}
 
+#ifdef _WIN64
+	printf("(%3d)  %s %5d  %5d  %08llX  \"%s\"\n",
+		Index, TranslateRegionType(p->Type), p->Pair, p->Combined, (UINT64)(p->pLine), (LPCTSTR)(Str));
+#else // _WIN32
 	printf("(%3d)  %s %5d  %5d  %08X  \"%s\"\n",
-	Index, 	TranslateRegionType(p->Type), p->Pair, p->Combined, (UINT)(p->pLine), (LPCTSTR)(Str));
+		Index, TranslateRegionType(p->Type), p->Pair, p->Combined, (UINT32)(p->pLine), (LPCTSTR)(Str));
+#endif
 	}
 
 /* ----------------------------------------------------------------------- *\

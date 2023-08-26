@@ -209,8 +209,8 @@ FixPaths (void)
 
 	for (p = &SearchList[1]; (p < pSearchEntry); ++p)
 		{
-		int     n = strlen(*p);		// Length of the search path
-		char  *px = *p + (n - 1);	// Pointer to the possible '\'
+		int     n = (int)(strlen(*p));	// Length of the search path
+		char  *px = *p + (n - 1);		// Pointer to the possible '\'
 
 		if ((n > 0)  &&  (*px == '\\'))	// Check for it...
 			*px = '\0';			// ...yes, truncate it

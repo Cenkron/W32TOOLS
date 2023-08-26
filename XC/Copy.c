@@ -195,8 +195,8 @@ InterSpace (char *src, char *dst)
 	else
 		right = 1;
 
-	const int srclen = strlen(src);
-	const int dstlen = strlen(dst);
+	const int srclen = (int)(strlen(src));
+	const int dstlen = (int)(strlen(dst));
 
 // Note that 'cols' is half the screen width (40 on 80x25 screen)
 
@@ -344,7 +344,7 @@ err_exit:;
 	int
 init_buffer (void)
 	{
-	size_t	size	= MAX_BUF_SIZE;
+	int		size	= MAX_BUF_SIZE;
 
 	while (!buffer)
 		{

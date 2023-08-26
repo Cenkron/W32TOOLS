@@ -218,7 +218,7 @@ SplitAscii (			/* Process one input file */
 
 	while (fgets(buffer, sizeof(buffer), fp))
 		{
-		const size_t reclen = strlen(buffer) + 1;
+		const int reclen = (int)(strlen(buffer)) + 1;
 
 		if (bytes  &&  ((long)(b+reclen) > bytes))
 			{
@@ -261,14 +261,14 @@ SplitBinary (			/* Process one input file */
 	long	b	= 0L;
 	int		extent	= 0;
 	int		ofh	= -1;			/* Output file handle */
-	size_t	reclen;
+	int		reclen;
 
-	const size_t buflen = (min(sizeof(buffer), (size_t)bytes));
+	const int buflen = (min(sizeof(buffer), (size_t)(bytes)));
 
 	fclose(fp);
 	const int ifh = open(fnp, INPUT_MODE);
 
-	while ((reclen=read(ifh, buffer, buflen)) > 0)
+	while ((reclen = read(ifh, buffer, buflen)) > 0)
 		{
 		if ((long)(b+reclen)  >  bytes)
 			{

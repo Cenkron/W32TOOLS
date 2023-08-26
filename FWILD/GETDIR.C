@@ -31,7 +31,7 @@ getdir (			/* Convert a filename to absolute format */
 	{
 	_getdcwd(drive, s, (MAX_PATH));
 
-	return (strlen(s));
+	return (int)((strlen(s)));
 	}
 
 /* ----------------------------------------------------------------------- */

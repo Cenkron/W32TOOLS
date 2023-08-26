@@ -55,8 +55,8 @@ fnmatch 		(			/* Test two filenames for filename match */
 	if ( ! namematch(r, s))	/* Compare the file basename parts */
 		return (FALSE);		/* Failed */
 
-	patternlen = strlen(p);	/* Determine the extension lengths */
-	testlen    = strlen(q);
+	patternlen = (int)(strlen(p));	/* Determine the extension lengths */
+	testlen    = (int)(strlen(q));
 
 	if (patternlen == 0)
 		{
@@ -87,7 +87,7 @@ getext (					/* Find the last '.' */
 	char  *end;					/* Ptr to the end of the src string */
 
 
-	if ((length = strlen(p)) == 0)
+	if ((length = (int)(strlen(p))) == 0)
 		return (0);				/* There is no extension */
 
 	end = p + (length - 1);		/* Point the last character */
@@ -97,9 +97,9 @@ getext (					/* Find the last '.' */
 	&&     (*end != '\\')		/* and   not '\' */
 	&&     (*end != ':'))		/* and   not ':' */
 		{
-		if (*end == '.')		/* Check for '.' */
-			return (end - p);	/* Return the extension offset */
-		--end;					/* Back up to the predecessor */
+		if (*end == '.')			/* Check for '.' */
+			return (int)(end - p);	/* Return the extension offset */
+		--end;						/* Back up to the predecessor */
 		}
 
 	return (length);			/* There is no extension */

@@ -271,10 +271,10 @@ static int  notfirst = FALSE;	/* Not first input file flag */
 
 	procin(fp);
 
-VPRINTF(("pthead: %d\n", pthead - ptstart));
-VPRINTF(("pttail: %d\n", pttail - ptstart));
-VPRINTF(("pbhead: %d\n", pbhead - pbstart));
-VPRINTF(("pbtail: %d\n", pbtail - pbstart));
+VPRINTF(("pthead: %d\n", (int)(pthead - ptstart)));
+VPRINTF(("pttail: %d\n", (int)(pttail - ptstart)));
+VPRINTF(("pbhead: %d\n", (int)(pbhead - pbstart)));
+VPRINTF(("pbtail: %d\n", (int)(pbtail - pbstart)));
 
 	if (pbhead != pbtail)
 		procout();

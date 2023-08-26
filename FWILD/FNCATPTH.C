@@ -42,8 +42,8 @@ fncatpth (					/* Return s2 concatenated onto s1 */
 	while (ispath(*s2))		/* Eliminate any s2 path character */
 		++s2;
 
-	len1 = strlen(s1);
-	len2 = strlen(s2);
+	len1 = (int)(strlen(s1));
+	len2 = (int)(strlen(s2));
 	p = fmalloc(len1 + len2 + 2);
 
 	if (len1 == 0)

@@ -341,7 +341,7 @@ XCprocess (
 		if (optdata.flags.q)
 			strcat(xcflags, "q");
 
-		const int rc = spawnlp(P_WAIT, "xc", "xc", xcflags, qsrc, qdst, NULL);
+		const int rc = (int)(spawnlp(P_WAIT, "xc", "xc", xcflags, qsrc, qdst, NULL));
 		if (rc)
 			fatal(src, "copy/delete process failed");
 		}
@@ -610,8 +610,8 @@ InterSpace (char *src, char *dst)
 	else if (azFlags.v)	right = 4;
 	else		right = 1;
 
-	const int srclen = strlen(src);
-	const int dstlen = strlen(dst);
+	const int srclen = (int)(strlen(src));
+	const int dstlen = (int)(strlen(dst));
 
 // Note that 'cols' is half the screen width (40 on 80x25 screen)
 

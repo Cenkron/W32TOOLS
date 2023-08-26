@@ -218,7 +218,7 @@ fnreduce (				// Eliminate pathname redundancy
 	// Delete improper trailing path character
 
 	char *pTail;
-	int   len = strlen(p);
+	int   len = (int)(strlen(p));
 	
 	if (len > 0)
 		{

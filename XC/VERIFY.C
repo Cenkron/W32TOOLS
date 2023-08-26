@@ -60,13 +60,13 @@ verify (
 		goto err_exit;
 		}
 
-	size_t verify_size = bsize/2;
-	char *		srcbuf = buffer;
-	char *		dstbuf = buffer + verify_size;
+	int		verify_size = bsize/2;
+	char *	srcbuf = buffer;
+	char *	dstbuf = buffer + verify_size;
 
 	while (TRUE)
 		{
-		const size_t srccnt = read(srcfh, srcbuf, verify_size);
+		const int srccnt = read(srcfh, srcbuf, verify_size);
 
 		if (srccnt == 0)
 			goto done;
@@ -77,7 +77,7 @@ verify (
 			goto err_exit;
 			}
 
-		const size_t dstcnt = read(dstfh, dstbuf, srccnt);
+		const int dstcnt = read(dstfh, dstbuf, srccnt);
 		if ((dstcnt == (-1))
 		||  (dstcnt != srccnt))
 			{

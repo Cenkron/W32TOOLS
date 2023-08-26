@@ -241,11 +241,11 @@ ProcessSymbols (
 	{
 	int  i;
 
-	SearchLength  = strlen(pSearch);
+	SearchLength  = (int)(strlen(pSearch));
 	Search[0]     = (BYTE)(SearchLength);
 	strcpy(&Search[1], pSearch);
 
-	ReplaceLength = strlen(pReplace);
+	ReplaceLength = (int)(strlen(pReplace));
 	Replace[0]    = (BYTE)(ReplaceLength);
 	strcpy(&Replace[1], pReplace);
 

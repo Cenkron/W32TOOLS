@@ -1056,7 +1056,7 @@ cclass (
 
 	if (c != ']')
 		badpat("pattern class unterminated", pClassSrc, pClassDef);
-	if ((Length = (*ppPatBegin - pPatLengthField)) >= 256)
+	if ((Length = (int)(*ppPatBegin - pPatLengthField)) >= 256)
 		badpat("pattern class too large", pClassSrc, pClassDef);
 	if (Length == 0)
 		badpat("pattern class empty", pClassSrc, pClassDef);
@@ -1076,7 +1076,7 @@ badpat (message, source, stop)
 
 	{
 	fprintf(fout, "Pattern error (%s), pattern is \"%s\"\n", message, source);
-	fprintf(fout, "  stopped at character %d: '%c'\n", stop-source, stop[-1]);
+	fprintf(fout, "  stopped at character %d: '%c'\n", (int)(stop - source), stop[-1]);
 	exit(1);
 	}
 
@@ -1455,7 +1455,11 @@ positionmatch (
 		{
 		if (debug > 3)
 			{
-			fprintf(fout, "byte[%d] = 0x%02X, '%c', matchType = %s\n", pCurChar - pLine, *pCurChar, *pCurChar, patname(matchType));
+			fprintf(fout, "byte[%d] = 0x%02X, '%c', matchType = %s\n",
+				(int)(pCurChar - pLine),
+				*pCurChar,
+				*pCurChar,
+				 patname(matchType));
 			PRTFLUSH();
 			}
 
@@ -1748,11 +1752,11 @@ debugmatches (
 		{
 		MATCHITEM  *pMatchItem = &MatchItems[MatchIndex];
 
-		fprintf(fout, "MATCH %d: Pattern %d, offset %d, length %d\n",
+		fprintf(fout, "MATCH %d: Pattern %d, (int)(offset %d, length %d\n",
 			MatchIndex,
 			pMatchItem->PatIndex,
-			(pMatchItem->Begin - pLine),
-			(pMatchItem->End - pMatchItem->Begin));
+			(int)((pMatchItem->Begin - pLine)),
+			(int)((pMatchItem->End - pMatchItem->Begin)));
 		}
 	PRTFLUSH();
 	}

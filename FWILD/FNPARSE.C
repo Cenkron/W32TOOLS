@@ -59,14 +59,14 @@ fnParse (				/* Point the non-directory tail of path s */
 				{
 				if ((*p == '/') || (*p == '\\'))
 					{
-					*pTermIndex	= ((p + 1) - pPath);
-					*pCatIndex  = ((p + 1) - pPath);	// All path elements excluded, rooted
+					*pTermIndex	= (int)((p + 1) - pPath);
+					*pCatIndex  = (int)((p + 1) - pPath);	// All path elements excluded, rooted
 					break;
 					}
 				else // Root separator not present
 					{
-					*pTermIndex	= (p - pPath);
-					*pCatIndex  = (p - pPath);			// All path elements excluded, unrooted or UNC
+					*pTermIndex	= (int)((p - pPath));
+					*pCatIndex  = (int)((p - pPath));			// All path elements excluded, unrooted or UNC
 					break;
 					}
 				}
@@ -80,8 +80,8 @@ fnParse (				/* Point the non-directory tail of path s */
 // printf("Test \"%s\"\n", pPath);
 					if (fnchkdir(pPath))
 						{
-						*pTermIndex	= (p - pPath);
-						*pCatIndex  = (cs == '\0') ? (p - pPath) : ((p +1) - pPath);
+						*pTermIndex	= (int)((p - pPath));
+						*pCatIndex  = (cs == '\0') ? (int)((p - pPath)) : (int)(((p +1) - pPath));
 // printf("Accepted \"%s\"\n", pPath);
 						break;
 						}

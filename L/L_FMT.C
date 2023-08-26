@@ -267,7 +267,7 @@ put_name (				/* Print a file/directory name in normal mode */
 	int	 Quotes = 0;	/* Allowance required for quoted filename */
 
 
-	length	  = strlen(fnp);
+	length	  = (int)(strlen(fnp));
 	if (QuoteFlag)				// Account for quoting, if necessary
 		{
 		char  *p = fnp;
@@ -359,7 +359,7 @@ interleave (
 	int	   pad;			/* Number of pad spaces needed */
 
 
-	pad = lmin_size - strlen(pf2);	/* Determine the length discrepancy */
+	pad = lmin_size - (int)(strlen(pf2));	/* Determine the length discrepancy */
 
 	/* If the field is shorter than the minimum (pad > 0): */
 	/* If the previous field overran (available < 0), */
@@ -420,7 +420,7 @@ fdpr_wide (				/* Print a file/directory name in wide mode */
 		}
 
 	extra	= (attr & ATT_SUBD) ? (2) : (0);
-	length	= strlen(fnp) + extra + Quotes;
+	length	= (int)(strlen(fnp)) + extra + Quotes;
 	column += spaces + length;
 
 	if (column >= collimit)		/* Prevent oversize lines */

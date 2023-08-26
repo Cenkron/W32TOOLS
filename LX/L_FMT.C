@@ -267,7 +267,7 @@ put_name (				/* Print a file/directory name in normal mode */
 	int	 Quotes = 0;	/* Allowance required for quoted filename */
 
 
-	length	  = strlen(fnp);
+	length	  = (int)(strlen(fnp));
 	if (QuoteFlag)				// Account for quoting, if necessary
 		{
 		char  *p = fnp;
@@ -288,7 +288,7 @@ put_name (				/* Print a file/directory name in normal mode */
 	pline += length;
 	if (Quotes)
 		*(pline++) = '\"';
-	available = namesize - (length + Quotes);
+	available = (namesize - (length + Quotes));
 	delta	  = max(0, available);
 	}
 
@@ -356,10 +356,10 @@ interleave (
 	char  *pf2)			/* Pointer to the right-justified field */
 
 	{
-	int	   pad;			/* Number of pad spaces needed */
+	int		pad;		/* Number of pad spaces needed */
 
 
-	pad = lmin_size - strlen(pf2);	/* Determine the length discrepancy */
+	pad = lmin_size - (int)(strlen(pf2));	/* Determine the length discrepancy */
 
 	/* If the field is shorter than the minimum (pad > 0): */
 	/* If the previous field overran (available < 0), */
@@ -397,9 +397,9 @@ fdpr_wide (				/* Print a file/directory name in wide mode */
 	int	   attr)		/* File attributes */
 
 	{
-	int	 length;		/* Length of the current filename */
-	int	 extra;			/* Allowance for a subdirectory */
-	int	 Quotes = 0;	/* Allowance required for quoted filename */
+	int		length;		/* Length of the current filename */
+	int		extra;		/* Allowance for a subdirectory */
+	int		Quotes = 0;	/* Allowance required for quoted filename */
 
 
 	if (nameonly)				/* Strip the path, if requested */
@@ -420,8 +420,8 @@ fdpr_wide (				/* Print a file/directory name in wide mode */
 		}
 
 	extra	= (attr & ATT_SUBD) ? (2) : (0);
-	length	= strlen(fnp) + extra + Quotes;
-	column += spaces + length;
+	length	= (int)(strlen(fnp)) + extra + Quotes;
+	column += (spaces + length);
 
 	if (column >= collimit)		/* Prevent oversize lines */
 		{

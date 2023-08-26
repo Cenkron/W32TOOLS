@@ -72,13 +72,13 @@ main (
 			case 'd':
 				++ArgFlag;
 				pDisableStr = optarg;
-				DisableSize = strlen(optarg);
+				DisableSize = (int)(strlen(optarg));
 				break;
 
 			case 'e':
 				++ArgFlag;
 				pEnableStr = optarg;
-				EnableSize = strlen(optarg);
+				EnableSize = (int)(strlen(optarg));
 				break;
 
 			case 'i':

@@ -70,12 +70,12 @@ execute (				/* Execute a command line */
 		}
 
 	if (stricmp(cmd, "sh") == MATCH)	/* Check if a "sh" request */
-		error = spawnl(P_WAIT, comspec, cmd, cmd_pfx, arg, NULL);
+		error = (int)(spawnl(P_WAIT, comspec, cmd, cmd_pfx, arg, NULL));
 	else
-		error = spawnlp(P_WAIT, cmd, cmd, arg, NULL);
+		error = (int)(spawnlp(P_WAIT, cmd, cmd, arg, NULL));
 
 	if (error < 0)			/* Try as an intrinsic or batch */
-		error = spawnl(P_WAIT, comspec, cmd, cmd_pfx, cmd, arg, NULL);
+		error = (int)(spawnl(P_WAIT, comspec, cmd, cmd_pfx, cmd, arg, NULL));
 
 	if ((error >= 0)  &&  z_flag)
 		error = 0;

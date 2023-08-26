@@ -119,10 +119,10 @@ typedef
 	struct HEAP_RECORD
 		{
 		struct HEAP_RECORD  *link;	/* Link to the next HEAP_RECORD */
-		long		     seek;	/* Offset within the temporary file */
-		int		     id;	/* The heap record ID */
-		int		     count;	/* Number of remaining sort objects */
-		PSORTDATA	     data;	/* Pointer to the current object */
+		long				 seek;	/* Offset within the temporary file */
+		int					 id;	/* The heap record ID */
+		int				     count;	/* Number of remaining sort objects */
+		PSORTDATA	data;	/* Pointer to the current object */
 		} HEAP_RECORD;
 
 
@@ -450,7 +450,7 @@ sort_put_line (			/* Add a sort object to the set */
 
 	/* Determine the size of the SORTDATA object */
 
-	length = strlen(pstr);
+	length = (int)(strlen(pstr));
 	if (length >= COLUMNS_MAX)
 		{
 		length = COLUMNS_MAX - 1;
@@ -793,7 +793,7 @@ configure_string (
 		{
 		if (length > psm->max1)
 			length = psm->max1;
-		pim->u.s.offset = (s - (char *)(p));	/* Offset from object origin */
+		pim->u.s.offset = (int)(s - (char *)(p));	/* Offset from object origin */
 		pim->u.s.length = length;
 		}
 
@@ -1144,7 +1144,7 @@ find_column (		/* Find column N of the pointed string */
 		goto exxit;
 		}
 
-	length = strlen(p);
+	length = (int)(strlen(p));
 #if 0
 	if (length == 0)
 		{

@@ -118,8 +118,13 @@ ShowTargetProps (void)			// Show Target object properties
 	printf("  Drive   %02X\n",  targetProps.drive);
 	printf("  Mode    %02X\n",  targetProps.mode);
 	printf("  Depth   %02X\n",  targetProps.depth);
-	printf("  begPath %08lu\n", (int)targetProps.begPath);
-	printf("  endPath %08lu\n", (int)targetProps.endPath);
+#ifdef _WIN64
+	printf("  begPath %08llu\n", (UINT64)(targetProps.begPath));
+	printf("  endPath %08llu\n", (UINT64)(targetProps.endPath));
+#else // _WIN32
+	printf("  begPath %08lu\n",  (UINT32)(targetProps.begPath));
+	printf("  endPath %08lu\n",  (UINT32)(targetProps.endPath));
+#endif
 	printf("  Path0  \"%s\"\n", targetProps.path[0]);
 	printf("  Path1  \"%s\"\n", targetProps.path[1]);
 	}
@@ -189,7 +194,7 @@ add_list (						// Add a string to the exclusion list
 	char  *pattern)				// Pointer to the pattern string
 
 	{
-	int         length = (pattern != NULL) ? strlen(pattern) : (0);
+	int         length = (pattern != NULL) ? (int)(strlen(pattern)) : (0);
 	int         index;			// Index into the pattern
 	int         depth  = 0;		// Depth of the pattern
 	PExclusion  pExc;

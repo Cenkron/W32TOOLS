@@ -69,7 +69,7 @@ fnabspth (					/* Convert a filename to absolute format */
 		getdir(drive, &temp[0]);	/* Use the default directory path... */
 		if (*s)
 			{
-			int  Length = strlen(temp);
+			int  Length = (int)(strlen(temp));
 
 			if ( ! ispath(temp[Length - 1]))
 			strcat(temp, &path[0]);
@@ -79,7 +79,7 @@ fnabspth (					/* Convert a filename to absolute format */
 
 	fnreduce(&temp[0]);				/* Reduce the pathname */
 
-	p = fmalloc(strlen(&temp[0]) + 1);	/* Build the return string */
+	p = fmalloc((int)(strlen(&temp[0])) + 1);	/* Build the return string */
 	strcpy(p, &temp[0]);
 
 	return (p);

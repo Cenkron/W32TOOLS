@@ -300,7 +300,7 @@ build_fn (ep)					/* Build the found filename in the DTA */
 
 	if (ep->pLast)
 		{
-		n = ep->pLast - ep->proto + 1;
+		n = (int)(ep->pLast - ep->proto) + 1;
 		copyn(ep->found, ep->proto, n);
 		if (strlen(ep->found) > 0)
 			{
@@ -355,8 +355,8 @@ PatternCompiler (				// Compile the caller's pattern
 			*(pSegDst++) = *(pPatSrc++);
 		*pSegDst = NULCH;					// Terminate the segment string
 
-		pSeg->pEnd   = pSegDst;					// Points to string trailing NUL
-		pSeg->length = (pSegDst - pSegBuff);	// Standard string length
+		pSeg->pEnd   = pSegDst;						// Points to string trailing NUL
+		pSeg->length = (int)(pSegDst - pSegBuff);	// Standard string length
 
 		hp->rooted = TRUE;					// All UNC paths are rooted, by definition
 		}
@@ -375,8 +375,8 @@ PatternCompiler (				// Compile the caller's pattern
 			*(pSegDst++) = *(pPatSrc++);
 		*pSegDst = NULCH;					// Terminate the segment string
 
-		pSeg->pEnd   = pSegDst;					// Points to string trailing NUL
-		pSeg->length = (pSegDst - pSegBuff);	// Standard string length
+		pSeg->pEnd   = pSegDst;						// Points to string trailing NUL
+		pSeg->length = (int)(pSegDst - pSegBuff);	// Standard string length
 
 		hp->rooted = (*pScan == PATHCH);	// Check if rooted
 		if (hp->rooted)
@@ -431,8 +431,8 @@ PatternCompiler (				// Compile the caller's pattern
 				*(pSegDst++) = *(pPatSrc++);
 			*pSegDst = NULCH;					// Terminate the segment string
 
-			pSeg->pEnd   = pSegDst;					// Points to trailing NUL
-			pSeg->length = (pSegDst - pSegBuff);	// Standard string length
+			pSeg->pEnd   = pSegDst;						// Points to trailing NUL
+			pSeg->length = (int)(pSegDst - pSegBuff);	// Standard string length
 
 			// At runtime, we will copy segments with a preceding separator when...
 
@@ -503,8 +503,8 @@ PatternCompiler (				// Compile the caller's pattern
 			*(pSegDst++) = *(pPatSrc++);
 		*pSegDst = NULCH;						// Terminate the segment string
 //printf("copied %X\n\n", (UINT)pSegDst);
-		pSeg->pEnd   = pSegDst;					// Points to trailing NUL
-		pSeg->length = (pSegDst - pSegBuff);	// Standard string length
+		pSeg->pEnd   = pSegDst;						// Points to trailing NUL
+		pSeg->length = (int)(pSegDst - pSegBuff);	// Standard string length
 
 		// At runtime, we will copy segments with a preceding separator when...
 
@@ -677,18 +677,18 @@ e_disp(ep, "Main switch", FALSE);
 						ep->state = WILD_F;
 						if (ep->pLast)
 							{
-							n = (p - (ep->pLast + 1));
+							n =(int)((p - (ep->pLast + 1)));
 							copyn(ep->pattern, (ep->pLast + 1), n);
 							}
 						else
 							{
-							n = (p - (ep->proto));
+							n = (int)(p - (ep->proto));
 							copyn(ep->pattern, ep->proto, n);
 							}
 						}
 					if (ep->pLast)				/* Make search pattern */
 						{
-						n = ((ep->pLast + 1) - (ep->proto));
+						n = (int)((ep->pLast + 1) - (ep->proto));
 						copyn(ep->search, ep->proto, n);
 						strcat(ep->search, "*.*");
 						}
@@ -701,7 +701,7 @@ e_disp(ep, "Main switch", FALSE);
 
 					ep->state = NONW_F;
 					ps = ep->search;
-					n = (p - ep->proto);
+					n = (int)(p - ep->proto);
 					copyn(ps, ep->proto, n);
 // printf("proto: %s\n", ep->proto	? ep->proto	 : "null" );
 // printf("last:  %s\n", ep->pLast	? ep->pLast	 : "null" );
@@ -1237,8 +1237,13 @@ pc_disp (
 		printf("Terminal:  %s\n", (pSeg->terminal ? "TRUE" : "FALSE"));
 		printf("Separator: %s\n", (pSeg->separator ? "TRUE" : "FALSE"));
 		printf("Length:    %d\n", pSeg->length);
-		printf("pEnd:      %X\n", (UINT)(pSeg->pEnd));
-		printf("Buffer:    %X\n", (UINT)(pSeg->segBuffer));
+#ifdef _WIN64
+		printf("pEnd:      %llX\n", (UINT64)(pSeg->pEnd));
+		printf("Buffer:    %llX\n", (UINT64)(pSeg->segBuffer));
+#else
+		printf("pEnd:      %X\n", (UINT32)(pSeg->pEnd));
+		printf("Buffer:    %X\n", (UINT32)(pSeg->segBuffer));
+#endif
 		printf("String:    \"%s\"\n", pSeg->segBuffer);
 		printf("\n");
 		}

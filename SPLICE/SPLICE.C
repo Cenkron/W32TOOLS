@@ -207,7 +207,7 @@ SpliceBinary (				/* Process one output file */
 	while ((ifh = open(MakeExtentName(fnp, extent++), INPUT_MODE)) >= 0)
 		{
 		while ((reclen=read(ifh, buffer, sizeof(buffer))) > 0)
-			write(ofh, buffer, reclen);
+			write(ofh, buffer, (unsigned int)(reclen));
     
 		close(ifh);
 		}

@@ -1336,7 +1336,7 @@ char    *st_start;
                                 Sr_assign[i] = NULL;
                                 }
                         
-                        len = pos - t->asgpos + 1;
+                        len = (int)(pos - t->asgpos) + 1;
                         if (len > 0) {
                                 d = Sr_assign[i] = malloc((unsigned)len);
                                 if (d == 0)

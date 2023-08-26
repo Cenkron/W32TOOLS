@@ -312,7 +312,7 @@ ProcessName (                   // Process the filename
 
 	crc = 0;
 	NameCrypt(Fname, 1);
-	NameCrypt(Fname, strlen(Fname));
+	NameCrypt(Fname, (int)(strlen(Fname)));
 	}
 
 /* ----------------------------------------------------------------------- */
