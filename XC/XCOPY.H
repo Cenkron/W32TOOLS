@@ -19,7 +19,8 @@ Copyright (c) 2007 by Brian Johnson, TX - All Rights Reserved
 
 #define GET_MODE        0
 #define MIN_BUF_SIZE    (long)(2048)
-#define MAX_BUF_SIZE    (long)(0x8000 - 512)
+//#define MAX_BUF_SIZE    (long)(0x8000 - 512)
+#define MAX_BUF_SIZE    (long)(1000000 - 512)
 #define BUF_INC         512
 
 typedef unsigned _int64  UINT64;

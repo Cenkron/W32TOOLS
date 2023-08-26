@@ -117,7 +117,7 @@ char   *buff2;
 
 char	buffer [BUFSIZ];		/* Buffer for stdout */
 
-#define	DATASIZE	8192		/* Size of the disk data buffers */
+#define	DATASIZE	1000000		/* Size of the disk data buffers */
 
 #define	OPENMODE	((u_flag) ? (O_RDONLY) : (O_RDONLY | O_RAW))
 

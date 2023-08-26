@@ -291,7 +291,8 @@ copy_loop (char *src, int srcfh, char *dst, int dstfh)
 		while (TRUE)
 			{
 			const int readcnt = read(srcfh, buffer, bsize);
-
+//BWJ
+//printf("\nReadsize: %ld\n", readcnt);
 			if (readcnt == (-1))
 				{
 				error(src, "read error");
