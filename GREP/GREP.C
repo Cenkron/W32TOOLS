@@ -688,8 +688,9 @@ procwild (
 	int	   smode = FW_FILE;		/* File search mode attributes */
 
 
-	hp = fwinit(pp, smode);				/* Process the input list */
-	fwExclEnable(hp, TRUE);				/* Enable file exclusion */
+	if ((hp = fwinit(pp, smode)) == NULL)	/* Process the input list */
+		fwinitError(pp);
+	fwExclEnable(hp, TRUE);					/* Enable file exclusion */
 	if ((fnp = fwild(hp)) == NULL)
 		{
 		hp = NULL;

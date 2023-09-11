@@ -121,7 +121,8 @@ main (
 	int		iResult;
 	const int	smode	= FW_FILE;	/* File search mode attributes */
 	char *	fnp;	// = NULL;		/* Input file name pointer */
-	FILE *	fp;	// = NULL;		/* Input file descriptor */
+	FILE *	fp;		// = NULL;		/* Input file descriptor */
+	void *  hp;
 
 
 	optdata.pProc[GETOPT_A] = special_options;
@@ -142,7 +143,10 @@ main (
 	else
 		{
 		do  {
-			char *	hp = fwinit(argv[optind], smode);	/* Process the input list */
+			char *ap = argv[optind];
+
+			if ((hp = fwinit(ap, smode)) == NULL)	/* Process the input list */
+				fwinitError(ap);
 			if ((fnp = fwild(hp)) == NULL)
 				{
 				hp = NULL;

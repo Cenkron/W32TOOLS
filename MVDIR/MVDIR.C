@@ -156,15 +156,19 @@ checkout (				/* Process one input file */
 	char  *p1;			/* Pointer to absolute initial_path name */
 	char  *p2;			/* Pointer to absolute final_path name */
 	char  *p3;			/* Pointer to absolute current directory */
-	char  *fnabspth();
 
 
 	if (wild(s1) || wild(s2))
 		fatalerr("Path names can not be wild");
 
-	p1 = fnabspth(s1);
-	p2 = fnabspth(s2);
-	p3 = fnabspth(".");
+	if ((p1 = fnabspth(s1)) < 0)
+		fatalerr("src fnabspth error");
+
+	if ((p2 = fnabspth(s2)) < 0)
+		fatalerr("dst fnabspth error");
+
+	if ((p3 = fnabspth(".")) < 0)
+		fatalerr("fnabspth error");
 
 	if (p_flag)
 		{

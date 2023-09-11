@@ -199,8 +199,9 @@ main (argc, argv)
 			else
 				{
 				do  {
-					hp = fwinit(*argv, smode);		/* Process the input list */
-					if ((fnp = fwild(hp)) == NULL)
+					if ((hp = fwinit(*argv, smode)) == NULL)	/* Process the input list */
+						fwinitError(*argv);						/* Inform user of input failure */
+					if  ((fnp = fwild(hp)) == NULL)
 						{
 						hp = NULL;
 						cantopen(*argv);

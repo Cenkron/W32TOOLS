@@ -209,8 +209,9 @@ printf("option = %c\n", option);
 	while (optind < argc)
 		{
 		ap = argv[optind++];
-		hp = fwinit(ap, smode);		/* Process the input list */
-		fwExclEnable(hp, TRUE);		/* Enable file exclusion */
+		if ((hp = fwinit(ap, smode)) == NULL)	/* Process the input list */
+			fwinitError(ap);
+		fwExclEnable(hp, TRUE);					/* Enable file exclusion */
 		if ((fnp = fwild(hp)) != NULL)
 			{
 			do  {			/* Process one filespec */

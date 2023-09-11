@@ -94,13 +94,16 @@ mvdir_copy (			/* Move a directory and its contents */
 			fatalerr("Unable to move directory");
 		}
 
-	hp = fwinit(p1, MODE);	/* Move all of the files and directories */
+	if ((hp = fwinit(p1, MODE)) == NULL)	/* Move all of the files and directories */
+		fwinitError(p1);
 	while (fnp = fwild(hp))
 		{
 		if ((stricmp(fnp, p1) != MATCH)
 		&&  ( ! fndot(fnp)))
 			{
-			p = fncatpth(p2, fntail(fnp));
+			if ((p = fncatpth(p2, fntail(fnp))) < 0)
+				fatalerr("dst filespec error");
+			
 			if (fwtype(hp) & ATT_SUBD)
 				mvdir_copy(fnp, p, l_flag);
 			else

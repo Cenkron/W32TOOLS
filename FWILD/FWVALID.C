@@ -27,17 +27,16 @@
 
 /* ----------------------------------------------------------------------- */
 
-#define  S_INIT		(0)		// Nothing scanned yet
-#define  S_DRIVE	(1)		// Drive specification scanned
-#define  S_SEPARATOR	(2)		// Separator last scanned
-#define  S_ELEMENT	(3)		// Path element last scanned
+#define  S_INIT			(0)			// Nothing scanned yet
+#define  S_DRIVE		(1)			// Drive specification scanned
+#define  S_SEPARATOR	(2)			// Separator last scanned
+#define  S_ELEMENT		(3)			// Path element last scanned
 
-static	int	sepcount = 0;		// Separator count
-static	int	state    = S_INIT;	// Current FSM state
-static	char   *s        = NULL;	// Pointer into the pathname
+static	int	  sepcount = 0;			// Separator count
+static	int	  state    = S_INIT;	// Current FSM state
+static	char *s        = NULL;		// Pointer into the pathname
 
 		int	fwerrno  = FWERR_NONE;	// fwvalid() error result
-
 
 static	int	parse (void);
 static	int	pathname (void);
@@ -180,7 +179,7 @@ pathname ()
 
 	while ((ch = *s) != '\0')
 		{
-		if (iscntrl(ch))	// Allows 0x80 - 0xFE
+		if (iscntrl(ch))	// Allows 0x20 - 0xFE
 //		if ( ! isprint(ch))        (previous version, fails for weird names in XP)
 			{
 			fwerrno = FWERR_ELEMENT;

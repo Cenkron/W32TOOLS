@@ -12,8 +12,8 @@
 |				   27-Sep-07
 |
 |	    UINT64		Return the (64 bit) file size
-|	size = fwsize (hp);	Get the size of the current fwild filename
-|	    char  *hp;		Pointer to the fwild header
+|	size = fwsize(	Get the size of the current fwild filename
+|	    void  *hp)	Pointer to the fwild header
 |
 \* ----------------------------------------------------------------------- */
 

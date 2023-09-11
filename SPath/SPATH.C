@@ -187,11 +187,11 @@ proc_dir (
 	char *s)
 
 	{
-	char *	dta;
+	void *	dta;
 	char *	fn;
 
-	if (! (dta=fwinit(s, attrib)))
-		fatalerr("fwinit() failed");
+	if ((dta = fwinit(s, attrib)) == NULL)
+		fwinitError(s);
 	fwExclEnable(dta, TRUE);				/* Enable file exclusion */
 	if ((fn = fwild(dta)) == NULL)
 		{

@@ -176,7 +176,8 @@ static	char   *optstring = "?bBd:D:e:E:lLmMs:S:y";
 	while (optind < argc)
 		{
 		ap = argv[optind++];
-		hp = fwinit(ap, smode);         /* Process the input list */
+		if ((hp = fwinit(ap, smode)) == NULL)        /* Process the input list */
+			fwinitError(ap);
 		if ((fnp = fwild(hp)) == NULL)
 			{
 			hp = NULL;

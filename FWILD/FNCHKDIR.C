@@ -35,7 +35,7 @@ fnchkdir (					/* Verify the existence of a directory */
 	}
 
 /* ------------------------------------------------------------------------ */
-	int						/* Return TRUE if the directory exists */
+	int						/* Return TRUE iff the directory exists */
 _fnchkdir (					/* Verify the existence of a directory */
 	char  *s)				/* Pointer to the filename string */
 
@@ -50,8 +50,10 @@ _fnchkdir (					/* Verify the existence of a directory */
 	||  strchr(s, '*'))
 		return (FALSE);
 
-	p = pbuff = fnabspth(s);		/* Perform reduction */
-
+	p = pbuff = fnabspth(s);	/* Perform reduction */
+	if (p == NULL)
+		return (FALSE);			// Invalid path
+		
 	if (isalpha(*p) && (*(p + 1) == ':'))
 		p += 2;
 

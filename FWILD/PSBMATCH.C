@@ -41,7 +41,9 @@ psubmatch (
 	||  (target  == NULL))
 		goto exxit;
 
-	abspath = fnabspth(target);		// Canonicalize the target path
+	if ((abspath = fnabspth(target)) == NULL)	// Canonicalize the target path
+		goto exxit;
+
 	target  = abspath;
 
 	// If the pattern specifies a drive, match the drives

@@ -225,6 +225,11 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "CleanDir", "CleanDir\CleanD
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "LinePrinter", "LinePrinter\LinePrinter.vcxproj", "{4CD2E4C4-8C9C-4C6A-90DA-F9F39A6EA5EC}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Test", "Test\Test.vcxproj", "{A5138521-CFF9-4457-99F8-7F1471C6DF31}"
+	ProjectSection(ProjectDependencies) = postProject
+		{337ED9C5-E353-48C6-BBEF-98C7E778FA56} = {337ED9C5-E353-48C6-BBEF-98C7E778FA56}
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -555,6 +560,12 @@ Global
 		{4CD2E4C4-8C9C-4C6A-90DA-F9F39A6EA5EC}.Release|Win32.Build.0 = Release|Win32
 		{4CD2E4C4-8C9C-4C6A-90DA-F9F39A6EA5EC}.Release|x64.ActiveCfg = Release|x64
 		{4CD2E4C4-8C9C-4C6A-90DA-F9F39A6EA5EC}.Release|x64.Build.0 = Release|x64
+		{A5138521-CFF9-4457-99F8-7F1471C6DF31}.Debug|Win32.ActiveCfg = Debug|Win32
+		{A5138521-CFF9-4457-99F8-7F1471C6DF31}.Debug|Win32.Build.0 = Debug|Win32
+		{A5138521-CFF9-4457-99F8-7F1471C6DF31}.Debug|x64.ActiveCfg = Debug|x64
+		{A5138521-CFF9-4457-99F8-7F1471C6DF31}.Debug|x64.Build.0 = Debug|x64
+		{A5138521-CFF9-4457-99F8-7F1471C6DF31}.Release|Win32.ActiveCfg = Release|Win32
+		{A5138521-CFF9-4457-99F8-7F1471C6DF31}.Release|x64.ActiveCfg = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

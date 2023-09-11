@@ -7,6 +7,7 @@
 |				   27-May-90
 |				    9-May-91
 |				   17-Aug-97
+|				   10-Sep-23 Compatibility with new fnreduce
 |
 \* ----------------------------------------------------------------------- */
 
@@ -47,7 +48,11 @@ fp_init (					/* Initialize the FP system */
     if (fnchkdir(s2))
 		{
 		dflag  = TRUE;			/* Using s2 as a path, constructing fnp2 */
-		fnParse(s1, &CatIndex, &TermIndex);	/* Set pointer to construct path2 */
+		if (fnParse(s1, &CatIndex, &TermIndex) < 0)	/* Set pointer to construct path2 */
+			{
+			result = FPR_NOFILE;	/* Can't be a file */
+			goto exit;
+			}
 		}
 	else if ( ! PermitFile)
 		{
@@ -57,7 +62,11 @@ fp_init (					/* Initialize the FP system */
 	else if (fnchkfil(s2))
 		{
 		dflag = FALSE;			/* Using s2 as a filename */
-		fnreduce(s2);
+		if (fnreduce(s2) < 0)
+			{
+			result = FPR_P2FILE;
+			goto exit;
+			}
 		}
 	else
 		{
@@ -125,7 +134,9 @@ fp_pair (				/* Return file pair filenames */
 		}
 	else if (fp->dflag)
 		{
-		fp->fnp2 = fncatpth(fp->s2, (fp->fnp1 + fp->index));
+		if ((fp->fnp2 = fncatpth(fp->s2, (fp->fnp1 + fp->index))) == NULL)
+			return (FPR_P2FILE);
+		
 		*s1 = fp->fnp1;
 		*s2 = fp->fnp2;
 		}

@@ -278,7 +278,8 @@ main (
 		else if (iswild(dst))
 			fatal("Cannot have wildcards in the destination");
 
-		dst = fnabspth(dst);
+		if ((dst = fnabspth(dst)) == NULL)
+			fatal("dst pathspec error");
 
 		while (optind < lastarg)
 			{
@@ -345,45 +346,62 @@ filepair(     				/* Process the pathname pairs */
 	{
 	int   CatIndex;			/* Concatenation index of the path */
 	int   TermIndex;		/* Termination index of the path (not used here) */
-	char *srcname;          /* Pointer to the path1 pathname */
-	char *dstname;          /* Pointer to the path2 pathname */
-	char *hp;				/* FWILD object pointer */
+	char* srcname;          /* Pointer to the path1 pathname */
+	char* dstname;          /* Pointer to the path2 pathname */
+	void* hp;				/* FWILD object pointer */
 
-	fnParse(s1, &CatIndex, &TermIndex);	/* Set pointer to construct path2 */
-	fnreduce(dstpath);
+	if (fnParse(s1, &CatIndex, &TermIndex) < 0)	/* Set pointer to construct path2 */
+		fatal("src pathspec error");
 
-	hp = fwinit(s1, mode);				/* Find the first path1 file */
-	fwExclEnable(hp, TRUE);				/* Enable file exclusion */
-	if ((srcname = fwild(hp)) == NULL)	/* Process files */
+	if (fnreduce(dstpath) < 0)
+		fatal("dst pathspec error");
+
+	if ((hp = fwinit(s1, mode)) == NULL)	/* Find the first path1 file */
+		fwinitError(s1);
+	fwExclEnable(hp, TRUE);					/* Enable file exclusion */
+	if ((srcname = fwild(hp)) == NULL)		/* Process files */
 		{
 		hp = NULL;
 		notfound(s1);
 		}
+	else
+		{
+		do	{			/* Process all path1 files */
+			filesize = (__int64)(fwsize(hp));
 
-	else do  
-		{				/* Process all path1 files */
-		filesize = (__int64)(fwsize(hp));
+//printf("srcn: \"%s\"\n", srcname);
+//printf("dstp: \"%s\"\n", dstpath);
+//printf("tail:\"%s\"\n", fntail(srcname));
+//printf("ndx: \"%s\"\n", (srcname + CatIndex));
+//fflush(stdout);
 
-// printf("srcn: \"%s\"\n", srcname);
-// printf("dstp: \"%s\"\n", dstpath);
-// printf("tail:\"%s\"\n", fntail(srcname));
-// printf("ndx: \"%s\"\n", (srcname + CatIndex));
-// fflush(stdout);
-
-		if (copy_rename)
+			if (copy_rename)
 				copy(srcname, dstpath, "");
 
-		else if (azFlags.f)
-			dstname = fncatpth(dstpath, fntail(srcname));
+			else
+				{
+				if (azFlags.f)
+					{
+					if ((dstname = fncatpth(dstpath, fntail(srcname))) == NULL)
+						fatal("dst pathspec error 1");
+					}
+				
+				else
+					{
 
-		else
-			dstname = fncatpth(dstpath, (srcname + CatIndex));
-
-		process(srcname, hp, dstname, dstpath);
-
-		free(dstname);
-		} while ((srcname = fwild(hp)) != NULL);
-	hp = NULL;
+					if ((dstname = fncatpth(dstpath, (srcname + CatIndex))) == NULL)
+						fatal("dst pathspec error 2");
+					}	
+//printf("dstn: \"%s\"\n", dstname);
+//fflush(stdout);
+				process(srcname, hp, dstname, dstpath);
+				free(dstname);
+				}
+			} while ((srcname = fwild(hp)) != NULL);
+		hp = NULL;
+		}
+//printf("done\n");
+//fflush(stdout);
 	}
 
 /**********************************************************************\

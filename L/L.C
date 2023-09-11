@@ -17,12 +17,14 @@
 \* ----------------------------------------------------------------------- */
 
 #include  "windows.h"
+
 #include  "stdio.h"
-#include  "ctype.h"
 #include  "stdlib.h"
 #include  "string.h"
+#include  "ctype.h"
+#include  <io.h>
 #include  "time.h"
-#include  "io.h"
+
 #include  "fwild.h"
 #include  "ptypes.h"
 
@@ -100,7 +102,7 @@ int		h_flag = FALSE;					/* List lengths in hexadecimal flag */
 int		i_flag = FALSE;					/* Take pathnames from stdin */
 int		l_flag = FALSE;					/* Lower case flag */
 int		m_flag = FALSE;					/* List in "more" mode */
-int		o_flag = FALSE;					/* List older flag */
+int		o_flag = FALSE;					/* List older than <td> flag */
 int		p_flag = FALSE;					/* List parameters flag */
 int		r_flag = FALSE;					/* List at requested rate flag */
 int		q_flag = FALSE;					/* Quiet errors flag */
@@ -109,7 +111,7 @@ int		u_flag = FALSE;					/* Upper case flag */
 int		v_flag = 0;						/* Volume name flag */
 int		w_flag = FALSE;					/* Wide listing mode flag */
 int		x_flag = 0;						/* Extended datetime */
-int		y_flag = FALSE;					/* List younger flag */
+int		y_flag = FALSE;					/* List younger than <td> flag */
 int		z_flag = FALSE;					/* Return zero even if failure */
 
 void   *hp	   = NULL;					/* Pointer to wild name data block */
@@ -370,15 +372,24 @@ static	char   *optstring = "?aA:cC:dDeEfF:hHiIlL:mM:nN:o:O:pP:qQrR:sStTuUvwW:VxX
 
 			case 'x':
 				if (option == 'x')					// (lower case only)
+					{
+//printf("lower X\n");
 					++x_flag;						// Show datetime info
-				else if (optarg[0] == '-')			// (Upper case)
-					fexcludeDefEnable(FALSE);		/* Disable default file exclusion(s) */
-				else if (optarg[0] == '+')
-					fexcludeShowConf(TRUE);			/* Enable stdout of exclusion(s) */
-				else if (optarg[0] == '=')
-					fexcludeShowExcl(TRUE);			/* Enable stdout of excluded path(s) */
-				else if (fexclude(optarg))
-					printf("Exclusion string fault: \"%s\"\n", optarg);
+					}
+				else // (option == 'X')				// (upper case only)
+					{
+//printf("upper X\n");
+//printf("optarg %s\n", optarg);
+
+					if (optarg[0] == '-')			// (Upper case)
+						fexcludeDefEnable(FALSE);		/* Disable default file exclusion(s) */
+					else if (optarg[0] == '+')
+						fexcludeShowConf(TRUE);			/* Enable stdout of exclusion(s) */
+					else if (optarg[0] == '=')
+						fexcludeShowExcl(TRUE);			/* Enable stdout of excluded path(s) */
+					else if (fexclude(optarg))
+						printf("Exclusion string fault: \"%s\"\n", optarg);
+					}
 				break;
 
 			case 'y':
@@ -418,31 +429,29 @@ static	char   *optstring = "?aA:cC:dDeEfF:hHiIlL:mM:nN:o:O:pP:qQrR:sStTuUvwW:VxX
 	delay_init();
 	if (i_flag)
 		{
-		while (ap = stdpath())					/* Process the stdin list */
+		while (ap = stdpath())						/* Process the stdin list */
 			{
 			itemcode = 1;
-			if (v_flag > 0)						/* Process the volume name */
+			if (v_flag > 0)							/* Process the volume name */
 				volprnt(ap);
-			hp = fwinit(ap, smode);				/* Process the input list */
-			if (hp == NULL)						/* Validate the argument */
-				printf("%s: %s\n", fwerror(), ap);
-
-			fwExclEnable(hp, TRUE);				/* Enable file exclusion */
-			while (fnp = fwild(hp))				/* Process each filespec */
+			if ((hp = fwinit(ap, smode)) == NULL)	/* Process the input list */
+				fwinitError(ap);
+			fwExclEnable(hp, TRUE);					/* Enable file exclusion */
+			while (fnp = fwild(hp))					/* Process each filespec */
 				process(fnp);
 			hp = NULL;
 
 			if ((itemcode != 0)
 			&& ((f_flag | d_flag | t_flag)	&&	( ! q_flag)))
-				cantfind(ap);					/* Couldn't find any */
+				cantfind(ap);						/* Couldn't find any */
 
 			SETEXIT(itemcode);
 			}
 		}
 
-	else										/* Process the command line */
+	else											/* Process the command line */
 		{
-		if (optind >= argc)
+		if (optind >= argc)				// if no filespec provided, use default "*"
 			{
 			optind = 0;
 			argc   = 1;
@@ -453,20 +462,18 @@ static	char   *optstring = "?aA:cC:dDeEfF:hHiIlL:mM:nN:o:O:pP:qQrR:sStTuUvwW:VxX
 			{
 			ap = argv[optind++];
 			itemcode = 1;
-			if (v_flag > 0)						/* Process the volume name */
+			if (v_flag > 0)							/* Process the volume name */
 				volprnt(ap);
-			hp = fwinit(ap, smode);				/* Process the input list */
-			if (hp == NULL)						/* Validate the argument */
-				printf("%s: %s\n", fwerror(), ap);
-
-			fwExclEnable(hp, TRUE);				/* Enable file exclusion */
-			while (fnp = fwild(hp))				/* Process each filespec */
+			if ((hp = fwinit(ap, smode)) == NULL)	/* Process the input list */
+				fwinitError(ap);
+			fwExclEnable(hp, TRUE);					/* Enable file exclusion */
+			while (fnp = fwild(hp))					/* Process each filespec */
 				process(fnp);
 			hp = NULL;
 
 			if ((itemcode != 0)
 			&& ((f_flag | d_flag | t_flag)	&&	( ! q_flag)))
-				cantfind(ap);					/* Couldn't find any */
+				cantfind(ap);						/* Couldn't find any */
 
 			SETEXIT(itemcode);
 			}

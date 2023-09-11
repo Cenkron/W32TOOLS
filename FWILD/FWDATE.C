@@ -14,8 +14,8 @@
 |				    9-Aug-98 (Convert to system calls)
 |
 |	    char *		Return a pointer to a date string
-|	p = fwdate (hp);	Get the date of the current fwild filename
-|	    char  *hp;		Pointer to the fwild header
+|	p = fwdate(		Get the date of the current fwild filename
+|	    void *hp)	Pointer to the fwild header
 |
 \* ----------------------------------------------------------------------- */
 

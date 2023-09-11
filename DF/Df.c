@@ -129,7 +129,11 @@ main (
 				{
 				strcpy(PathName, argv[optind]);
 				strcat(PathName, "\\");
-				fnreduce(PathName);
+				if (fnreduce(PathName) < 0)
+					{
+					printf("fnreduce error\n");
+					return (-1);
+					}
 				unc = TRUE;
 				}
 #endif

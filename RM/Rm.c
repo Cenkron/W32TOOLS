@@ -222,12 +222,8 @@ process (
 
 //	strupr(s);
 
-	if (! (dta=fwinit(s,att)))
-		{
-		printf("rm %s\n", s);
-		fatalerr("fwinit() failed");
-		}
-
+	if ((dta = fwinit(s, att)) == NULL)
+		fwinitError(s);
 	if ((t_flag)
 	&&  (s[strlen(s)-1] != '.'))
 		{

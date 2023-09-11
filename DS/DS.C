@@ -264,18 +264,14 @@ process (
 	char *fw)
 
 	{
-	int attrib = FW_FILE;
+	int    attrib = FW_FILE;
+	char  *dta;
 
 	if (bHflag)	attrib |= FW_HIDDEN;
 	if (bSflag)	attrib |= FW_SYSTEM;
 
-	char *      dta = fwinit(fw, attrib);
-
-	if (!dta)
-		{
-		printf("\nfinit fail\n");
-		_exit(1);
-		}
+	if ((dta = fwinit(fw, attrib)) == NULL)
+		fwinitError(fw);
 	fwExclEnable(dta, TRUE);				/* Enable file exclusion */
 	while (fwild(dta) != NULL)
 		proc_file(dta);

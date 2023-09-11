@@ -16,6 +16,7 @@
 |				   26-Mar-01 Quiet option
 |				    4-Nov-03 /p and /m options (for NTFS problems)
 |				   29-Sep-07 for 64 bit file sizes
+|				   10-Sep-23 New fnreduce()
 |
 \* ----------------------------------------------------------------------- */
 
@@ -23,12 +24,14 @@
 
 #include  <stdio.h>
 #include  <stdlib.h>
+#include  <string.h>
 #include  <ctype.h>
 #include  <fcntl.h>
 #include  <io.h>
-#include  <string.h>
+#include  "time.h"	
 
 #include  "fwild.h"
+#include  "ptypes.h"
 
 #ifndef TRUE
 #define FALSE	0
@@ -58,17 +61,17 @@ char  *usagedoc [] =
 "    %cd      reports different data in the file pairs",
 "    %ce      reports non-existence of the path2 file    (default)",
 "    %ch      also checks hidden and system files",
+"    %cl      lists all file names as they are compared",
+"    %cL      lists the path2 names as they are compared",
+"    %cn      lists all file names, but does not compare them",
+"    %co <td> compares only files older than <td>",
+"    %cO      reports only \"older\" files",
+"    %cq      quiet mode (default off)",
+"    %cQ      quotes file names with imbedded spaces (default on)",
+"    %cr      lists only file names of successful compares",
 "    %cs      reports different sizes of the file pairs  (default)",
 "    %ct      reports different ages of the file pairs   (default)",
 "    %cT nnn  Offset timestamp 1 by (+/-)nnn hours       (default 0)",
-"    %cy      reports only \"younger\" files",
-"    %co      reports only \"older\" files",
-"    %cl      lists all file names as they are compared",
-"    %cL      lists the path2 names as they are compared",
-"    %cr      lists only file names of successful compares",
-"    %cq      quiet mode (default off)",
-"    %cQ      quotes file names with imbedded spaces (default on)",
-"    %cn      lists all file names, but does not compare them",
 "    %cu      use UNIX mode (text file translation, also uses -d)",
 "    %cv      lists verbose information",
 "    %cX <pathspec> e/X/cludes (possibly wild) files matching pathspec",
@@ -76,6 +79,8 @@ char  *usagedoc [] =
 "    %cX-       Disable default file exclusion(s)",
 "    %cX+       Show exclusion path(s)",
 "    %cX=       Show excluded path(s)",
+"    %cy <td> compares only files younger than <td>",
+"    %cY      reports only \"younger\" files",
 "    %cz      returns a zero completion code even if errors",
 "",
 "Copyright (c) 1988, 1993 by J & M Software, Dallas TX - All Rights Reserved",
@@ -84,24 +89,26 @@ NULL
 
 /* ----------------------------------------------------------------------- */
 
-int	defflg	= TRUE;			/* Use defaults flag */
-int	a_flag	= FALSE;		/* Beep on error flag */
-int	bi_flag	= FALSE;		/* Bidirectional flag */
-int	c_flag	= TRUE;			/* Compare flag */
-int	d_flag	= FALSE;		/* Data flag */
-int	e_flag	= FALSE;		/* Exist flag */
-int	o_flag	= FALSE;		/* Report only older flag */
-int	s_flag	= FALSE;		/* Size flag */
-int	t_flag	= FALSE;		/* Timedate flag */
-int	b_flag	= TRUE;			/* List bad file names flag */
-int	g_flag	= FALSE;		/* List good file names flag */
-int	L_flag	= FALSE;		/* Use Long form when listing files */
-int	q_flag	= FALSE;		/* quiet flag */
-int	Q_flag	= TRUE;			/* quote names with spaces flag */
-int	u_flag	= FALSE;		/* UNIX mode (text translation) */
-int	v_flag	= 0;			/* Verbose information flag */
-int	y_flag	= FALSE;		/* Report only younger flag */
-int	z_flag	= FALSE;		/* Return zero even if error flag */
+int	defflg			= TRUE;			/* Use defaults flag */
+int	a_flag			= FALSE;		/* Beep on error flag */
+int	bidi_flag		= FALSE;		/* bidirectional flag */
+int	bad_flag		= TRUE;			/* List bad file names flag */
+int	c_flag			= TRUE;			/* Compare flag */
+int	d_flag			= FALSE;		/* Data flag */
+int	e_flag			= FALSE;		/* Exist flag */
+int	good_flag		= FALSE;		/* List good file names flag */
+int	L_flag			= FALSE;		/* Use Long form when listing files */
+int	o_flag			= FALSE;		/* Compare only if older than <td> */
+int	Older_flag		= FALSE;		/* Report only older flags */
+int	q_flag			= FALSE;		/* quiet flag */
+int	Q_flag			= TRUE;			/* quote names with spaces flag */
+int	s_flag			= FALSE;		/* Size flag */
+int	t_flag			= FALSE;		/* Timedate flag */
+int	u_flag			= FALSE;		/* UNIX mode (text translation) */
+int	v_flag			= 0;			/* Verbose information flag */
+int	y_flag			= FALSE;		/* Compare only if younger than <td> */
+int	Younger_flag	= FALSE;		/* Report only younger flags */
+int	z_flag			= FALSE;		/* Return zero even if error flag */
 
 int	ex_code	= 0;			/* Exit code */
 
@@ -130,12 +137,63 @@ char	buffer [BUFSIZ];		/* Buffer for stdout */
 void	filepair1 (char *, char *);
 void	filepair2 (char *, char *);
 void	process   (char *, char *);
-void	cantfind  (char *);
-void	f_err     (char *);
-int		putdiff   (int, char *);
-int		datacomp  (int fd1, int fd2);
-int		unixcomp  (int fd1, int fd2);
-char   *qname     (char *);
+void	cantfind	(char *);
+void	file1error	(char *);
+void	file2error	(char *);
+void	f_err	    (char *);
+int		putdiff		(int, char *);
+int		datacomp	(int fd1, int fd2);
+int		unixcomp	(int fd1, int fd2);
+char   *qname		(char *);
+
+__time32_t	oldertime   = 0L;			/* The older-than time */
+__time32_t	youngertime = 0L;			/* The younger-than time */
+
+/* ----------------------------------------------------------------------- */
+	static int
+timebound (
+	void *hp,				/* Pointer to wild file data block */
+	char *fnp)
+
+	{
+		__time32_t  t;
+
+	if (o_flag || y_flag)
+		{
+		t = fwgetfdt(hp);
+
+		if (v_flag >= 2)
+			{
+			printf("\n");
+			printf("Datetime: %s", asctime(_localtime32(&t)));
+			printf("Datetime: %ld\n", t);
+			printf("y_flag: %d\n", y_flag);
+			if (youngertime != 0L)
+				printf("Younger:  %s", asctime(_localtime32(&youngertime)));
+			printf("o_flag: %d\n", o_flag);
+			if (oldertime != 0L)
+				printf("Older:    %s", asctime(_localtime32(&oldertime)));
+//			printf("\n");
+//			fflush(stdout);
+			}
+
+		if (v_flag >= 1)
+			{
+//			printf("\n");
+			if ((y_flag)  &&  (t >= youngertime))
+				printf("Younger:  %s", fnp);
+
+			if ((o_flag)  &&  (t <= oldertime))
+				printf("Older:  %s", fnp);
+
+			printf("\n");
+			fflush(stdout);
+			}
+		}
+
+	return (((y_flag == FALSE)	||	(t >= youngertime))
+		&&	((o_flag == FALSE)	||	(t <= oldertime)));
+	}
 
 /* ----------------------------------------------------------------------- */
 	void
@@ -149,7 +207,7 @@ main (
 	char  *fnp1 = NULL;		/* Input file name pointer */
 	char  *fnp2 = NULL;		/* Input file name pointer */
 
-static	char   *optstring = "?aAbBdDeEhHlLnNoOqQrRsStT:TuUvVX:yYzZ";
+static	char   *optstring = "?aAbBdDeEhHlLnNo:OqQrRsStT:uUvVX:y:YzZ";
 
 
 	setbuf(stdout, buffer);
@@ -165,7 +223,7 @@ static	char   *optstring = "?aAbBdDeEhHlLnNoOqQrRsStT:TuUvVX:yYzZ";
 				break;
 
 			case 'b':
-				bi_flag = !bi_flag;
+				bidi_flag = !bidi_flag;
 				break;
 
 			case 'd':
@@ -185,28 +243,50 @@ static	char   *optstring = "?aAbBdDeEhHlLnNoOqQrRsStT:TuUvVX:yYzZ";
 			case 'l':
 				if (option == 'l')
 					{
-					++b_flag;
-					++g_flag;
+					++bad_flag;
+					++good_flag;
 					}
-				else
+				else // (option == 'L')
 					L_flag = !L_flag;
 				break;
 
 			case 'n':
-				++b_flag;
-				++g_flag;
+				++bad_flag;
+				++good_flag;
 				c_flag = FALSE;
 				defflg = FALSE;
 				break;
 
 			case 'o':
-				++o_flag;
-				defflg = FALSE;
+				if (option == 'O')
+					{
+					++Older_flag;
+					defflg = FALSE;
+					}
+				else // (option == 'o')
+					{
+					if ((oldertime = fwsgettd(optarg)) < 0L)
+						{
+						printf("Older time - %s\n", fwserrtd());
+						usage();
+						}
+					o_flag = TRUE;
+					}
+				break;
+
+			case 'q':
+				if (option == 'q')
+					q_flag = !q_flag;
+				else // (option == 'Q')
+					Q_flag = !Q_flag;
+				break;
+
+			case 'Q':
 				break;
 
 			case 'r':
-				b_flag = FALSE;
-				++g_flag;
+				bad_flag = FALSE;
+				++good_flag;
 				break;
 
 			case 's':
@@ -220,15 +300,11 @@ static	char   *optstring = "?aAbBdDeEhHlLnNoOqQrRsStT:TuUvVX:yYzZ";
 					t_flag = !t_flag;
 					defflg = FALSE;
 					}
-				else if (optarg != NULL) /* (option == 'T') */
-					timedelta = OneHour * strtol(optarg, NULL, 10);
-				break;
-
-			case 'q':
-				if (option == 'q')
-					q_flag = !q_flag;
-				else
-					Q_flag = !Q_flag;
+				else // (option == 'T')
+					{
+					if (optarg != NULL)
+						timedelta = OneHour * strtol(optarg, NULL, 10);
+					}
 				break;
 
 			case 'u':
@@ -240,26 +316,35 @@ static	char   *optstring = "?aAbBdDeEhHlLnNoOqQrRsStT:TuUvVX:yYzZ";
 				++v_flag;
 				break;
 
-			case 'x':
-				if (option == 'x')
+			case 'x':	// (Includes 'X')
+				if      (optarg[0] == '-')
+					fexcludeDefEnable(FALSE);		/* Disable default file exclusion(s) */
+				else if (optarg[0] == '+')
+					fexcludeShowConf(TRUE);			/* Enable stdout of exclusion(s) */
+				else if (optarg[0] == '=')
+					fexcludeShowExcl(TRUE);			/* Enable stdout of excluded path(s) */
+				else if (fexclude(optarg))
+					{
+					printf("\7Exclusion string fault: \"%s\"\n", optarg);
 					usage();
-
-					if      (optarg[0] == '-')
-						fexcludeDefEnable(FALSE);		/* Disable default file exclusion(s) */
-					else if (optarg[0] == '+')
-						fexcludeShowConf(TRUE);			/* Enable stdout of exclusion(s) */
-					else if (optarg[0] == '=')
-						fexcludeShowExcl(TRUE);			/* Enable stdout of excluded path(s) */
-					else if (fexclude(optarg))
-						{
-						printf("\7Exclusion string fault: \"%s\"\n", optarg);
-						usage();
-						}
+					}
 				break;
 
 			case 'y':
-				++y_flag;
-				defflg = FALSE;
+				if (option == 'y')
+					{
+					++Younger_flag;
+					defflg = FALSE;
+					}
+				else // (option == 'Y')
+					{
+					if ((youngertime = fwsgettd(optarg)) < 0L)
+						{
+						printf("Younger time - %s\n", fwserrtd());
+						usage();
+						}
+					y_flag = TRUE;
+					}
 				break;
 
 			case 'z':
@@ -308,7 +393,7 @@ static	char   *optstring = "?aAbBdDeEhHlLnNoOqQrRsStT:TuUvVX:yYzZ";
 	if (v_flag >= 1)
 		{
 		printf("Comparing \"%s\" and \"%s\"%s\n",
-			fnp1, fnp2, (bi_flag ? " (bidirectionally)" : ""));
+			fnp1, fnp2, (bidi_flag ? " (bidirectionally)" : ""));
 		fflush(stdout);
 		}
 
@@ -322,11 +407,11 @@ static	char   *optstring = "?aAbBdDeEhHlLnNoOqQrRsStT:TuUvVX:yYzZ";
 	else // fnp2 is not a file; it is either a directory or is wild
 		{
 		if (fnchkfil(fnp1))
-			bi_flag = FALSE;		// No need to compare single file both ways
+			bidi_flag = FALSE;		// No need to compare single file both ways
 
 		filepair1(fnp1, fnp2);
 
-		if (bi_flag)
+		if (bidi_flag)
 			filepair2(fnp1, fnp2);
 		}
 
@@ -351,53 +436,66 @@ filepair1 (					/* Process the pathnames forward */
 	if (iswild(s2))			/* Ensure non-wild path2 */
 		f_err("Path2 cannot be wild");
 
-	fnParse(s1, &CatIndex1, &TermIndex1);
-// remove
+	if (fnParse(s1, &CatIndex1, &TermIndex1) < 0)
+		file1error(s1);
+#if 0
 	if (v_flag >= 3)
 		{
 		printf("Pat F1 ('%s')  F2 ('%s')\n", s1, s2);
 		fflush(stdout);
 		}
-
-	fnreduce(s2);
+#endif
+	if (fnreduce(s2) < 0)
+		file2error(s2);
 
 	if (v_flag >= 3)
 		{
 		printf("Pat F1 ('%s')  F2 ('%s')\n", s1, s2);
 		fflush(stdout);
 		}
-
-// printf("1 pattern: \"%s\"\n", s1);
-// printf("1 s2save:  \"%s\"\n", s2save);
-// printf("1 s2:      \"%s\"\n", s2);
-
-	hp = fwinit(s1, filetypes);		/* Find the first path1 file */
-	fwExclEnable(hp, TRUE);			/* Enable file exclusion */
-	if ((fnp1 = fwild(hp)) == NULL)
-		{
-		hp = NULL;
-		if (!bi_flag)
-			cantfind(s1);
-		}
-
-	else do							/* Process all path1 files */
-		{
-		fnp2 = fncatpth(s2, (fnp1 + CatIndex1));
-
-// printf("  fnp1:  %s\n", fnp1);
-// printf("  fnp2:  %s\n", fnp2);
-// fflush(stdout);
-
-		if (v_flag >= 4)
+#if 0
+printf("1 pattern: \"%s\"\n", s1);
+printf("1 s2save:  \"%s\"\n", s2save);
+printf("1 s2:      \"%s\"\n", s2);
+#endif
+	if ((hp = fwinit(s1, filetypes)) == NULL)	/* Find the first path1 file */
+		fwinitError(s1);
+	else
+		{ // hp is valid
+		fwExclEnable(hp, TRUE);			/* Enable file exclusion */
+		if ((fnp1 = fwild(hp)) == NULL)
 			{
-			printf("FNP F1 ('%s')  F2 ('%s')\n", fnp1, fnp2);
-			fflush(stdout);
+			if (!bidi_flag)	// Don't require forward reports if also checking reverse reports
+				{
+				hp = NULL;
+				cantfind(s1);
+				}
 			}
+		else do							/* Process all path1 files */
+			{
+			if (timebound(hp, fnp1))
+				{		
+				if ((fnp2 = fncatpth(s2, (fnp1 + CatIndex1))) == NULL)
+					file2error(s2);
+				else
+					{
+#if 0
+printf("  fnp1:    \"%s\n", fnp1);
+printf("  fnp2:    \"%s\n", fnp2);
+fflush(stdout);
+#endif
+					if (v_flag >= 4)
+						{
+						printf("FNP F1 ('%s')  F2 ('%s')\n", fnp1, fnp2);
+						fflush(stdout);
+						}
 
-		process(fnp1, fnp2);
-
-		free(fnp2);
-		} while ((fnp1 = fwild(hp)));
+					process(fnp1, fnp2);
+					free(fnp2);
+					}
+				}// End if timebound
+			} while ((fnp1 = fwild(hp)));
+		} // End hp valid
 	hp = NULL;
 	}
 
@@ -432,12 +530,14 @@ filepair2 (					/* Process the pathnames backward */
 	s_flag  = FALSE;		/* Don't check the size */
 	t_flag  = FALSE;		/* Don't check the timedate */
 
-	fnParse(s1, &CatIndex1, &TermIndex1);	/* Determine the path1 offsets */
-	fnParse(s2, &CatIndex2, &TermIndex2);	/* Determine the path2 offsets */
+	if (fnParse(s1, &CatIndex1, &TermIndex1) < 0)	/* Determine the path1 offsets */
+		file1error(s1);
 
-	fnppat2 = fncatpth(s2, (s1 + CatIndex1));	/* Build the search pattern */
+	if ((fnParse(s2, &CatIndex2, &TermIndex2) < 0)	/* Determine the path2 offsets */
+	||  ((fnppat2 = fncatpth(s2, (s1 + CatIndex1))) == NULL))	/* Build the search pattern */
+		file2error(s2);
 
-	*(s1 + TermIndex1) = '\0';		// (does not delete a possible root separator
+	*(s1 + TermIndex1) = '\0';		// (does not delete a possible root separator)
 
 // printf("2 s1:      \"%s\"\n", s1);
 // printf("2 Index 1:  %d\n",    CatIndex1);
@@ -450,27 +550,38 @@ filepair2 (					/* Process the pathnames backward */
 
 	if (strlen(fnppat2) == 0)		// Handle cat -b .. . case
 		fnppat2 = ".";
-	hp = fwinit(fnppat2, filetypes);	/* Process all path2 files */
-	fwExclEnable(hp, TRUE);				/* Enable file exclusion */
-	while ((fnp2 = fwild(hp)) != NULL)
-		{
-		fnp1 = fncatpth(s1, (fnp2 + CatIndex2));
+
+	if ((hp = fwinit(fnppat2, filetypes)) == NULL)	/* Find the first path1 file */
+		fwinitError(fnppat2);
+	else
+		{ // hp is valid
+		fwExclEnable(hp, TRUE);			/* Enable file exclusion */
+		while ((fnp2 = fwild(hp)) != NULL)
+			{
+			if (timebound(hp, fnp2))
+				{		
+				if ((fnp1 = fncatpth(s1, (fnp2 + CatIndex2))) == NULL)
+					file1error(s1);
+				else
+					{
 
 // printf("3 Pattern: \"%s\"\n", fnppat2);
 // printf("3 File B:    \"%s\"\n", fnp2);
 // printf("3 File A:    \"%s\"\n", fnp1);
-//fflush(stdout);
+// fflush(stdout);
 
-		if (v_flag >= 4)
-			{
-			printf("FNP F1 ('%s')  F2 ('%s')\n", fnp1, fnp2);
-			fflush(stdout);
-			}
+					if (v_flag >= 4)
+						{
+						printf("FNP F1 ('%s')  F2 ('%s')\n", fnp1, fnp2);
+						fflush(stdout);
+						}
 
-		process(fnp1, fnp2);
-		free(fnp1);
-//exit(1);
-		}
+					process(fnp1, fnp2);
+					free(fnp1);
+					}
+				} // End if timebound
+			} // End while ((fnp2 = fwild(hp)) != NULL)
+		} // End if hp =
 	hp = NULL;
 	free(fnppat2);
 	}
@@ -536,10 +647,10 @@ process (				/* Compare one pair one of input files */
 	if (exist1  &&  exist2)
 		{
 		td1 += timedelta;
-		if ((t_flag  ||  y_flag)  &&  (td1 > td2))
+		if ((t_flag  ||  Younger_flag)  &&  (td1 > td2))
 			++younger;
 
-		if ((t_flag  ||  o_flag)  &&  (td1 < td2))
+		if ((t_flag  ||  Older_flag)  &&  (td1 < td2))
 			++older;
 
 		if (     ( ! u_flag)  &&  s_flag  &&  (size1 > size2))
@@ -573,7 +684,7 @@ process (				/* Compare one pair one of input files */
 	diff  =  younger  ||  older  ||  larger  ||  smaller  ||  different;
 	error =  diff     ||  (e_flag  &&  ((!exist1)  ||  (!exist2)));
 
-	if ((b_flag  &&  error)  ||  (g_flag  &&  ! error))
+	if ((bad_flag  &&  error)  ||  (good_flag  &&  ! error))
 		{
 		if (error  &&  a_flag)
 			putchar('\7');
@@ -767,7 +878,35 @@ cantfind (				/* Inform user of input failure */
 	if (!q_flag)
 		fprintf(stderr, "Unable to find file: %s\n", fnp);
 	if (z_flag)
-		exit(0);
+		exit(1);
+	else if (!q_flag)
+		usage();
+	}
+
+/* ----------------------------------------------------------------------- */
+	void
+file1error (				/* Inform user of input failure */
+	char  *fnp)			/* Input file name */
+    
+	{
+	if (!q_flag)
+		fprintf(stderr, "File 1 is missing or invalid: %s\n", fnp);
+	if (z_flag)
+		exit(1);
+	else if (!q_flag)
+		usage();
+	}
+
+/* ----------------------------------------------------------------------- */
+	void
+file2error (				/* Inform user of input failure */
+	char  *fnp)			/* Input file name */
+    
+	{
+	if (!q_flag)
+		fprintf(stderr, "File 2 is missing or invalid: %s\n", fnp);
+	if (z_flag)
+		exit(1);
 	else if (!q_flag)
 		usage();
 	}
@@ -780,7 +919,7 @@ f_err (					/* Report a fatal error */
 	{
 	fprintf(stderr, "%s\n", s);
 	if (z_flag)
-		exit(0);
+		exit(1);
 	else
 		usage();
 	}

@@ -38,7 +38,7 @@ Copyright (c) 2007-2010 by Brian Johnson, TX - All Rights Reserved
 	EXPORT int
 should_copy (
 	char *src,
-	char *hp,
+	void *hp,
 	char *dst)
 
 	{
@@ -48,7 +48,11 @@ should_copy (
 	long        src_dt;
 	UINT64      dst_size;
 	UINT64      src_size;
-	char       *abssrc = fnabspth(src);
+	char       *abssrc;
+
+
+	if ((abssrc = fnabspth(src)) == NULL)
+		fatal("src filespec error");
 
 	if (stricmp(abssrc, dst) == 0)
 		{

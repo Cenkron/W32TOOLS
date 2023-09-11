@@ -408,26 +408,24 @@ static	char   *optstring = "?aA:cC:dDeEfF:hHiIlL:mM:nN:o:O:pP:qQrR:sStTuUvwW:VxX
 		while (ap = stdpath())					/* Process the stdin list */
 			{
 			itemcode = 1;
-			if (v_flag > 0)						/* Process the volume name */
+			if (v_flag > 0)							/* Process the volume name */
 				volprnt(ap);
-			hp = fwinit(ap, smode);				/* Process the input list */
-			if (hp == NULL)						/* Validate the argument */
-				printf("%s: %s\n", fwerror(), ap);
-
-			fwExclEnable(hp, TRUE);				/* Enable file exclusion */
-			while (fnp = fwild(hp))				/* Process each filespec */
+			if ((hp = fwinit(ap, smode)) == NULL)	/* Process the input list */
+				fwinitError(ap);
+			fwExclEnable(hp, TRUE);					/* Enable file exclusion */
+			while (fnp = fwild(hp))					/* Process each filespec */
 				process(fnp);
 			hp = NULL;
 
 			if ((itemcode != 0)
 			&& ((f_flag | d_flag | t_flag)	&&	( ! q_flag)))
-				cantfind(ap);					/* Couldn't find any */
+				cantfind(ap);						/* Couldn't find any */
 
 			SETEXIT(itemcode);
 			}
 		}
 
-	else										/* Process the command line */
+	else											/* Process the command line */
 		{
 		if (optind >= argc)
 			{
@@ -440,20 +438,18 @@ static	char   *optstring = "?aA:cC:dDeEfF:hHiIlL:mM:nN:o:O:pP:qQrR:sStTuUvwW:VxX
 			{
 			ap = argv[optind++];
 			itemcode = 1;
-			if (v_flag > 0)						/* Process the volume name */
+			if (v_flag > 0)							/* Process the volume name */
 				volprnt(ap);
-			hp = fwinit(ap, smode);				/* Process the input list */
-			if (hp == NULL)						/* Validate the argument */
-				printf("%s: %s\n", fwerror(), ap);
-
-			fwExclEnable(hp, TRUE);				/* Enable file exclusion */
-			while (fnp = fwild(hp))				/* Process each filespec */
+			if ((hp = fwinit(ap, smode)) == NULL)	/* Process the input list */
+				fwinitError(ap);
+			fwExclEnable(hp, TRUE);					/* Enable file exclusion */
+			while (fnp = fwild(hp))					/* Process each filespec */
 				process(fnp);
 			hp = NULL;
 
 			if ((itemcode != 0)
 			&& ((f_flag | d_flag | t_flag)	&&	( ! q_flag)))
-				cantfind(ap);					/* Couldn't find any */
+				cantfind(ap);						/* Couldn't find any */
 
 			SETEXIT(itemcode);
 			}

@@ -106,7 +106,8 @@ static	char   *optstring = "?dDiIlL";
 		{
 		while (ap = stdpath())			/* Process the stdin list */
 			{
-			hp = fwinit(ap, smode);		/* Process the input list */
+			if ((hp = fwinit(ap, smode)) == NULL)	/* Process the input list */
+				fwinitError(ap);
 			if ((fnp = fwild(hp)) == NULL)
 				{
 				hp = NULL;
@@ -137,7 +138,8 @@ static	char   *optstring = "?dDiIlL";
 		while (optind < argc)
 			{
 			ap = argv[optind++];
-			hp = fwinit(ap, smode);		/* Process the input list */
+			if ((hp = fwinit(ap, smode)) == NULL)	/* Process the input list */
+				fwinitError(ap);
 			if ((fnp = fwild(hp)) == NULL)
 				{
 				hp = NULL;

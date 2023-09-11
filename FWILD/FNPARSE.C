@@ -5,6 +5,7 @@
 |			    Copyright (c) 2022, all rights reserved
 |							Brian W Johnson
 |							   29-Sep-22
+|							   10-Sep-23 Compatibility with new fnreduce
 |
 |	This file is used to parse path strings for the purpose of sepsrating out
 |	wild path elements and/or filenames.
@@ -22,7 +23,7 @@
 #include  "fwild.h"
 
 /* ----------------------------------------------------------------------- */
-	void
+	int
 fnParse (				/* Point the non-directory tail of path s */
 	char  *s,			/* Pointer to the pathname string */
 	int   *pCatIndex,	// Ptr to callers concatenation index
@@ -35,7 +36,12 @@ fnParse (				/* Point the non-directory tail of path s */
 
 	if ((pPath = strdup(s)) != NULL)
 		{
-		fnreduce(pPath);
+		if (fnreduce(pPath) < 0)
+			{
+			free(pPath);
+			return (-1);
+			}
+
 		pStart = PointPastPrefix(pPath, TRUE);
 
 		// The following algorithm is:
@@ -98,6 +104,8 @@ fnParse (				/* Point the non-directory tail of path s */
 // printf("CatIndex  %d\n", *pCatIndex);
 // printf("TermIndex %d\n", *pTermIndex);
 // fflush(stdout);
+
+	return (0);
 	}
 
 /* ----------------------------------------------------------------------- */

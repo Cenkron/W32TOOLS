@@ -194,8 +194,9 @@ static char *   optstring = "?fFgGkKmMsSvVX:";
         while (optind < argc)
             {
             ap = argv[optind++];
-            hp = fwinit(ap, smode);             /* Process the input list */
-			fwExclEnable(hp, TRUE);				/* Enable file exclusion */
+            if ((hp = fwinit(ap, smode)) == NULL)	/* Process the input list */
+                fwinitError(ap);
+			fwExclEnable(hp, TRUE);					/* Enable file exclusion */
             if ((fnp = fwild(hp)) == NULL)
 				{
 				hp = NULL;
@@ -203,7 +204,7 @@ static char *   optstring = "?fFgGkKmMsSvVX:";
 				}
             else
                 {
-                do  {                           /* Process one filespec */
+                do  {                           	/* Process one filespec */
                     process(fnp);
                     } while ((fnp = fwild(hp)));
 				hp = NULL;

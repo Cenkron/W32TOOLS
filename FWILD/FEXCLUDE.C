@@ -86,7 +86,8 @@ typedef
 		{
 		Local = 0,				// And is the startup default
 		Remote,
-		Foreign					// Effectively undefined as of now
+		Foreign,				// Effectively undefined as of now
+		Invalid					// Something wrong with the file spec
 		}
 	Access;
 
@@ -234,6 +235,7 @@ add_list (						// Add a string to the exclusion list
 				}
 
 			free(pExc);		// Error, free the exclusion buffer
+//printf("add_list error/n");
 			return (-1);	// and report fatal error for too many segments required
 			}
 
@@ -286,11 +288,14 @@ GetInitPath (void)				// Get the pathname of the default exclusion file
 static char Dest [MAX_PATH];
 
 	if ((length = GetModuleFileName(NULL, Dest, sizeof(Dest))) == 0)
-		return (NULL);
+		return (NULL);	// No filespec
 
-	fnreduce(Dest);
+	if (fnreduce(Dest) < 0)
+		return (NULL);	// Invalid filespec
+
 	Dest[strlen(Dest) - strlen(fntail(Dest))] = '\0';
-	pDest = fncatpth(Dest, "exclude.ini");
+	if ((pDest = fncatpth(Dest, "exclude.ini")) == NULL)
+		return (NULL);
 
 	return ((strlen(pDest)  > 0) ? pDest : NULL);
 	}
@@ -400,16 +405,24 @@ classify 						// Classify the target file
 			onceOnly = FALSE;
 			char *altTarget = fnabspth(target);		// Make an alternate rooted target
 
-			targetProps.drive
-				= toupper(altTarget[0]);			// drive property
-			countDepth(1, &targetProps.depth,		// depth property (Initial target only)
-				altTarget);							// (ignore the endPath value)
-			free(altTarget);
+			if (altTarget == NULL)
+				targetProps.access = Invalid;		// Invalidate the entry
+
+			else
+				{
+				targetProps.drive
+					= toupper(altTarget[0]);		// drive property
+				countDepth(1, &targetProps.depth,	// depth property (Initial target only)
+					altTarget);						// (ignore the endPath value)
+				free(altTarget);
+				}
 			}
 		}
 
+//printf("access: %d\n", targetProps.access);
 	return (targetProps.access);
 
+//BWJ TODO
 #if 0	// The following is not useful at the moment, and awaits another day
 	else		// Must be network file access, if not local
 		{
@@ -540,6 +553,9 @@ fexcludeCheck (					// Check if a file/path is in the exclusion list
 	int  result = FALSE;		// The returned result
 
 //printf("target: \"%s\"\n", target);
+	if (targetProps.access == Invalid)		// No exclusion processing for invalid paths
+		return (FALSE);
+
 	if (targetProps.access == Remote)		// No exclusion processing for remote paths
 		return (FALSE);
 
@@ -576,6 +592,10 @@ fexclude (						// Exclude a path or path file from the fwild search
 	char  *pattern)				// Pointer to the pattern string
 
 	{
+	int patoffset = (int)(strlen(pattern) - 1);	// Trim '\n' from lines
+	if (pattern[patoffset] == '\n')
+		pattern[patoffset] = '\0';
+
 //printf("fexclude called \"%s\"\n", pattern);
 	if (pattern == NULL)		// Ignore NULL string pointers
 		return (0);
@@ -591,7 +611,7 @@ fexclude (						// Exclude a path or path file from the fwild search
 	while ((p > pattern)  &&  (isspace(*(--p))))
 		*p = '\0';					// NUL terminate the pattern;
 
-	if ((pattern[0] == '\0')	// Comment empty line
+	if ((pattern[0] == '\0')		// Comment empty line
 	||  (!isgraph(pattern[0]))		// Comment blank or empty line
 	||  (isspace(pattern[0]))		// Comment line
 	||  (pattern[0] == '~'))		// Explicit comment line

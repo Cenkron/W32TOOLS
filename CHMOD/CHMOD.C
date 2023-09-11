@@ -256,26 +256,26 @@ configEqualOptions(
 
 	{
 	int result = 0;
+static int onceonly = 1;
 
 #if DEBUG_LEVEL > 0
 	printf("ChmodConfig (=, %c)\n", optchar);
 #endif
 
-	switch (optchar)
+	if (onceonly)
 		{
-		case '0':   plus_flags = 0;
-					minus_flags |= (_A_ARCH | _A_HIDDEN | _A_RDONLY | _A_SYSTEM);
-					break;
+		onceonly = 0;
+		plus_flags  = ( 0 );
+		minus_flags = (_A_ARCH | _A_HIDDEN | _A_RDONLY | _A_SYSTEM);
+		}
 
-		case 'a':   minus_flags |= _A_ARCH;		break;
-		case 'h':   minus_flags |= _A_HIDDEN;	break;
-		case 'r':   minus_flags |= _A_RDONLY;	break;
-		case 's':   minus_flags |= _A_SYSTEM;	break;
-
-		case 'A':   plus_flags |= _A_ARCH;		break;
-		case 'H':   plus_flags |= _A_HIDDEN;	break;
-		case 'R':   plus_flags |= _A_RDONLY;	break;
-		case 'S':   plus_flags |= _A_SYSTEM;	break;
+	switch (tolower(optchar))
+		{
+		case '0': break;
+		case 'a': plus_flags |= (_A_ARCH);   minus_flags &= ~(_A_ARCH);   break;
+		case 'h': plus_flags |= (_A_HIDDEN); minus_flags &= ~(_A_HIDDEN); break;
+		case 'r': plus_flags |= (_A_RDONLY); minus_flags &= ~(_A_RDONLY); break;
+		case 's': plus_flags |= (_A_SYSTEM); minus_flags &= ~(_A_SYSTEM); break;
 		default:
 			fprintf(stdout, "invalid \'=\' option '%c'\n", optchar);
 			result = -1;
@@ -384,7 +384,9 @@ main (
 	while (argIndex < argc)
 		{
 		ap = argv[argIndex++];
-		hp = fwinit(ap, smode);		/* Process the input list */
+		
+		if ((hp = fwinit(ap, smode)) == NULL)		/* Process the input list */
+			fwinitError(ap);
 		fwExclEnable(hp, TRUE);		/* Enable file exclusion */
 		if ((fnp = fwild(hp)) != NULL)
 			{
@@ -395,6 +397,7 @@ main (
 			}
 		else
 			{
+			hp = NULL;
 			exitcode = 1;
 			cantfind(ap);
 			}

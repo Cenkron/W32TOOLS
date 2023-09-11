@@ -11,8 +11,8 @@
 |				   19-Aug-97
 |
 |	    long		Return the long UNIX timedate
-|	dt = fwgetfdt (hp);	Get the timedate of the current fwild file
-|	    char  *hp;		Pointer to the fwild header
+|	dt = fwgetfdt(	Get the timedate of the current fwild file
+|	    void *hp)	Pointer to the fwild header
 |
 \* ----------------------------------------------------------------------- */
 

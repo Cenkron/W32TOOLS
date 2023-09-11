@@ -96,7 +96,8 @@ main (
 	else
 		{
 		do  {
-			hp = fwinit(*argv, smode);		/* Process the input list */
+			if ((hp = fwinit(*argv, smode)) == NULL)	/* Process the input list */
+				fwinitError(*argv);
 			if ((fnp = fwild(hp)) == NULL)
 				{
 				hp = NULL;

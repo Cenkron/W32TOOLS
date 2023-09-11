@@ -314,7 +314,7 @@ filepair (
 			case FPR_P2FILE:	f_err("Path 2 cannot be a file"); break;
 			case FPR_MEMORY:	f_err("Insufficient memory");     break;
 			case FPR_FWERROR:	f_err("fwild() error");           break;
-			default:		f_err("Unknown error");           break;
+			default:			f_err("Unknown error");           break;
 			}
 		}
 	}
@@ -381,12 +381,12 @@ ShowHeader (
 
 	switch (Type)
 		{
-		default:			Result = FALSE;		break;
-		case Common:	s = CommonAB;	Result = (c_flag);	break;
-		case OnlyA:	s = OnlyInA;				break;
-		case OnlyB:	s = OnlyInB;				break;
-		case MovedA:	s = MovedInA;				break;
-		case MovedB:	s = MovedInB;				break;
+		default:		Result = FALSE;		break;
+		case Common:	s = CommonAB; Result = (c_flag); break;
+		case OnlyA:		s = OnlyInA;		break;
+		case OnlyB:		s = OnlyInB;		break;
+		case MovedA:	s = MovedInA;		break;
+		case MovedB:	s = MovedInB;		break;
 		}
 
 	if (Result)

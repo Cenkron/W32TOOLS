@@ -65,14 +65,14 @@
 #define  DTR_NOFIELD	(4)		/* No fields */
 #define  DTR_INVSYMB	(5)		/* Invalid symbol */
 #define  DTR_OVERFLOW	(6)		/* Field value overflow */
-#define  DTR_INVFLD	(7)		/* Invalid field value */
+#define  DTR_INVFLD		(7)		/* Invalid field value */
 #define  DTR_NOPHRCLASS	(8)		/* No possible phrase class type */
 #define  DTR_NOFLDITEM	(9)		/* No possible field item type */
-#define  DTR_AMBIGUOUS	(10)		/* Ambiguous expression */
-#define  DTR_SYNTAX	(11)		/* Unparsable syntax */
-#define  DTR_SYSTIME	(12)		/* System time unreasonably set */
-#define  DTR_TMODE	(13)		/* Time mode (am pm 24hr) conflict */
-#define  DTR_NS		(14)		/* Unsupported functionality */
+#define  DTR_AMBIGUOUS	(10)	/* Ambiguous expression */
+#define  DTR_SYNTAX		(11)	/* Unparsable syntax */
+#define  DTR_SYSTIME	(12)	/* System time unreasonably set */
+#define  DTR_TMODE		(13)	/* Time mode (am pm 24hr) conflict */
+#define  DTR_NS			(14)	/* Unsupported functionality */
 
 /* ----------------------------------------------------------------------- *\
 |  Field attribute values (bitmapped)
@@ -100,10 +100,10 @@
 
 /* Attributes describing the attribute tests: */
 
-#define A_TIME		(A_SEC | A_MIN | A_HOUR)
-#define A_DATE		(A_DAY | A_MON | A_YEAR)
+#define A_TIME		(A_SEC  | A_MIN   | A_HOUR)
+#define A_DATE		(A_DAY  | A_MON   | A_YEAR)
 
-#define S_TIME		(S_AM | S_PM | S_24HR)
+#define S_TIME		(S_AM   | S_PM    | S_24HR)
 
 #define	REQTIME  	(A_TIME | CL_TIME | S_TIME)
 #define	REQDATE  	(A_DATE | CL_DATE)
@@ -119,7 +119,7 @@
 
 #define  MAXFLD		(3)		/* Maximum number of fields */
 
-typedef					/* DATTBL parse table definition */
+typedef						/* DATTBL parse table definition */
 	struct
 	{
 	UINT16	m [MAXFLD];		/* Acceptable field attributes */
@@ -132,55 +132,55 @@ static	DATTBL	dat_table [DAT_BND] = {
 	{	A_MON,		A_DAY,		A_YEAR	},
 	{	A_DAY,		A_MON,		A_YEAR	},
 	{	A_YEAR,		A_MON,		A_DAY	},
-	{	A_MON,		A_DAY,		0	},
-	{	A_DAY,		A_MON,		0	},
-	{	A_MON,		A_YEAR,		0	},
-	{	A_YEAR,		0,		0	},
-	{	A_MON,		0,		0	},
-	{	A_DAY,		0,		0	} };
+	{	A_MON,		A_DAY,		0		},
+	{	A_DAY,		A_MON,		0		},
+	{	A_MON,		A_YEAR,		0		},
+	{	A_YEAR,		0,			0		},
+	{	A_MON,		0,			0		},
+	{	A_DAY,		0,			0		} };
 
 /* ----------------------------------------------------------------------- *\
 |  PHRASE and FIELD structure definitions
 \* ----------------------------------------------------------------------- */
 
-#define  A_SIZE		20	/* Alpha symbol buffer size */
+#define  A_SIZE		20		/* Alpha symbol buffer size */
 
-typedef struct tm	TSTR;
+typedef struct tm	TSTR, *PTSTR;
 
-typedef				/* FIELD definition */
+typedef						/* FIELD definition */
 	struct
 	{
-	UINT16	 possattr;	/* Possible attributes (bits) of the field */
-	UINT16	 reqattr;	/* Required attributes (bits) of the field */
-	int	 value;		/* Decoded value of the field */
+	UINT16	 possattr;		/* Possible attributes (bits) of the field */
+	UINT16	 reqattr;		/* Required attributes (bits) of the field */
+	int	 	 value;			/* Decoded value of the field */
 	}  FIELD;
 
-typedef				/* PHRASE definition */
+typedef						/* PHRASE definition */
 	struct
 	{
-	UINT16	 possattr;	/* Possible attributes (bits) of the phrase */
-	UINT16	 reqattr;	/* Required attributes (bits) of the phrase */
-	DATTBL  *dp;		/* Pointer into the date mask table */
-	int      fcount;	/* Number of parsed fields */
-	FIELD	*fp;		/* Phrase field pointer */
+	UINT16	 possattr;		/* Possible attributes (bits) of the phrase */
+	UINT16	 reqattr;		/* Required attributes (bits) of the phrase */
+	DATTBL  *dp;			/* Pointer into the date mask table */
+	int      fcount;		/* Number of parsed fields */
+	FIELD	*fp;			/* Phrase field pointer */
 	FIELD	 f [MAXFLD];	/* Phrase field descriptors */
 	}  PHRASE;
 
-typedef				/* PHRASE definition */
+typedef						/* PHRASE definition */
 	struct
 	{
-	int	 pcount;	/* Number of phrases successfully parsed */
-	int      tderror;	/* The error returned to the caller */
-	long	 ct;		/* The current time */
-	long	 mt;		/* The modified time */
-	TSTR     ctstr;		/* The current time structure */
-	TSTR     mtstr;		/* The modified time structure */
+	int		 pcount;		/* Number of phrases successfully parsed */
+	int      tderror;		/* The error returned to the caller */
+	long	 ct;			/* The current time */
+	long	 mt;			/* The modified time */
+	TSTR     ctstr;			/* The current time structure */
+	TSTR     mtstr;			/* The modified time structure */
 	PHRASE  *timephrase;	/* The PHRASE which describes the time */
 	PHRASE  *datephrase;	/* The PHRASE which describes the date */
-	PHRASE	 phr [2];	/* The two phrase structures */
+	PHRASE	 phr [2];		/* The two phrase structures */
 	}  GETTD;
 
-static	GETTD	x;		/* The parser data structure */
+static	GETTD	x;			/* The parser data structure instance */
 
 /* ----------------------------------------------------------------------- *\
 |  Static function prototypes
@@ -218,19 +218,18 @@ sgettd (
 
 	{
 	long   timedate;	/* The returned UNIX time/date */
-	TSTR   *tp;			/* Pointer to the TSTR */
+	PTSTR pTS;			/* Pointer to the TSTR */
 
 
 	x.ct = (long)(_time32(NULL));	/* Initialize data structures */
-	if (tp = _localtime32(&x.ct))
+	if ((pTS = _localtime32(&x.ct)) != NULL)
 		{
-		memcpy(&x.ctstr, tp, sizeof(TSTR));
+		memcpy(&x.ctstr, pTS, sizeof(TSTR));
 		x.pcount     = 0;
 		x.timephrase = NULL;
 		x.datephrase = NULL;
 		phr_init(&x.phr[0]);
 		phr_init(&x.phr[1]);
-
 		if ((x.tderror = str_parse(s)) == DTR_SUCCESS)
 			timedate = finalparse();
 		else
@@ -514,8 +513,8 @@ static	STRINGS	str_table [NUM_STR] =
 	{ "mid",	X_TIME,		 0	},	/* midnight */
 	{ "noo",	X_TIME,		12	},	/* noon */
 
-	{ "a",	X_AMPM,		 0	},	/* am time */
-	{ "p",	X_AMPM,		12	},	/* pm time */
+	{ "a",		X_AMPM,		 0	},	/* am time */
+	{ "p",		X_AMPM,		12	},	/* pm time */
 	};
 
 static	STRINGS *str_find   (char *s);
@@ -529,11 +528,11 @@ alpha_eval (
 	char    *s)			/* Pointer to the alpha string */
 
 	{
-	int  result = DTR_SUCCESS;	/* Returned result */
-	int  delta;			/* Relative day offset */
-	int  value;			/* Local copy of p->value */
-	TSTR     *tstrp;		/* Pointer to the TSTR */
-	STRINGS  *p;		/* Pointer into the string table */
+	int		  result = DTR_SUCCESS;	/* Returned result */
+	int		  delta;				/* Relative day offset */
+	int		  value;				/* Local copy of p->value */
+	TSTR     *tstrp;				/* Pointer to the TSTR */
+	STRINGS  *p;					/* Pointer into the string table */
 
 
 	if ((p = str_find(s)) == NULL)
@@ -654,9 +653,9 @@ num_parse (
 	char   **sret)		/* Pointer to the returned string pointer */
 
 	{
-	int      result;		/* Returned result */
+	int      result;	/* Returned result */
 	char     ch;		/* Temporary character */
-	char    *ss = s;		/* Saved string pointer */
+	char    *ss = s;	/* Saved string pointer */
 	UINT32   n;			/* The evaluated number */
 
 
@@ -698,9 +697,9 @@ zulu_eval (
 	char   **sret)		/* Pointer to the returned string pointer */
 
 	{
-	int      result;		/* Returned result */
+	int      result;	/* Returned result */
 	int      hour;		/* Decoded hour */
-	int      minute;		/* Decoded minute */
+	int      minute;	/* Decoded minute */
 
 	hour    = (*(s++) - '0') * 10;
 	hour   +=  *(s++) - '0';
@@ -983,14 +982,14 @@ DBG("phr_reduce()", result);
 pair_reduce (void)
 
 	{
-	int     result = 0;		/* Returned result, assume success */
-	UINT16  attr0;			/* Temporary phrase attribute */
-	UINT16  attr1;			/* Temporary phrase attribute */
+	int     result = 0;				/* Returned result, assume success */
+	UINT16  attr0;					/* Temporary phrase attribute */
+	UINT16  attr1;					/* Temporary phrase attribute */
 
 	attr0 = x.phr[0].possattr & CLASS;	/* Build the phrase classes */
 	attr1 = x.phr[1].possattr & CLASS;
 
-	if (attr0 != CLASS)			/* Delete opposing singular classes */
+	if (attr0 != CLASS)				/* Delete opposing singular classes */
 		x.phr[1].possattr &= ~attr0;
 
 	if (attr1 != CLASS)
@@ -1146,7 +1145,7 @@ finalparse (void)
 		flag = TRUE;
 		}
 	else if (flag)
-		x.mtstr.tm_mon = 0;	/* January */
+		x.mtstr.tm_mon = 0;		/* January */
 
 	if ((fp = fld_find(A_DAY)) != NULL)
 		x.mtstr.tm_mday = fp->value;

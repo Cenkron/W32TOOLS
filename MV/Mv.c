@@ -69,29 +69,29 @@ usagedoc [] = {
 
 /**********************************************************************/
 
-int	main         (int, char**);
+int		main         (int, char**);
 void	catpth       (char *s, char *t);
 void	error        (char *filename, char *message);
 void	fatal        (char *filename, char *message);
 void	filepair     (char *s1, char *s2);
 void	move         (char *src, char *dst);
 void	notfound     (char *fn);
-int	query        (char *src, char *dst);
+int		query        (char *src, char *dst);
 int     SameDisk     (char *src, char *dst);
 void	MVprocess    (char *src, char *dst, char *path);
 void	XCprocess    (char *src, char *dst);
 
-int	is_readonly  (char *file);
-int	clr_readonly (char *file);
-int	set_readonly (char *file);
+int		is_readonly  (char *file);
+int		clr_readonly (char *file);
+int		set_readonly (char *file);
 void	InterSpace   (char *src, char *dst);
 
 /**********************************************************************/
 
 A_Z_FLAGS	azFlags		= {0};
 char		path_char;
-int             cols            = 40;
-int		attrib		= FW_FILE;
+int         cols        = 40;
+int			attrib		= FW_FILE;
 
 /* ----------------------------------------------------------------------- */
 #ifdef DEBUG
@@ -183,7 +183,8 @@ main (
 		else if (iswild(dst))
 			fatal(dst, "Cannot have wildcards in the destination");
 
-		dst = fnabspth(dst);
+		if ((dst = fnabspth(dst)) == NULL)
+			fatal(dst, "src filespec error");
 
 		while (optind < lastarg)
 			{
@@ -230,11 +231,15 @@ filepair (					/* Process the pathnames */
 	int    TermIndex;		/* Termination index of the path (not used here) */
 	char  *srcname;			/* Pointer to the path1 pathname */
 	char  *dstname;			/* Pointer to the path2 pathname */
+	void  *hp;				/* The fwild data structure */
 
-	fnParse(s1, &CatIndex, &TermIndex);	/* Set pointer to construct path2 */
 
-	char *hp = fwinit(s1, attrib);		/* Find the first path1 file */
-	fwExclEnable(hp, TRUE);				/* Enable file exclusion */
+	if (fnParse(s1, &CatIndex, &TermIndex) < 0)	/* Set pointer to construct path2 */
+		fatal(s1, "dst filespec error");
+
+	if ((hp = fwinit(s1, attrib)) == NULL)	/* Find the first path1 file */
+		fwinitError(s1);	
+	fwExclEnable(hp, TRUE);					/* Enable file exclusion */
 	if ((srcname = fwild(hp)) == NULL)
 		{
 		hp = NULL;
@@ -244,9 +249,12 @@ filepair (					/* Process the pathnames */
 	else do
 		{				/* Process all path1 files */
 		if (optdata.flags.f)
-			dstname = fncatpth(dstpath, fntail(srcname));
+			if ((dstname = fncatpth(dstpath, fntail(srcname))) == NULL)
+				fatal(s1, "fncatpth error");
 		else
-			dstname = fncatpth(dstpath, (srcname + CatIndex));
+			if ((dstname = fncatpth(dstpath, (srcname + CatIndex))) == NULL);
+				fatal(dstpath, "fncatpth error");
+			
 
 //debug(("before process('%s', '%s', '%s')\n", srcname, dstname, dstpath));
 
@@ -300,9 +308,14 @@ MVprocess (
 	char *	path)	/* destination path name */
 
 	{
-	fnreduce(src);
-	fnreduce(dst);
-	fnreduce(path);
+	if (fnreduce(src) < 0)
+		fatal(src, "src fnreduce error");
+
+	if (fnreduce(dst) < 0)
+		fatal(dst, "dst fnreduce error");
+
+	if (fnreduce(path) < 0)
+		fatal(path, "fnreduce error");
 
 //debug(("inside process(): src ='%s'\n", src));
 //debug(("inside process(): dst ='%s'\n", dst));
@@ -327,8 +340,12 @@ XCprocess (
 		char  qsrc [1027];
 		char  qdst [1027];
 
-		fnreduce(src);
-		fnreduce(dst);
+		if (fnreduce(src) < 0)
+		fatal(src, "src fnreduce error");
+
+		if (fnreduce(dst) < 0)
+		fatal(dst, "dst fnreduce error");
+
 
 		quote_path(src, qsrc);
 		quote_path(dst, qdst);
@@ -359,8 +376,13 @@ SameDisk (
 	char *	dst)	/* desination path name */
 
 	{
-	fnreduce(src);
-	char *	xsrc = fnabspth(src);
+	char *xsrc;
+
+	if (fnreduce(src) < 0)
+		fatal(src, "src fnreduce error");
+	
+	if ((xsrc = fnabspth(src)) == NULL)
+		fatal(dst, "dst fnabspth error");
 
 	// Note: also returns FALSE if UNC paths are specified
 
@@ -440,11 +462,11 @@ catpth (
 	{
 	char * p;
 
-	if ((p=fncatpth(s,t)) != NULL)
-		{
-		strcpy(s,p);
-		free(p);
-		}
+	if ((p = fncatpth(s,t)) == NULL)
+		fatal(s, "fncatpth error");
+	
+	strcpy(s,p);
+	free(p);
 	}
 
 /*--------------------------------------------------------------------*/

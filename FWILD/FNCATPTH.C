@@ -5,6 +5,7 @@
 |		    Copyright (c) 1985, 1990, all rights reserved
 |				Brian W Johnson
 |				   26-May-90
+|				   10-Sep-23 Adapted to the revised fnreturn.c
 |
 |	    char *		Return an allocated pathname
 |	p = fncatpth (s1, s2);	Concatenate a path to a path
@@ -24,7 +25,7 @@
 
 #define	  ispath(ch)	(((ch) == '/') || ((ch) == '\\'))
 
-static	char	path [] = "/";
+static	char	path [] = "\\";
 
 /* ----------------------------------------------------------------------- */
 	char *					/* Return a newly allocated string */
@@ -36,9 +37,13 @@ fncatpth (					/* Return s2 concatenated onto s1 */
 	int    len1;			/* Length of s1 */
 	int    len2;			/* Length of s2 */
 	char  *p;				/* Pointer to the returned path string */
-	char  *q;				/* Temorary pointer to the path string */
+	char  *q;				/* Temorary pointer into the p path string */
 
 
+#ifdef TEST
+printf("Entry \"%s\"\n", s1);
+fflush(stdout);
+#endif
 	while (ispath(*s2))		/* Eliminate any s2 path character */
 		++s2;
 
@@ -62,8 +67,16 @@ fncatpth (					/* Return s2 concatenated onto s1 */
 			strcat(p, s2);
 			}
 		}
+#ifdef TEST
+printf("Before fnreduce: \"%s\"\n", p);
+fflush(stdout);
+#endif
+	if ((fnreduce(p)) < 0)
+		{
+		free(p);
+		return (NULL);
+		}
 
-	fnreduce(p);
 	return (p);
 	}
 
@@ -82,13 +95,19 @@ main (						/* Test program */
 		{
 		p = *++argv;
 		q = *++argv;
-		printf("%s   CONCATENATE   %s\n", p, q);
+printf("Orig   string:   \"%s\" CONCATENATE \"%s\"\n", p, q);
+printf("Concat string:   \"%s\" CONCATENATE \"%s\"\n", p, q);
 		r = fncatpth(p, q);
-		printf("%s\n", r);
-		free(r);
+		if (r)
+printf("After  fncatpth: \"%s\"\n", r);
+		else
+			{
+printf("After  fncatpth: \"(NULL)\"\n");
+			free(r);
+			}
 		}
 	else
-		printf("No pathname !\n");
+		printf("Needs two strings !\n");
     }
 #endif
 /* ----------------------------------------------------------------------- */

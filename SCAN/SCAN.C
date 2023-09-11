@@ -53,12 +53,12 @@ main (
 	char  *argv [])			/* Argument list pointer */
 
 	{
-	int    smode = FW_FILE;		/* File search mode attributes */
+	int    smode = FW_FILE;	/* File search mode attributes */
 	int    option;			/* Option character */
 	char  *ap;				/* Argument pointer */
-	void  *hp  = NULL;			/* Pointer to wild file data block */
-	char  *fnp = NULL;			/* Input file name pointer */
-	FILE  *fp  = NULL;			/* Input file descriptor */
+	void  *hp  = NULL;		/* Pointer to wild file data block */
+	char  *fnp = NULL;		/* Input file name pointer */
+	FILE  *fp  = NULL;		/* Input file descriptor */
 
 
 	setbuf(stdout, fmalloc(BUFSIZ));
@@ -109,7 +109,8 @@ main (
 		while (optind < argc)
 			{
 			ap = argv[optind++];
-			hp = fwinit(ap, smode);		/* Process the input list */
+			if ((hp = fwinit(ap, smode)) == NULL)	/* Process the input list */
+				fwinitError(ap);
 			if ((fnp = fwild(hp)) == NULL)
 				{
 				hp = NULL;
@@ -167,4 +168,5 @@ process (				/* Process one input file */
 		}
 	}
 
+/* ----------------------------------------------------------------------- */
 /* ----------------------------------------------------------------------- */

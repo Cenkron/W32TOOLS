@@ -25,20 +25,29 @@ PRIVATE void    move (char *src, char *dst, char *path);
 	EXPORT void
 process (
 	char *src,
-	char *hp,
+	void *hp,
 	char *dst,
 	char *path)
 
 	{
-	fnreduce(src);
-	fnreduce(dst);
-	fnreduce(path);
-    
-	char *      xsrc = fnabspth(src);
+	char *xsrc;
+
+	if ((fnreduce(src) < 0)
+	||  ((xsrc = fnabspth(src)) == NULL))
+		error(src, "src pathspec error");
+
+	if (fnreduce(dst) < 0)
+		error(dst, "dst pathspec error");
+
+	if (fnreduce(path) < 0)
+		error(path, "path pathspec error");
+
 
 	strcpy(temp_name, path);
 	catpth(temp_name, "xcopy.$$$");
-	fnreduce(temp_name);
+	if (fnreduce(temp_name) < 0)
+		error(temp_name, "temp name error");
+
 
 	if (!azFlags.n && azFlags.p)
 		{
@@ -128,11 +137,11 @@ catpth (
 	{
 	char * p;
 
-	if ((p=fncatpth(s,t)) != NULL)
-		{
-		strcpy(s,p);
-		free(p);
-		}
+	if ((p = fncatpth(s, t)) == NULL)
+		error(s, "fncatpth error");
+
+	strcpy(s,p);
+	free(p);
 	}
 
 /*--------------------------------------------------------------------*/

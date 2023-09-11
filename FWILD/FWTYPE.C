@@ -11,8 +11,8 @@
 |				   17-Aug-97
 |
 |	    int			Return the file type byte (ATT_*)
-|	type = fwtype (hp);	Get the type of the current fwild filename
-|	    char  *hp;		Pointer to the fwild header
+|	type = fwtype(	Get the type of the current fwild filename
+|	    void *hp)	Pointer to the fwild header
 |
 \* ----------------------------------------------------------------------- */
 

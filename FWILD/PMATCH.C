@@ -9,11 +9,11 @@
 |				   26-May-90
 |				   17-Dec-94
 |
-|	    int			Return TRUE if match successful
-|	pmatch (p, q, mode);	Test two pathnames for match
-|	    char  *p;		Pattern name (may include wild cards)
-|	    char  *q;		Test name (must be a non-wild pathname)
-|	    int    mode;	If TRUE, missing ext matches any file ext
+|	    int				Return TRUE if match successful
+|	pmatch (			Test two pathnames for match
+|	    char  *p,		Pattern name (may include wild cards)
+|	    char  *q,		Test name (must be a non-wild pathname)
+|	    int    mode)	Iff TRUE, missing ext matches any file ext
 |
 |	Drive specifications, if any, are stripped off before matching
 |
@@ -35,7 +35,7 @@ static	int	m_mode;			/* Semi-global match mode */
 static	int	_pmatch (char *, char *);
 
 /* ----------------------------------------------------------------------- */
-	int
+	int					// Returns TRUE if the paths match, else FALSE
 pmatch (				/* Test two filenames for filename match */
 	char  *p,			/* Pattern name (may include wild cards) */
 	char  *q,			/* Test name (must be a pure file name) */
@@ -57,7 +57,11 @@ pmatch (				/* Test two filenames for filename match */
 	r = fmalloc(strlen(p) + 4);
 	strcpy(r, p);
 	strsetp(r, (char)('/'));
-	fnreduce(r);
+	if (fnreduce(r) <0)
+		{
+		free(r);
+		return (FALSE);
+		}
 
     /* Handle a reduced "." directories by replacing it with "*.*" */
 
@@ -70,7 +74,12 @@ pmatch (				/* Test two filenames for filename match */
 	s = fmalloc(strlen(q) + 1);
 	strcpy(s, q);
 	strsetp(s, (char)('/'));
-	fnreduce(s);
+	if (fnreduce(s) < 0)
+		{
+		free(r);
+		free(s);
+		return (FALSE);
+		}
 
 	if (((*r == '/') && (*s == '/'))	/* Ensure root match */
 	||  ((*r != '/') && (*s != '/')))

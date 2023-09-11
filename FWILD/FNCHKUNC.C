@@ -37,9 +37,10 @@ fnchkunc (					/* Verify the existence of a directory */
 	||  strchr(s, '*'))
 		return (FALSE);
 
-	pbuff1 = fnabspth(s);		// Perform reduction
+	if ((pbuff1 = fnabspth(s)) == NULL)		// Perform reduction
+		result = FALSE;
 
-	if (strncmp(pbuff1, "\\\\", 2) != 0)
+	else if (strncmp(pbuff1, "\\\\", 2) != 0)
 		result = FALSE;
 
 	else if (_fnchkdir(pbuff1))
@@ -67,7 +68,9 @@ fnchkunc (					/* Verify the existence of a directory */
 	if (pbuff2)
 		free(pbuff2);
 
-	free(pbuff1);
+	if (pbuff1)
+		free(pbuff1);
+
 	return (result);
 	}
 

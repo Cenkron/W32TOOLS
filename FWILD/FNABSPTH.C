@@ -8,15 +8,16 @@
 |				   17-Dec-94
 |				   17-Aug-97
 |				   25-Sep-97 UNC
+|				   10-Sep-23 consistent with new fnreduce
 |
 |	    char *		Return an allocated string
 |	p = fnabspth (s);	Convert a filename to drive:/path/file
 |	    char  *s;		Pointer to the pathname
 |
-|	The return string is allocated, and should disposed with free()
-|	The return string is guaranteed to contain at least "X:/".
-|	The return string is converted to all upper case.
-|	The return string path characters are standardized.
+|	The fnabspth() returns NULL if fnreduce() reports an error.
+|	The valid return string is allocated, and should be disposed with free()
+|	The valid return string is guaranteed to contain at least "X:/" or UNC equivalent.
+|	The valid return string path characters are standardized.
 |
 \* ----------------------------------------------------------------------- */
 
@@ -77,10 +78,17 @@ fnabspth (					/* Convert a filename to absolute format */
 			}
 		}
 
-	fnreduce(&temp[0]);				/* Reduce the pathname */
+#ifdef TEST
+printf("Before fnreduce: \"%s\"\n", temp);
+#endif
 
-	p = fmalloc((int)(strlen(&temp[0])) + 1);	/* Build the return string */
-	strcpy(p, &temp[0]);
+	if (fnreduce(&temp[0]) >= 0)	/* Reduce the pathname */
+		{
+		p = fmalloc((int)(strlen(&temp[0])) + 1);	/* Build the return string */
+		strcpy(p, &temp[0]);
+		}
+	else // Fatal error	
+		p = NULL;
 
 	return (p);
 	}
@@ -99,9 +107,10 @@ void main (
     if (argc > 1)
 		{
 		p = *++argv;
+printf("Before fnabspth: \"%s\"\n", p);
 		printf("%s\n", p);
 		p = fnabspth(p);
-		printf("%s\n", p);
+printf("After  fnreduce: \"%s\"\n", p);
 		free(p);
 		}
 	else

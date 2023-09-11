@@ -207,7 +207,8 @@ static	char   *optstring = "?bBcCd:D:eEf:F:iIlLn:N:oOqQrRsSt:T:vVwWy:Y:zZ";
 		{
 		do  {
 			ap = argv[optind++];
-			hp = fwinit(ap, smode);		/* Process the input list */
+			if ((hp = fwinit(ap, smode)) == NULL)		/* Process the input list */
+				fwinitError(ap);
 			fwExclEnable(hp, TRUE);		/* Enable file exclusion */
 			if ((fnp = fwild(hp)) == NULL)
 				{
@@ -230,6 +231,7 @@ static	char   *optstring = "?bBcCd:D:eEf:F:iIlLn:N:oOqQrRsSt:T:vVwWy:Y:zZ";
 			} while (optind < argc);
 		}
 
+	hp = NULL;
 	process_output();
 
 	final_verbosity();

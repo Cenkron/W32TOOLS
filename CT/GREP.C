@@ -429,33 +429,34 @@ static	char   *optstring = "?cCeEfFhHiIlLnNrRs:S:t:T:vVw:W:x:X:";
     void
 procwild (char *pp)		/* Pointer to pathname specifier */
 
-    {
-    void  *hp;			/* Pointer to wild file data block */
-    FILE  *fp;			/* Input file descriptor */
-    char  *fnp;			/* The translated file name */
-    int    smode = FW_FILE;	/* File search mode attributes */
+	{
+	void  *hp;				/* Pointer to wild file data block */
+	FILE  *fp;				/* Input file descriptor */
+	char  *fnp;				/* The translated file name */
+	int    smode = FW_FILE;	/* File search mode attributes */
 
 
-    hp = fwinit(pp, smode);		/* Process the input list */
+    if ((hp = fwinit(pp, smode)) == NULL)	/* Process the input list */
+		fwinitError(pp);
 	fwExclEnable(pp, TRUE);		/* Enable file exclusion */
     if ((fnp = fwild(hp)) == NULL)
-	{
-	hp = NULL;
-	cantopen(pp);
-	}
-    else
-	{
-	do  {				/* Process one filespec */
-	    if (fp = fopen(fnp, "r"))
 		{
-		process(fp, fnp);
-		fclose(fp);
+		hp = NULL;
+		cantopen(pp);
 		}
+    else
+		{
+		do  {				/* Process one filespec */
+		    if (fp = fopen(fnp, "r"))
+			{
+			process(fp, fnp);
+			fclose(fp);
+			}
 	    else
-		cantopen(fnp);
-	    } while ((fnp = fwild(hp)));
-	hp = NULL;
-	}
+			cantopen(fnp);
+		    } while ((fnp = fwild(hp)));
+		hp = NULL;
+		}
     }
 
 /* ----------------------------------------------------------------------- */

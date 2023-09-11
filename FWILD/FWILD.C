@@ -43,8 +43,8 @@
 #include  "fwild.h"
 
 // #define  SHOWSRCH		// Define this to show search progress
-// #define	VERBOSEOUT	 1	// Define this in the makefile for verbose output
-// #define	MEMORYWATCH	 1	// Define this in the makefile to watch for memory leaks
+// #define  VERBOSEOUT	 1	// Define this in the makefile for verbose output
+// #define  MEMORYWATCH	 1	// Define this in the makefile to watch for memory leaks
 
 #ifdef	MEMORYWATCH
 #define	 mwprintf(a,b)	printf(a,b)
@@ -57,6 +57,7 @@ static void		m_disp (char *s1, char *s2);
 static void		h_disp (PDTA_HDR p, char *s);
 static void		e_disp (PDTA_ELE p, char *s, int flag);
 #endif
+
 //BWJ
 //static void		pc_disp(PDTA_HDR p);
 
@@ -98,6 +99,9 @@ typedef enum		// Internal error codes
 	INV_PATH		// Invalid path syntax
 	} ERR_CODE;
 
+#define ONENTRY (0)
+#define ONEXIT  (1)
+
 // -----------------------------------------------------------------------
 // Private variables
 // -----------------------------------------------------------------------
@@ -106,11 +110,10 @@ typedef enum		// Internal error codes
 static	unsigned int	AllocCount = 0;
 #endif
 
-static  char	 rwild_str [] = "/**";
-static  char	 owild_str [] = "/*.*";
+static  char	 rwild_str [] = "\\**";
+static  char	 owild_str [] = "\\*.*";
 
 int			    xporlater = 0;					// TRUE if Windows XP or later (global)
-
 
 /* ----------------------------------------------------------------------- */
 // Default file exclusion management
@@ -392,6 +395,7 @@ PatternCompiler (				// Compile the caller's pattern
 		pSeg->pEnd   = NULL;
 		pSeg->length = 0;
 		pSegBuff[0]  = NULCH;
+
 		hp->rooted   = (*pScan == PATHCH);	// Check if rooted
 		if (hp->rooted)
 			++pScan;						// Skip over the root separator
@@ -528,38 +532,34 @@ fwinit (						/* Initialize the wild filename system */
 	{
 	PDTA_HDR	hp;
 	PDTA_ELE	ep;
-	char	   *p;
 
-		// Allocate a DTA header, and allocate the first DTA element for
-		// the DTA list.  Initialize the first element with the supplied
-		// prototype file name pattern.
+//	strsetp(pattern, PATHCH);	// This is actually done by fnreduce()
 
-	int errCode = fwvalid(pattern);
+//printf("pattern1: \'%s\'\n", pattern);
+//fflush(stdout);
+
+	if (fnreduce(pattern) < 0)		// Simplify any redundance
+		return (NULL);				// Invalid pattern
+
+//printf("pattern2: \'%s\'\n", pattern);
+//fflush(stdout);
+
+	int errCode = fwvalid(pattern);	// Validate the pattern
 	if ((errCode != FWERR_NONE)  &&  (errCode != FWERR_TRAIL))
 		return	(NULL);
 
-	CheckVersion();
-	owild_str[0] = rwild_str[0] = strpath(pattern);
-	hp = new_header();
-	hp->xmode = 0;					// File exclusion mode, updated by fexclude
-	hp->mode  = fmode;				// Find mode to use
-	hp->pLink = ep = new_element();
-	p         = hp->rawPattern;
-	strcpy(p, pattern);
-
-	// If the pattern is completely not wild, reduce it to remove redundance
-	fnreduce(p);						// Simplify any redundance
-
-		// Fix up the file name pattern string if it is incomplete.
-		// If the file name ends with ':', '/', or '\', then it has an
-		// implied "*.*" file name, so append "*.*" to the pattern file name
-		// string.	 If the string ends in "..", or ".", append "\*.*" to it.
-		// fnreduce() can leave an empty string, so make it "*.*.
+#if 0
+	// Fix up the file name pattern string if it is incomplete.
+	// If the file name ends with ':', '/', or '\', then it has an
+	// implied "*.*" file name, so append "*.*" to the pattern file name
+	// string.	 If the string ends in "..", or ".", append "\*.*" to it.
+	// fnreduce() can leave an empty string, so make it "*.*.
 
 	if (*p == NULCH)
-		strcpy(p, "*.*");	// Usually because of fnreduce()
+		strcpy(p, "*.*");		// Usually because of fnreduce()
 	else
 		{
+		char *p = pattern;
 		char ch = p[strlen(p) - 1];			/* Guaranteed non-null here */
 		if (ch == '/' || ch == ':' || ch == '\\')
 			strcat(p, "*.*");
@@ -567,13 +567,27 @@ fwinit (						/* Initialize the wild filename system */
 		     ||  (strcmp(fntail(p), "." ) == MATCH))
 			strcat(p, "\\*.*");
 		}
+#endif
 
-	PatternCompiler(hp);				// Compile the caller's pattern
+//printf("pattern3: \'%s\'\n", pattern);
+//fflush(stdout);
 
-//BWJ to be removed eventually
-	strcpy(ep->proto, p);
+	// Allocate a DTA header, and allocate the first DTA element for
+	// the DTA list.  Initialize the first element with the supplied
+	// prototype file name pattern.
 
-	fexcludeInit(&(hp->xmode));	// Init the file exclusion system, effective once only
+	hp = new_header();
+	hp->xmode = 0;					// File exclusion mode, updated by fexclude
+	hp->mode  = fmode;				// Find mode to use
+	hp->pLink = ep = new_element();
+	strcpy(hp->rawPattern, pattern);
+
+	PatternCompiler(hp);			// Compile the caller's pattern
+
+//BWJ to be removed eventually (after compiiled pattern is used)
+	strcpy(ep->proto, pattern);
+
+	fexcludeInit(&(hp->xmode));		// Init the file exclusion system, effective once only
 
 #ifdef	VERBOSEOUT
 h_disp(hp, "FWINIT");
@@ -602,7 +616,7 @@ mwprintf("Allocs (done) %d\n", AllocCount);
 |  Public Methods
 \* ----------------------------------------------------------------------- */
 /* ----------------------------------------------------------------------- *\
-|  fwild () - Request the next (first) matching pathname
+|  fwild () - Request the next (or first) matching pathname
 \* ----------------------------------------------------------------------- */
 	char *						/* Return a drive/path/filename string */
 fwild (							/* Find the next filename */
@@ -627,7 +641,7 @@ fwild (							/* Find the next filename */
 		{
 
 #ifdef	VERBOSEOUT
-e_disp(ep, "Main switch", FALSE);
+e_disp(ep, "Main switch", ONENTRY);
 #endif
 
 		switch (ep->state)
@@ -747,7 +761,7 @@ printf("srch:  %s\n", ep->search ? ep->search : "null" );
 			case RECW_N:
 
 #ifdef	VERBOSEOUT
-e_disp(ep, "RECW", FALSE);
+e_disp(ep, "RECW", ONENTRY);
 #endif
 				if (ep->state == RECW_F)		/* Search for file */
 					{
@@ -772,7 +786,7 @@ printf("srch:  %s\n", ep->search ? ep->search : "null" );
 
 
 #ifdef	VERBOSEOUT
-e_disp(ep, "RECW", TRUE);
+e_disp(ep, "RECW", ONEXIT);
 #endif
 
 				if (ep->dta.dta_type & ATT_SUBD)		/* Check if SUBD */
@@ -874,7 +888,7 @@ e_disp(ep, "RECW", TRUE);
 			case WILD_N:
 
 #ifdef	VERBOSEOUT
-e_disp(ep, "WILD", FALSE);
+e_disp(ep, "WILD", ONENTRY);
 #endif
 				if (ep->state == WILD_F)		/* Search for file */
 					{
@@ -898,7 +912,7 @@ printf("srch:  %s\n", ep->search ? ep->search : "null" );
 					}
 
 #ifdef	VERBOSEOUT
-e_disp(ep, "WILD", TRUE);
+e_disp(ep, "WILD", ONEXIT);
 #endif
 				if (*ep->pNext)			/* If terminal name, set match mode */
 					m_mode = 0;
@@ -966,7 +980,7 @@ e_disp(ep, "WILD", TRUE);
 			case NONW_N:
 
 #ifdef	VERBOSEOUT
-e_disp(ep, "NONW", FALSE);
+e_disp(ep, "NONW", ONENTRY);
 #endif
 				if (ep->state == NONW_FX)		/* Search for file */
 					{
@@ -1010,7 +1024,7 @@ printf("srch:  %s\n", ep->search ? ep->search : "null" );
 					}
 
 #ifdef	VERBOSEOUT
-e_disp(ep, "NONW", TRUE);
+e_disp(ep, "NONW", ONEXIT);
 #endif
 
 				if (ep->dta.dta_type & ATT_SUBD)
@@ -1121,9 +1135,9 @@ h_disp(hp, s)
 	{
 	printf("\n");
 	printf("From: %s\n", s);
-	printf("Pointer....%04x\n", (int)(hp));
-	printf("Link.......%04x\n", (int)(hp->pLink));
-	printf("Mode.......%04x\n", (int)(hp->mode));
+	printf("Pointer....%04x\n", (int)(INT64)(hp));
+	printf("Link.......%04x\n", (int)(INT64)(hp->pLink));
+	printf("Mode.......%04x\n", (int)(INT64)(hp->mode));
 	printf("\n");
 	fflush(stdout);
 	}
@@ -1140,14 +1154,14 @@ e_disp(ep, s, flag)
 	{
 	printf("\n");
 
-	if (flag)
+	if (flag == (ONEXIT))
 		printf("Result from: %s\n", s);
-	else
+	else //  == (ONENTRY)
 		printf("Entry to: %s\n", s);
 
-	printf("Pointer____%04x\n", (int)(ep));
+	printf("Pointer____%04x\n", (int)(INT64)(ep));
 
-	printf("Link_______%04x\n", (int)(ep->pLink));
+	printf("Link_______%04x\n", (int)(INT64)(ep->pLink));
 
 	switch (ep->wild)
 		{
@@ -1176,12 +1190,12 @@ e_disp(ep, s, flag)
 		printf("Prototype__%s\n",	ep->proto);
 
 	if (ep->pLast)
-		printf("Last_______%3d\n",	ep->pLast - ep->proto);
+		printf("Last_______%3lld\n", (ep->pLast - ep->proto));
 	else
 		printf("Last_______  0\n");
 
 	if (ep->pNext)
-		printf("Next_______%3d\n",	ep->pNext - ep->proto);
+		printf("Next_______%3lld\n", (ep->pNext - ep->proto));
 	else
 		printf("Next_______  0\n");
 

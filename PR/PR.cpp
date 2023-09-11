@@ -83,7 +83,7 @@ int			wrap_flag	= false;		// true when line wrapping enabled
 // BWJ Maybe later
 //char	hdrname [81];					// The alternate header name
 
-char   *hp = NULL;						// Pointer to the wild file data block
+void	   *hp = NULL;						// Pointer to the wild file data block
 
 /* ----------------------------------------------------------------------- */
 

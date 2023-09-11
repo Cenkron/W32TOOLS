@@ -14,8 +14,8 @@
 |				    9-Jan-04 (display midnight hour as 12AM)
 |
 |	    char *		Return a pointer to a time string
-|	p = fwtimes (hp);	Get the time of the current fwild filename
-|	    char  *hp;		Pointer to the fwild header
+|	p = fwtimes (	Get the time of the current fwild filename
+|	    void *hp)	Pointer to the fwild header
 |
 \* ----------------------------------------------------------------------- */
 

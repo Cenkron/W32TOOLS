@@ -37,14 +37,15 @@ fwfirst (
 	void  *hp;  		/* Pointer to the wild file data block */
 	char  *p;	  		/* Pointer to the found matching string */
 
-	hp = fwinit(s, FW_FILE);
+	if ((hp = fwinit(s, FW_FILE)) == NULL)
+		fwinitError(s);
 	if ((p = fwild(hp)) != NULL)
 		{
 		strncpy(buffer, p, min(strlen(p), (sizeof(buffer) - 1)));
 		p = buffer;
-		fwfree(hp);
 		}
 
+	hp = NULL;
 	return (p);
 	}
 

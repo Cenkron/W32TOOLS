@@ -376,8 +376,11 @@ Process (char *p)		// Ptr to the raw path string
 
 	{
 	int    exitcode = 0;
-	char *pPath     = fnabspth(p);	// The path to process
+	char *pPath;	// The path to process
 
+    if ((pPath = fnabspth(p)) == NULL)
+		cantfind(p);
+ 
 	if (Verbose)
 		printf("BasePath: \"%s\"\n", pPath);
 
