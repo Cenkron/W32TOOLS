@@ -94,6 +94,7 @@ int         cols        = 40;
 int			attrib		= FW_FILE;
 
 /* ----------------------------------------------------------------------- */
+//#define DEBUG
 #ifdef DEBUG
 #define debug(x) printf x
 #else
@@ -248,13 +249,30 @@ filepair (					/* Process the pathnames */
 
 	else do
 		{				/* Process all path1 files */
+#ifdef DEBUG
+printf("mv: process all files\n");
+#endif
 		if (optdata.flags.f)
+			{
 			if ((dstname = fncatpth(dstpath, fntail(srcname))) == NULL)
-				fatal(s1, "fncatpth error");
+				{
+#ifdef DEBUG
+printf("mv:\"%s\"    \"%s\"", dstpath, fntail(srcname));
+#endif
+				fatal(s1, "fncatpth error 1");
+				}
+			}
 		else
-			if ((dstname = fncatpth(dstpath, (srcname + CatIndex))) == NULL);
-				fatal(dstpath, "fncatpth error");
-			
+			{
+			if ((dstname = fncatpth(dstpath, (srcname + CatIndex))) == NULL)
+				{
+#ifdef DEBUG
+printf("mv: \"%s\"    \"%s\"\n", dstpath, (srcname + CatIndex));
+printf("mv: dstname \"%s\"", dstname);
+#endif
+				fatal(dstpath, "fncatpth error 2");
+				}
+			}
 
 //debug(("before process('%s', '%s', '%s')\n", srcname, dstname, dstpath));
 
@@ -463,7 +481,12 @@ catpth (
 	char * p;
 
 	if ((p = fncatpth(s,t)) == NULL)
-		fatal(s, "fncatpth error");
+		{
+#ifdef DEBUG
+printf("mv: \"%s\"    \"%s\"", s, t);
+#endif
+		fatal(s, "fncatpth error 3");
+		}
 	
 	strcpy(s,p);
 	free(p);

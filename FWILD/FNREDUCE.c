@@ -40,6 +40,7 @@
 
 #include  "fwild.h"
 
+
 //#define TEST	// Define this to include the test main and diagnostics
 
 #define	 PATHCH		('\\')
@@ -92,7 +93,11 @@ fnCondense (						// Condense '.' and '..' from the path name
 	if (s == NULL)					// Null string ptr is illegal
 		return (ERROR);
 
+	if (strlen(s) == 0)				// Empty string is legal
+		return (CWDdepth);
+
 	strsetp(s, PATHCH);				// Normalize all path characters to '\'
+
 
 	Running = TRUE;
 	p = s;															// Point the first name field
@@ -352,7 +357,7 @@ fflush(stdout);
 		} // End of outer loop
 
 #ifdef TEST
-printf("(%2d) \"%s\"\n", minDepth, s);
+printf("fnreduce Return (%2d) \"%s\"\n", minDepth, s);
 fflush(stdout);
 #endif
 	return (minDepth);				// Return the minimum reached depth of the directory
@@ -375,7 +380,7 @@ fnreduce (				// Eliminate pathname redundancy
 		return (ERROR);
 
 #ifdef TEST
-printf("Entry: \"%s\"\n", s);
+printf("fnreduce Entry: \"%s\"\n", s);
 fflush(stdout);
 #endif
 
@@ -417,7 +422,7 @@ fflush(stdout);
 	}
 
 /* ----------------------------------------------------------------------- */
-#ifdef TEST
+#ifdef TESTM
 main(					/* Test main program */
 	int    argc,
 	char* argv[])

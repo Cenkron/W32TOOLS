@@ -42,6 +42,7 @@
 
 #include  "fwild.h"
 
+
 // #define  SHOWSRCH		// Define this to show search progress
 // #define  VERBOSEOUT	 1	// Define this in the makefile for verbose output
 // #define  MEMORYWATCH	 1	// Define this in the makefile to watch for memory leaks
@@ -518,7 +519,7 @@ PatternCompiler (				// Compile the caller's pattern
 		continue;
 		}
 
-//BWJ pc_disp(hp);										// Display data on the way out
+//BWJ pc_disp(hp);								// Display monitor data on the way out
 	}
 
 /* ----------------------------------------------------------------------- *\
@@ -532,8 +533,7 @@ fwinit (						/* Initialize the wild filename system */
 	{
 	PDTA_HDR	hp;
 	PDTA_ELE	ep;
-
-//	strsetp(pattern, PATHCH);	// This is actually done by fnreduce()
+	char         p [MAX_PATH];	// Working pattern string
 
 //printf("pattern1: \'%s\'\n", pattern);
 //fflush(stdout);
@@ -548,28 +548,41 @@ fwinit (						/* Initialize the wild filename system */
 	if ((errCode != FWERR_NONE)  &&  (errCode != FWERR_TRAIL))
 		return	(NULL);
 
-#if 0
+// Make an internal working copy of the pattern
+
+	strcpy_s(p, MAX_PATH, pattern);
+
 	// Fix up the file name pattern string if it is incomplete.
-	// If the file name ends with ':', '/', or '\', then it has an
-	// implied "*.*" file name, so append "*.*" to the pattern file name
-	// string.	 If the string ends in "..", or ".", append "\*.*" to it.
-	// fnreduce() can leave an empty string, so make it "*.*.
 
-	if (*p == NULCH)
-		strcpy(p, "*.*");		// Usually because of fnreduce()
-	else
+
+	char *pBody = PointPastPrefix(p, TRUE);	// Skip past the prefix
+	char *pTail = fntail(pBody);			// Skip to the tail
+
+	if (fmode & FW_FILE)					// If looking for files...
 		{
-		char *p = pattern;
-		char ch = p[strlen(p) - 1];			/* Guaranteed non-null here */
-		if (ch == '/' || ch == ':' || ch == '\\')
-			strcat(p, "*.*");
-		else if ((strcmp(fntail(p), "..") == MATCH)
-		     ||  (strcmp(fntail(p), "." ) == MATCH))
-			strcat(p, "\\*.*");
-		}
-#endif
+		if (strlen(pBody) == 0)				// If no search string body
+			strcpy(pBody, "*.*");			// Use "*.*"
 
-//printf("pattern3: \'%s\'\n", pattern);
+		else if (*pTail == NULCH)			// If ends in path character
+			strcat(pTail, "*.*");			// Append "*.*"
+
+		else if (strcmp(pTail, ".") == 0)	// If ends in "."
+			strcpy(pTail, "*.*");			// Replace it with "*.*"
+
+		else if (strcmp(pTail, "..") == 0)	// If ends in ".."
+			strcat(pTail, "\\*.*");			// Append "\*.*"
+		}
+
+	else if (fmode & FW_SUBD)				// If looking only for directories...
+		{
+		if (strlen(pBody) == 0)				// If no search string body
+			strcpy(pBody, ".");				// Use "."
+
+		else if (*pTail == NULCH)			// If ends in path character
+			strcat(pTail, ".");				// Append "."
+		}
+
+//printf("pattern3: \'%s\'\n", p);
 //fflush(stdout);
 
 	// Allocate a DTA header, and allocate the first DTA element for
@@ -580,12 +593,12 @@ fwinit (						/* Initialize the wild filename system */
 	hp->xmode = 0;					// File exclusion mode, updated by fexclude
 	hp->mode  = fmode;				// Find mode to use
 	hp->pLink = ep = new_element();
-	strcpy(hp->rawPattern, pattern);
+	strcpy(hp->rawPattern, p);
 
 	PatternCompiler(hp);			// Compile the caller's pattern
 
 //BWJ to be removed eventually (after compiiled pattern is used)
-	strcpy(ep->proto, pattern);
+	strcpy(ep->proto, p);
 
 	fexcludeInit(&(hp->xmode));		// Init the file exclusion system, effective once only
 

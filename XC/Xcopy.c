@@ -298,13 +298,15 @@ main (
 			else if (fwvalid(src) != FWERR_NONE)
 				fatal("Invalid source file specification");
 
+#if 0 // Migrated this algorithm to fwinit()
 			else if ((fnchkdir(src))			// if src is a directory,    assume *.*
 				 ||  (strcmp(fntail(src), "**") == 0))	// if src is recurse wild,   assume *.*
 				catpth(src,"*.*");
-
+#endif
+#if 0 // This isn't a good idea
 			else if (strchr(fntail(src), '.') == NULL)	// if src specifies no type, assume  .*     */
 				strcat(src,".*");
-
+#endif
 			filepair(src, dst);
 
 			++optind;

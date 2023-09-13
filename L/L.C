@@ -165,7 +165,7 @@ main (
 	char  *ap;							/* Argument pointer */
 	char  *fnp = NULL;					/* Input file name pointer */
 
-static	char   *fargv [] = { "*" };		/* Fake argv array */
+static	char   *fargv [] = { "" };		/* Fake argv array */
 static	char   *optstring = "?aA:cC:dDeEfF:hHiIlL:mM:nN:o:O:pP:qQrR:sStTuUvwW:VxX:y:Y:zZ";
 
 
@@ -464,6 +464,10 @@ static	char   *optstring = "?aA:cC:dDeEfF:hHiIlL:mM:nN:o:O:pP:qQrR:sStTuUvwW:VxX
 			itemcode = 1;
 			if (v_flag > 0)							/* Process the volume name */
 				volprnt(ap);
+
+//printf("L Pattern: \"%s\"\n", ap);
+//fflush(stdout);
+
 			if ((hp = fwinit(ap, smode)) == NULL)	/* Process the input list */
 				fwinitError(ap);
 			fwExclEnable(hp, TRUE);					/* Enable file exclusion */
@@ -523,6 +527,9 @@ process (fnp)					/* Process one filename */
 	int		type;
 	UINT64	size;
 
+
+//printf("L: Found: \"%s\"\n", fnp);
+//fflush(stdout);
 
 	type = fwtype(hp);
 	size = fwsize(hp);

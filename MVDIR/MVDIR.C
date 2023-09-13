@@ -93,7 +93,7 @@ main (
 	{
 	int    option;		/* Option character */
 	int    nargs;		/* Number of arguments */
-	char  *ap;                  /* POinter to the initial path */
+	char  *ap;			/* POinter to the initial path */
 
 static	char   *optstring = "?cCeElLmMpP";
 

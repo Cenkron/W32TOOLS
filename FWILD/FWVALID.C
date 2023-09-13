@@ -62,7 +62,9 @@ fwvalid (
 
 	if (*s == '\0')
 		{
-		fwerrno = FWERR_EMPTY;	// Empty pathname passed
+// fwinit() now handles this case internally
+		fwerrno = FWERR_NONE;		// Assume success
+//		fwerrno = FWERR_EMPTY;	// Empty pathname passed
 		goto exit;
 		}
 

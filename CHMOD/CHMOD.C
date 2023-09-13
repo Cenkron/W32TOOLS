@@ -33,6 +33,8 @@ int     d_flag      = 0;
 int     q_flag      = 0;
 int     v_flag      = 0;
 
+static	char   *fargv [] = { "" };		/* Fake argv array */
+
 /**********************************************************************/
 	static char 
 copyright [] =
@@ -374,11 +376,11 @@ main (
 	diagnostics();
 #endif
 
-	if (argIndex >= argc)	// Default to *.* if no files specified
+	if (argIndex >= argc)				// if no filespec provided, use default
 		{
-		argIndex = 0;
-		argc     = 1;
-		argv[0]  = "*.*";
+		optind = 0;
+		argc   = 1;
+		argv   = fargv;
 		}
 
 	while (argIndex < argc)

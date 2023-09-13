@@ -110,7 +110,7 @@ QueryDrivePrefix (		// Skips over the drive spec, if found
 // Skip over the UNC or DRIVE prefix, if any
 // ------------------------------------------------------------------------------------------------
 	char *				// Returns ptr past the found prefix, or NULL if no prefix found
-PointPastPrefix (		// Skips over the UNC spec, if found
+PointPastPrefix (		// Skips over the UNC or drive spec, if found
     char  *s,			// Pointer to the pathname string
 	int    single)		// TRUE to limit acceptance to a single drive letter
 

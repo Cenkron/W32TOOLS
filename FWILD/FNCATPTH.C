@@ -23,6 +23,9 @@
 
 #include  "fwild.h"
 
+
+//#define TEST	// Define this to include the test main and diagnostics
+
 #define	  ispath(ch)	(((ch) == '/') || ((ch) == '\\'))
 
 static	char	path [] = "\\";
@@ -41,10 +44,10 @@ fncatpth (					/* Return s2 concatenated onto s1 */
 
 
 #ifdef TEST
-printf("Entry \"%s\"\n", s1);
+printf("fncatpth Entry \"%s\    \"%s\"\n", s1, s2);
 fflush(stdout);
 #endif
-	while (ispath(*s2))		/* Eliminate any s2 path character */
+	while (ispath(*s2))		/* Eliminate any leading s2 path character */
 		++s2;
 
 	len1 = (int)(strlen(s1));
@@ -68,20 +71,28 @@ fflush(stdout);
 			}
 		}
 #ifdef TEST
-printf("Before fnreduce: \"%s\"\n", p);
+printf("fncatpth - fnreduce: \"%s\"\n", p);
 fflush(stdout);
 #endif
-	if ((fnreduce(p)) < 0)
+	if (fnreduce(p) < 0)
 		{
+#ifdef TEST
+printf("fncatpth Return: NULL\n");
+fflush(stdout);
+#endif
 		free(p);
 		return (NULL);
 		}
 
+#ifdef TEST
+printf("fncatpth Return: \"%s\"\n", p);
+fflush(stdout);
+#endif
 	return (p);
 	}
 
 /* ----------------------------------------------------------------------- */
-#ifdef TEST
+#ifdef TESTM
 main (						/* Test program */
 	int    argc,
 	char  *argv [])
