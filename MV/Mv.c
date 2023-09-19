@@ -193,11 +193,9 @@ main (
 
 			if (fwvalid(src) != FWERR_NONE)
 				fatal(src, "Invalid source file specification");
-			else if ((fnchkdir(src))			// if src is a directory,    assume *.*
-				 ||  (strcmp(fntail(src), "**") == 0))	// if src is recurse wild,   assume *.*
-				catpth(src, "*.*");
-			else if (strchr(fntail(src), '.') == NULL)	// if src specifies no type, assume  .*     */
-				strcat(src, ".*");
+			else if ((fnchkdir(src))					// if src is a directory,    assume *
+				 ||  (strcmp(fntail(src), "**") == 0))	// if src is recurse wild,   assume *
+				catpth(src, "*");
 
 //debug(("before filepair('%s', '%s')\n", src, dst));
 

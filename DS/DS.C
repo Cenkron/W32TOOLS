@@ -43,7 +43,7 @@ usagedoc[] = {
 	"-X-       Disable default file exclusion(s)",
 	"-X+       Show exclusion path(s)",
 	"",
-	"If 'file_spec' is not specified, then '*.*' is assumed.",
+	"If 'file_spec' is not specified, then '*' is assumed.",
 	"The recursive path name '**' may be used to specifiy the inclusion",
 	"of all subdirectories.  If '[path\\]' is not specified, then the",
 	"current directory is assumed.",
@@ -185,8 +185,8 @@ main (
 		}
 	else
 		{
-		strcpy(szLegend, "*.*");
-		process("*.*");
+		strcpy(szLegend, "*");
+		process("*");
 		}
 
 	if (!bBflag)

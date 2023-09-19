@@ -47,8 +47,7 @@ char  *usagedoc [] =
 "    %cc        List (comprehensively) all files and directories",
 "    %cC N      Use N columns for wide listings (default 5 columns)",
 "    %cd        List directories (default)",
-"    %ce        Don't use default .* extension",
-"    %cE        Check only for existence of the files",
+"    %ce        Check only for existence of the files",
 "    %cf        List files (default)",
 "    %cF pnstaw Determine the list format (default \"psta\")",
 "    %ch        List hidden files",
@@ -88,7 +87,7 @@ NULL
 
 /* ----------------------------------------------------------------------- */
 
-#define	  FW_NORM	   (FW_FILE | FW_DSTAR | FW_SUBD)
+#define	  FW_NORM	   (FW_FILE | FW_SUBD)
 #define	  DEFNAMESIZE  (40)				/* The default name field size */
 
 /* ----------------------------------------------------------------------- */
@@ -217,10 +216,7 @@ static	char   *optstring = "?aA:cC:dDeEfF:hHiIlL:mM:nN:o:O:pP:qQrR:sStTuUvwW:VxX
 				break;
 
 			case 'e':
-				if (option == 'E')
-					e_flag = FALSE;
-				else
-					smode &= ~FW_DSTAR;
+				e_flag = FALSE;
 				break;
 
 			case 'f':

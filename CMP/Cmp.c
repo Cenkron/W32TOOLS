@@ -38,6 +38,12 @@
 #define TRUE	1
 #endif
 
+/* ----------------------------------------------------------------------- */
+
+//#define DEBUG
+
+/* ----------------------------------------------------------------------- */
+
 char  *usagedoc [] =
 {
 "Usage:  cmp  [%c?abdehlLnoqQrstvXyz]  path1  [path2]  [>output_file]",
@@ -110,12 +116,12 @@ int	y_flag			= FALSE;		/* Compare only if younger than <td> */
 int	Younger_flag	= FALSE;		/* Report only younger flags */
 int	z_flag			= FALSE;		/* Return zero even if error flag */
 
-int	ex_code	= 0;			/* Exit code */
+int	ex_code	= 0;				/* Exit code */
 
 int	filetypes = FW_FILE;		/* File types checked */
 
 long    timedelta = 0L;			/* Timestamp compare correction */
-#define  OneHour (60L * 60L)		/* The correction value */
+#define  OneHour (60L * 60L)	/* The correction value */
 
 char	swch = '-';				/* The switch character */
 
@@ -331,12 +337,12 @@ static	char   *optstring = "?aAbBdDeEhHlLnNo:OqQrRsStT:uUvVX:y:YzZ";
 				break;
 
 			case 'y':
-				if (option == 'y')
+				if (option == 'Y')
 					{
 					++Younger_flag;
 					defflg = FALSE;
 					}
-				else // (option == 'Y')
+				else // (option == 'y')
 					{
 					if ((youngertime = fwsgettd(optarg)) < 0L)
 						{
@@ -453,10 +459,11 @@ filepair1 (					/* Process the pathnames forward */
 		printf("Pat F1 ('%s')  F2 ('%s')\n", s1, s2);
 		fflush(stdout);
 		}
-#if 0
+#ifdef DEBUG
 printf("1 pattern: \"%s\"\n", s1);
 printf("1 s2save:  \"%s\"\n", s2save);
 printf("1 s2:      \"%s\"\n", s2);
+printf("1 CatIndex: %d\n",    CatIndex1);
 #endif
 	if ((hp = fwinit(s1, filetypes)) == NULL)	/* Find the first path1 file */
 		fwinitError(s1);
@@ -479,7 +486,7 @@ printf("1 s2:      \"%s\"\n", s2);
 					file2error(s2);
 				else
 					{
-#if 0
+#ifdef DEBUG
 printf("  fnp1:    \"%s\n", fnp1);
 printf("  fnp2:    \"%s\n", fnp2);
 fflush(stdout);

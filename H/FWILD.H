@@ -57,7 +57,6 @@ typedef unsigned __int64  UINT64, *PUINT64;
 #endif
 
 #define  FW_SUBD     16			/* Subdirectory request */
-#define  FW_DSTAR    32			/* Implied dot star request */
 
 /* File attribute bit definitions */
 
@@ -242,13 +241,15 @@ extern  char   *fncatpth (char *, char *);				/* Return concatenated name */
 extern  char   *fntail (char *);						/* Return the tail of the filename */
 extern	int		fnsubpth (char *, char *);				/* Check if s1 is a subpath of s2 */
 extern	int		_fnchkdir (char *);						/* Test if a directory exists (no UNC) */
+extern	int		fnCondense(char *);						/* Condense a non-prefix pathname */
 extern	int		fnchkdir (char *);						/* Test if a directory exists */
 extern	int		fnchkfil (char *);						/* Test if a file exists */
 extern  int 	fnchkunc (char *);						/* Test if a UNC root */
 extern  int		fnreduce (char *);						/* Reduce a filename */
 extern	int		fnValidName (char *);					/* Test if a path is valid nonwild filename syntax */
 extern  int		fndot (char *);							/* Test if a "dot" directory */
-extern	int		fnmatch (char *, char *, int);			/* Match a wild file name */
+extern	int		fnmatch (char *, char *, int);			/* Match a wild file name segment */
+extern	int		fnmatch2 (char *, char *);				/* Match a wild file name segment */
 extern  int		iswild (char *);						/* Test if a "wild" path */
 extern	int 	fnParse (char *, int *, int *);			/* Parse a filename path */
 extern	int		pmatch (char *, char *, int);			/* Test two fnames for match */

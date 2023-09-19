@@ -11,11 +11,14 @@
 |				   25-Apr-97
 |				   22-Aug-97
 |
-|	    int			Return TRUE if match successful
-|	fnmatch (p, q, mode);	Test two filenames for filename match
-|	    char  *p;		Pattern name (may include wild cards)
-|	    char  *q;		Test name (must be a pure file name)
-|	    int    mode;	If TRUE, missing p ext matches any q ext
+|	    int				Return TRUE if match successful
+|	fnmatch (			Test two filenames for filename match
+|	    char  *p,		Pattern name (may include wild cards)
+|	    char  *q,		Test name (must be a pure file name)
+|	    int    mode)	If TRUE, missing p ext matches any q ext (support FW_DSTAR)
+|
+|	This function is retired and removed from the build.
+|	It is replaced by fnmatch2().	
 |
 \* ----------------------------------------------------------------------- */
 
@@ -27,7 +30,9 @@
 
 #include  "fwild.h"
 
-// #define   CONSOLEMODETEST
+/* ----------------------------------------------------------------------- */
+
+// #define TEST	// Define this to include the test main
 
 static	char   *basecopy  (char *, char *);
 static	int	namematch (char *, char *);
@@ -154,7 +159,7 @@ namematch (				/* Test two strings for filename match */
 	}
 
 /* ----------------------------------------------------------------------- */
-#ifdef    CONSOLEMODETEST
+#ifdef TEST
     void
 main ()					/* Test program for match */
 

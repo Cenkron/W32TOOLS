@@ -81,7 +81,7 @@ NULL
 
 /* ----------------------------------------------------------------------- */
 
-#define	  FW_NORM	   (FW_FILE | FW_DSTAR | FW_SUBD)
+#define	  FW_NORM	   (FW_FILE | FW_SUBD)
 #define	  DEFNAMESIZE  (40)				/* The default name field size */
 
 /* ----------------------------------------------------------------------- */
@@ -208,10 +208,7 @@ static	char   *optstring = "?aA:cC:dDeEfF:hHiIlL:mM:nN:o:O:pP:qQrR:sStTuUvwW:VxX
 				break;
 
 			case 'e':
-				if (option == 'E')
-					e_flag = FALSE;
-				else
-					smode &= ~FW_DSTAR;
+				e_flag = FALSE;
 				break;
 
 			case 'f':

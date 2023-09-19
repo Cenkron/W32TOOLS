@@ -53,8 +53,7 @@ usagedoc [] = {
 	"",
 	"The source filespec[s] may consist of an optional drive designator, an ",
 	"optional path name, and a possibly wild file name.  If no file name is",
-	"specified, then '*.*' is assumed.  If no filetype is specified,",
-	"then '.*' is appended.  Wildcards '?', '*', and '**' are ",
+	"specified, then '*' is assumed.  Wildcards '?', '*', and '**' are ",
 	"allowed in the filespec.  Appearance of '**' in the filespec",
 	"will cause the corresponding tree to be built on the destination",
 	"unless -f is used.",
@@ -129,14 +128,14 @@ PRIVATE void    filepair (char *s1, char *s2);
 
 A_Z_FLAGS       AZ_Flags        = {0};
 A_Z_FLAGS       azFlags         = {0};
-unsigned int    bsize		= 0;
+unsigned int    bsize			= 0;
 long            timedelta       = 0L;	/* Timestamp compare correction */
-char *          buffer		= NULL;
+char *          buffer			= NULL;
 int             cols            = 40;
 INT64           filesize        = 0;
 int             mode            = 0;
 time_t          o_time          = 0L;
-char            path_char	= 0;
+char            path_char		= 0;
 char            temp_name [80]	= "";
 time_t          y_time          = 0L;
 int				copy_rename		= 0;	// Enables direct copy and rename option
@@ -298,15 +297,6 @@ main (
 			else if (fwvalid(src) != FWERR_NONE)
 				fatal("Invalid source file specification");
 
-#if 0 // Migrated this algorithm to fwinit()
-			else if ((fnchkdir(src))			// if src is a directory,    assume *.*
-				 ||  (strcmp(fntail(src), "**") == 0))	// if src is recurse wild,   assume *.*
-				catpth(src,"*.*");
-#endif
-#if 0 // This isn't a good idea
-			else if (strchr(fntail(src), '.') == NULL)	// if src specifies no type, assume  .*     */
-				strcat(src,".*");
-#endif
 			filepair(src, dst);
 
 			++optind;

@@ -379,6 +379,7 @@
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">MaxSpeed</Optimization>
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Release|x64'">MaxSpeed</Optimization>
     </ClCompile>
+    <ClCompile Include="FNMATCH2.C" />
     <ClCompile Include="FNPARSE.C" />
     <ClCompile Include="FNREDUCE.C">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Disabled</Optimization>

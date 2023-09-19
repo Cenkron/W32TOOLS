@@ -1,21 +1,34 @@
 /* ----------------------------------------------------------------------- *\
 |
-|				    FNREDUCE
+|					    FNREDUCE
 |
-|		    Copyright (c) 1985, 1990, all rights reserved
-|				Brian W Johnson
-|				   26-May-90
-|				   25-Sep-97 UNC
-|				   10-Aug-00 .xxxx filenames
-|				   19-Sep-22 corrected UNC skipover
-|				   10-Sep-23 rewrote the fnCondense function (checks depth)
+|			    Copyright (c) 1985, 1990, all rights reserved
+|					Brian W Johnson
+|					   26-May-90
+|					   25-Sep-97 UNC
+|					   10-Aug-00 .xxxx filenames
+|					   19-Sep-22 corrected UNC skipover
+|					   10-Sep-23 rewritten
+|					   17-Sep-23 reorganized
 |
-|	    int				Returns positive effective depth, or -1 for error
+|	    int				Returns effective path depth, non-negative if OK, or negative for bad
 |	fnreduce (s);		Eliminate pathname redundancy
 |	    char  *s;		Pointer to the pathname
 |
+|	    int				Returns relative depth of the tested path
+|	fnCondense (s);		Eliminate pathname redundancy
+|	    char  *s;		Pointer to the pathname
+|
+|	Both functions work similarly, but only fnreduce can handle a path prefix.
+|
+|	Both functions return -1 if a NULL pointer passed
 |	The return string is reduced to minimal form,
 |	and the path characters are standardized to '\\'.
+|
+|	The return values are the depth of the passed pathspec pointer.
+|	Depth refers to the degree of ''..'ing enountered during the parse.
+|	Negative total depth is physically impossible to access.
+|	The depth must be non-negative for physical access.
 |
 |	Rules:
 |	Initial drive identification is always preserved.
@@ -30,7 +43,7 @@
 |	Trailing "." is left if the path does not end in a name.
 |	Reports minimum depth parsed, else -1 if too deep.
 | 
-|	NOTE:	Input string "." will produce an empty result string !
+|	NOTE:	Some input strings will produce an empty result string !
 |
 \* ----------------------------------------------------------------------- */
 
@@ -40,324 +53,339 @@
 
 #include  "fwild.h"
 
+// ------------------------------------------------------------------------------------------------
 
-//#define TEST	// Define this to include the test main and diagnostics
+//#define TEST	// Define this to include the test main
 
-#define	 PATHCH		('\\')
-#define	 NULCH		('\0')
-#define	 DOTCH		('.')
-#define	 DOUBLEDOT	("..")
-#define  ispath(ch)	(ch == PATHCH)
+//#define DEBUG	// Define this to include the diagnostics
 
-#define C_PATH	(256) // arbitrary
+#ifdef TEST
+#define DEBUG
+#endif
 
-#define  DRIVESPEC(ch) ((int)(tolower(ch) - 'a' + 1))
+#define	PATHCH		('\\')
+#define	NULCH		('\0')
+#define	DOTCH		('.')
+#define	DOUBLEDOT	("..")
+#define ispath(ch)	(ch == PATHCH)
 
-static	int		rooted = FALSE;
+#define ERROR   (-1)		// Returned if a NULL ptr to the path string
 
-#define ERROR   (-1)
-#define SUCCESS (0)
-#define	MAX_RECORD (64)
+#define DRIVESPEC(ch) ((int)(tolower(ch) - 'a' + 1))
+
+#define	MAX_RECORD (100)	// Maximum parseable depth (very generous)
 
 typedef
 	struct
 		{
 		char   *pSep;		// Pointer to the preceding separator (else NULL)
 		char   *pField;		// Pointer to the field
-		int		isNamed;	// True iff a named field (not "." or "..")
-		} RTABLE, *PRTABLE;
+		int		length;		// Length of the name part of the field (excludes preceding path)
+		int		isName;		// True iff a named field (i.e., not "..")
+		} Element, *PElement;
 
-RTABLE	Rtable [MAX_RECORD];
+Element	Etable [MAX_RECORD];
+
+#define	isFirst(pElement)	(pElement->pSep == NULL)
+
+// BWJ issue of fnCondenseDot()
 
 // ------------------------------------------------------------------------------------------------
 // Condense the path pointed by s (uses a recursive algorithm)
-//
 // Condense should be called pointing after the prefix and the possible root path char.
 // ------------------------------------------------------------------------------------------------
-    static int						// Returns 0 for success, else depth required (depth >= 0)
+	int								// Returns path depth
 fnCondense (						// Condense '.' and '..' from the path name
-	int    CWDdepth,				// Depth of the effective CWD
-	int    rooted,					// True if the path is rooted
-    char  *s)						// Ptr to the path suffix
+	char  *s)						// Ptr to the path suffix (follows any root character)
 
-    {
-	char	ch;						// Current working character
-	PRTABLE	pRecord = NULL;			// Pointer to the current field record
-	PRTABLE	pPrevRecord;			// Ptr to the previous record (when valid)
-	int     minDepth = CWDdepth;	// Minimum depth reached
-	int     depth    = CWDdepth;	// Current directory depth (cannot go negative)
-	int     length;					// Length of the current record
-	int     Running;				// TRUE while parsing
-	char   *p;						// Working pointer into path
+	{
+	char		ch;					// Current working character
+	PElement	pElement = NULL;	// Pointer to the current field element
+	PElement	pPrevElement;		// Ptr to the previous element (when valid)
+	int			minDepth = 0;		// Minimum directory depth reached
+	int			depth    = 0;		// Current directory depth
+	int			Running;			// TRUE while parsing
+	char	   *p;					// Working pointer into path
 
 	if (s == NULL)					// Null string ptr is illegal
 		return (ERROR);
 
 	if (strlen(s) == 0)				// Empty string is legal
-		return (CWDdepth);
+		return (0);
 
-	strsetp(s, PATHCH);				// Normalize all path characters to '\'
+	pElement = &Etable[0];									// Init and use the first element
+		pElement->pSep   = (NULL);							// First element; no initial separator
+		pElement->pField = s;								// Point the element first char
+		pElement->length = 0;								// Element length defaults to zero
+		pElement->isName = FALSE;							// No name characters yet
 
-
-	Running = TRUE;
-	p = s;															// Point the first name field
-//	pRecord = NULL;													// Indicate no pRecord yet
-	while (Running)	// Enter outer loop								// Process all fields
+	p = s;													// Point the first element name field
+	for (Running = TRUE; (Running); )						// Process all fields and characters
 		{
-#ifdef TEST
-printf("New Rec (%2d) \"%s\"\n", depth, p);
-fflush(stdout);
-#endif
-		if (pRecord == NULL)
-			{
-			pRecord = &Rtable[0];									// Point the first record
-			pRecord->pSep = (NULL);
-			}
-		else
-			{
-			++pRecord;												// Point the next record
-			pRecord->pSep = (p - 1);
-			}
-		pRecord->pField  = p;
-		pRecord->isNamed = FALSE;
+		ch = *p;											// p points the current field character
+		if (ch == '/')
+            ch = PATHCH;									// Replace old style path characters
 
-#ifdef TEST
-printf("NEW R(%d)\n", (int)(pRecord - &Rtable[0]));
-fflush(stdout);
-#endif
-		while (Running)	// Enter inner loop							// Process all field characters
+		pElement->length = (int)(p - pElement->pField);		// Update the current field length
+		switch (ch)
 			{
-			ch = *p;												// p points the current field character
-
-			switch (ch)
+			case NULCH:										// We have reached the end of the parsed string
 				{
-				case NULCH:											// We have reached the end of the parsed string
-					{
-#ifdef TEST
+				Running = FALSE;							// EOL found; finish this section, then we are done
+#ifdef DEBUG
 printf("(%2d) \"%s\"\n", depth, s);
-printf("NUL R(%d)\n", (int)(pRecord - &Rtable[0]));
+printf("NUL E(%d)\n", (int)(pElement - &Etable[0]));
 fflush(stdout);
 #endif
-					Running = FALSE;								// EOL found; finish this section, then done
-					length = (int)(p - pRecord->pField);
-					break; // and return success
-
-					if (length == 0)
-						{
-#ifdef TEST
-printf("NUL Dup (%2d) \"%s\"\n", depth, p);
+				if (pElement->length == 0)					// If the element is empty
+					{
+#ifdef DEBUG
+printf("NUL Empty (%2d) \"%s\"\n", depth, p);
 fflush(stdout);
 #endif
-						if (pRecord->pSep)							// If not the first element, (trailing "\")
-							*pRecord->pSep = NULCH;					// Delete the (not first) element
-						else
-							*pRecord->pField = NULCH;				// Delete the first element (likeley redundant)
-						break; // and return success
-						}
+// Can't happen		if (isFirst(pElement))					// If the first element, the string is empty
+//						{
+//						strcpy(s, ".");						// Convert to "." path
+//						break; // and return				// The path is empty
+//						}
+							
+					if (pElement->pSep != NULL)				// If there is a preceding separator,
+						*pElement->pSep = NULCH;			// Delete this element and the remaining trailing separator
 
-					else if ((length == 1) && (*pRecord->pField == DOTCH))
-						{
-#ifdef TEST
+					break; // and return
+					} // End (element length == 0)
+
+				else if ((pElement->length == 1) && (*(pElement->pField) == DOTCH))
+					{
+#ifdef DEBUG
 printf("NUL Dot (%2d) \"%s\"\n", depth, p);
 fflush(stdout);
 #endif
-						if ((pRecord->pSep)							// If not the first element,
-						&&  ((pRecord - 1)->isNamed))				// and the previoous record is a name
-							*pRecord->pSep = NULCH;					// Delete the (not first) element
-						break; // and return success				// Else, leave the trailing dot
-						}
+					if (! isFirst(pElement)					// If not the first element,
+					&&  ((pElement - 1)->isName))			// and the previous element is a name
+						*pElement->pSep = NULCH;			// Delete the (not first element) "\." element
 
-					else if ((length == 2) && (strncmp(pRecord->pField, DOUBLEDOT, 2) == 0))
-						{
-#ifdef TEST
+					break; // and return					// Else (first element), leave the initial dot
+					} // End (element length == 1)
+
+				else if ((pElement->length == 2) && (strncmp(pElement->pField, DOUBLEDOT, 2) == 0))
+					{
+//					pElement->isName = FALSE;				// Not a name (but doesn't matter)
+#ifdef DEBUG
 printf("NUL DD  (%2d) \"%s\"\n", depth, p);
 fflush(stdout);
 #endif
-						if (pRecord->pSep == NULL)					// If this is the first record
-							{
-#ifdef TEST
+					if (isFirst(pElement))					// If this is the first element
+						{
+#ifdef DEBUG
 printf("1\n");
 fflush(stdout);
 #endif
-							if (--depth < 0)
-								return (ERROR);						// Depth error
-							else
-								break; // and return success		// OK, accept the ".."
-							}
+						--depth;
+						break; // and return				// Accept the initial ".."
+						}
 
-						pPrevRecord = (pRecord - 1);				// Not the first record; check the previous record
-
-						if (pPrevRecord->isNamed)					// If the preceding record is named,
-							{
-#ifdef TEST
+					pPrevElement = (pElement - 1);			// Not the first element; check the previous element
+					if (pPrevElement->isName)				// If the preceding element is a name element
+						{
+#ifdef DEBUG
 printf("2\n");
 fflush(stdout);
 #endif
-							if (pPrevRecord->pSep != NULL)
-								*pPrevRecord->pSep = NULCH;			// Excise both records and the previous separator
-							else
-								*pPrevRecord->pField = NULCH;		// Excise both (all) records
-
-							if (--depth < 0)						// Previous field is not named
-								return (ERROR);						// Depth error
-
-							if (strlen(s) == 0)						// Minimal valid path is "."
-								strcat_s(s, 2, ".");
-							break; // and return success
+						if (! isFirst(pPrevElement))		// If the prev name element is NOT the first element
+							{
+							*pPrevElement->pSep = NULCH;	// Excise both elements and the previous separator
+							--depth;						// Cancels the previous element depth
 							}
 
-						else if (--depth < 0)						// Previous field is not named
-							return (ERROR);							// Depth error
-						else
+						else // Previous element IS the first element
 							{
-#ifdef TEST
-printf("3\n");
-fflush(stdout);
-#endif
-							break; // and return success			// OK, accept the ".."
+							strcpy(s, ".");					// Convert to "." path
+							depth = 0;						// Cancels the previous element depth
 							}
 						}
-					} // End case NULCH
+					else
+						{
+						--depth;							// Previous element is not a name, accept the ".."
+						}
+
+					break; // and return		
+					} // End (element length == 2)
+
+				// else we were parsing a name field (and length > 0) (proven above)
+
+				++depth;
+//				if (pElement->length > 2)
+//					pElement->isName = TRUE;				// but doesn't matter
+
+				break;	// Its a good place to end
+				} // End case NULCH
 
 
-				case PATHCH:										// We have reached the end of a field
-					{
-#ifdef TEST
+			case PATHCH:									// We have reached the end of an element
+				{
+#ifdef DEBUG
 printf("(%2d) \"%s\"\n", depth, s);
-printf("PTH R(%d)\n", (int)(pRecord - &Rtable[0]));
+printf("PTH E(%d)\n", (int)(pElement - &Etable[0]));
 fflush(stdout);
 #endif
-					length = (int)(p - pRecord->pField);
-
-					if (length == 0)
-						{
-#ifdef TEST
+				if (pElement->length == 0)
+					{
+#ifdef DEBUG
 printf("PTH Dup (%2d) \"%s\"\n", depth, p);
 fflush(stdout);
 #endif
-						return (ERROR);								// Name character required, else illegal "\\"
-						}
+					// Excise this "\\" element, reusing the same element and preceding separator (if any)
+						
+//					pElement = pElement;					// Reuse this element record for the next element
+//					pElement->pSep;							// Pointer to the separator stays the same
+//					pElement->pField; stays the same		// Pointer to the element field stays the same
+					pElement->length = 0;					// Reset the length
+//					pElement->isName = FALSE;				// Still not a name
 
-					else if ((*(p+1) == NULCH)						// Check if this is a trailing path
-						 &&  (p > s))								// and not the first string character
-						{
-						*p = NULCH;									// Yes, truncate it, leave the previous name
-						Running = FALSE;
-						break;	// and return success				// Leave the trailing name
-						}
+					// Do the actual excision copy, and readjust the current char pointer
 
-					else if ((length == 1) && (*pRecord->pField == DOTCH))
-						{
-#ifdef TEST
+					strcpy(pElement->pField, (p + 1));		// Excise this "\\" element
+					p = pElement->pField;					// Point first character of the new field (no real change)
+					break;									// Accept it
+					} // End (element length == 0)
+
+				else if ((pElement->length == 1) && (*(pElement->pField) == DOTCH))
+					{
+#ifdef DEBUG
 printf("PTH Dot (%2d) \"%s\"\n", depth, p);
 printf("(%2d) \"%s\"\n", depth, s);
 printf("(%2d) \"%s\"\n", depth, p);
 fflush(stdout);
 #endif
-						strcpy(pRecord->pField, (p + 1));	// Excise this ".\" element
-#ifdef TEST
-//printf("(%2d) \"%s\"\n", depth, s);
-//printf("(%2d) \"%s\"\n", depth, p);
-//fflush(stdout);
-#endif
-						p       -= 2;								// Next record is now here
-						pRecord -= 1;								// Backup to the previous record (allow for the ++pRecord)
-#ifdef TEST
+					if ((isFirst(pElement))
+					&&  (*(p+1) == NULCH))
+						{
+                        *p = NULCH;							// Leave only the dot
+						break;
+						}
+
+					else
+						{
+						// Excise this ".\" element, reusing the same element and preceding separator
+						
+//						pElement = pElement;				// Reuse this element for the next element
+//						pElement->pSep;						// Pointer to the separator stays the same
+//						pElement->pField; stays the same	// Pointer to the element field stays the same
+						pElement->length = 0;				// Reset the length
+//						pElement->isName = FALSE;			// Still not a name
+
+						// Do the actual excision copy, and readjust the current char pointer
+
+						strcpy(pElement->pField, (p + 1));	// Excise this ".\" element (first element or not)
+						p = pElement->pField;				// Point first character of the new field
+#ifdef DEBUG
 printf("(%2d) \"%s\"\n", depth, s);
 printf("(%2d) \"%s\"\n", depth, p);
 fflush(stdout);
 #endif
-						break;										// (and allow for the ++p) BWJ
 						}
-
-					else if ((length == 2) && (strncmp(pRecord->pField, DOUBLEDOT, 2) == 0))
-						{
-#ifdef TEST
+					break;									// Accept it
+					} // End (element length == 1) (and a ".")
+				
+				else if ((pElement->length == 2) && (strncmp(pElement->pField, DOUBLEDOT, 2) == 0))
+					{
+					pElement->isName = FALSE;				// Not a name
+#ifdef DEBUG
 printf("PTH DD  (%2d) \"%s\"\n", depth, p);
 fflush(stdout);
 #endif
-						if (pRecord->pSep == NULL)					// If this is the first record
-							{
-#ifdef TEST
-printf("1 %d\n", (int)(pRecord - &Rtable[0]));
+					// If either this is the first element, or the previous element is not a name, we must accept it
+
+					pPrevElement = (pElement - 1);			// This pointer is valid only if not on the first element
+					if ((isFirst(pElement))					// If this is the first element,
+					||  (! pPrevElement->isName))			// or the preceding element is NOT a name,
+						{
+#ifdef DEBUG
+printf("1 %d\n", (int)(pElement - &Etable[0]));
 fflush(stdout);
 #endif
-							if (--depth < 0)
-								return (ERROR);						// Depth error
-							else
-								break;								// OK, accept the ".."
-							}
+						--depth;							// Adjust the depth
+						++pElement;							// Advance to the next element
+						pElement->pSep = p;					// Pointer to the separator
+						pElement->pField = (p + 1);			// Pointer to the field
+						pElement->length = 0;				// Clear the length
+//						pElement->isName = FALSE;			// Not yet a name
 
-						pPrevRecord = (pRecord - 1);				// Not the first record; check the previous record
+						p = pElement->pField;				// Advance to the next first character of the new field
+						break;								// Accept the ".."
+						}
 
-						if (pPrevRecord->isNamed)					// If the preceding record is named,
-							{
-#ifdef TEST
+					else // We can excise both this element and the previous element, because they cancel
+						{
+#ifdef DEBUG
 printf("2\n");
 fflush(stdout);
 #endif
-							strcpy(pPrevRecord->pField, (p+1));	// Excise both records
+						--depth;							// Adjust the depth (foe loss of the named element)
+						--pElement;							// Back up to the previous element
+//						pElement->pSep;						// Pointer to the separator stays the same
+//						pElement->pField					// Pointer to the element field stays the same
+						pElement->length = 0;				// Clear the length
+						pElement->isName = FALSE;			// No longer a name
 
-							pRecord = pPrevRecord;					// Back up to the previous record
-							pRecord->isNamed = FALSE;				// Reinit the record
-							p = (pRecord->pField -1);				// Next record is now here (allow for the ++p)
-							if (--depth < 0)
-								return (ERROR);						// Depth error
-							break;
-							}
+						// Do the actual excision copy, and readjust the current char pointer
 
-						--depth;									// Preceding not named
-#ifdef TEST
-printf("3\n");
-fflush(stdout);
-#endif
-						if (depth < 0)								// Preceding not named
-							return (ERROR);							// Depth error
-						else
-							break;									// OK, accept the ".."
+						strcpy(pElement->pField, (p+1));	// Excise this and the previous (named) element
+						p = pElement->pField;				// Advance to the next first character of the new field
+						break;								// Accept the excision
 						}
-					
-					else // Declare this element named
-						{
-						++depth;									// Valid named field increases depth margin
-#ifdef TEST
+
+					break;									// (Dummy)
+					} // End (element length == 2) (and a "..")
+
+				else // We have reached the end of the current (named) element (and length > 0 proven above)
+					{
+					++depth;
+#ifdef DEBUG
 printf("PTH Nam (%2d) \"%s\"\n", depth, p);
 fflush(stdout);
 #endif
-						pRecord->isNamed = TRUE;					// Accept the name record
-						break;
-						}
-					} // End case PATHCH
+					// So, we need a new element for the next element
 
-				default:											// Processing a name field
-					{
-#ifdef TEST
+					++pElement;								// Advance to the next element
+					pElement->pSep = p;						// Pointer to the separator
+					pElement->pField = (p + 1);				// Pointer to the element field
+					pElement->length = 0;					// Clear the length
+					pElement->isName = FALSE;				// Not yet a name
+
+					p = pElement->pField;					// Advance to the next first character of the new field
+					break;
+					}
+
+				break;
+				} // End case PATHCH
+
+
+			default: // element name character				// Processing a character of an element
+				{
+#ifdef DEBUG
 printf("ch      (%2d) \"%s\"\n", depth, p);
 fflush(stdout);
 #endif
-					break;											// Dummy default
-					}
-				} // End switch
-
-			if ((ch == PATHCH)										// End of name; start a new record
-			|| (Running == FALSE))									// Finished; return SUCCESS
-				{
-				++p;												// Point the next (name) character, if any
-				break; // and return SUCCESS
+				if ((ch != '.')
+				||  (pElement->length > 2))
+					pElement->isName = TRUE;				// We have a name
+				++p;										// Advance to the next character
+				break;
 				}
+			} // End switch
 
-			++p;													// Advance to the next character
-			} // End of inner loop
-
-		if (depth < minDepth)
+		if (depth < minDepth)								// Update the minimum depth
 			minDepth = depth;
 
-		if (Running == FALSE)
-			break; // and return SUCCESS
-		} // End of outer loop
+		if (Running == FALSE)								// Finished the inner loop
+			break; // and return to the outer loop
 
-#ifdef TEST
-printf("fnreduce Return (%2d) \"%s\"\n", minDepth, s);
+		} // End of loop
+
+#ifdef DEBUG
+printf("fnCondense Return (%2d, %2d) \"%s\"\n", depth, minDepth, s);
 fflush(stdout);
 #endif
 	return (minDepth);				// Return the minimum reached depth of the directory
@@ -366,20 +394,21 @@ fflush(stdout);
 // ------------------------------------------------------------------------------------------------
 // fnreduce - Remove any redundancies to get the shortest possible path
 // ------------------------------------------------------------------------------------------------
-	int					// Returns minimum depth of path (negative if an error)
+	int					// Returns minimum depth of path (negative if physically unreachable)
 fnreduce (				// Eliminate pathname redundancy
     char  *s)			// Pointer to the pathname string
 
 	{
 	char  *p = s;		// Pointer to the path following any prefix and root separator
 	char  *pTemp;		// Returned result from prefix queries
-	int    CWDdepth;	// The effective CWD depth
+	int    CWDdepth;	// The CWD depth
+	int    depth;		// The relative depth of the tested path
 
 
-	if (s == NULL)
+	if (s == NULL)					// Null string ptr is illegal
 		return (ERROR);
 
-#ifdef TEST
+#ifdef DEBUG
 printf("fnreduce Entry: \"%s\"\n", s);
 fflush(stdout);
 #endif
@@ -390,57 +419,54 @@ fflush(stdout);
 		{
 		p = pTemp;					// We have a drive spec; point the root
 		if (ispath(*p))				// If we now find a root separator
-			{						// - Drive spec, rooted
-			rooted   = TRUE;		// Yes, we are rooted (absolute path)
-			CWDdepth = 0;			// so the CWD depth is zero
+			{
+			CWDdepth = 0;			// rooted, so the CWD depth is zero
 			++p;					// Skip over the root separator
 			}
-		else // Unrooted			// - Drive spec, unrooted
+		else						// Drive spec, unrooted
 			CWDdepth = getdepth(DRIVESPEC(*s));
 		}
 
 	else if ((pTemp = QueryUNCPrefix(s)) != NULL)
 		{
 		p = pTemp;					// - UNC spec, rooted (by definition)
-		rooted   = TRUE;			// UNC header is by definition rooted (absolute path)
 		CWDdepth = 0;
 		}
 
 	else if (ispath(*p))			// No prefix found; if we have a root separator
-		{							// - No Drive/UNC spec, rooted
-		rooted   = TRUE;			// Yes, we are rooted (absolute path)
-		CWDdepth = 0;
+		{
+		CWDdepth = 0;				// No Drive/UNC spec, rooted
 		++p;						// Skip over the root separator
 		}
-	else							// - No Drive/UNC spec, unrooted
-		{
-		rooted   = FALSE;			// We are not rooted (relative path)
+	else							// No Drive/UNC spec, unrooted
 		CWDdepth = getdepth(0);		// Request for the default drive
-		}
 
-	return (fnCondense(CWDdepth, rooted, p));	// Condense the path elements
+	depth = fnCondense(p);			// Condense the path elements
+
+	// If the reported effective depth is negative, this is a phsically impossible path.
+
+	return (CWDdepth + depth);		// Report the effective depth of the tested path
 	}
 
 /* ----------------------------------------------------------------------- */
-#ifdef TESTM
-main(					/* Test main program */
-	int    argc,
-	char* argv[])
+#ifdef TEST
+main ()					/* Test main program */
 
 	{
-	int	result;
+	char  s [1024];
+	int result;
 
-	if (argc < 2)
-		printf("No input\n");
-	else
+	for (;;)
 		{
-		char *pTest = argv[1];
-		printf("Input:  \"%s\"\n", pTest);
-		result = fnreduce(pTest);
-		printf("Output: \"%s\"\n", pTest);
-		printf("Result:  %d\n", result);
+		printf("\nPattern: ");
+		gets(s);
+		printf("\n");
+		result = fnCondense(s);
+		printf("\nResult:  %d      \"%s\"\n\n", result, s);
 		}
 	}
+
 #endif
 /* ----------------------------------------------------------------------- */
 /* ----------------------------------------------------------------------- */
+

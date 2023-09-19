@@ -42,6 +42,7 @@
 
 #include  "fwild.h"
 
+// -----------------------------------------------------------------------
 
 // #define  SHOWSRCH		// Define this to show search progress
 // #define  VERBOSEOUT	 1	// Define this in the makefile for verbose output
@@ -69,7 +70,6 @@ static void		e_disp (PDTA_ELE p, char *s, int flag);
 // -----------------------------------------------------------------------
 
 #define	 FRESH		0					/* Initial state of DTA_ELE */
-#define	 NONW_FX	1					/* Do findf for not wild (.* added) */
 #define	 NONW_F		2					/* Do findf for not wild */
 #define	 NONW_N		3					/* Do findn for not wild */
 #define	 NONW_T		4					/* Non-wild transition state */
@@ -112,7 +112,7 @@ static	unsigned int	AllocCount = 0;
 #endif
 
 static  char	 rwild_str [] = "\\**";
-static  char	 owild_str [] = "\\*.*";
+static  char	 owild_str [] = "\\*";
 
 int			    xporlater = 0;					// TRUE if Windows XP or later (global)
 
@@ -561,18 +561,18 @@ fwinit (						/* Initialize the wild filename system */
 	if (fmode & FW_FILE)					// If looking for files...
 		{
 		if (strlen(pBody) == 0)				// If no search string body
-			strcpy(pBody, "*.*");			// Use "*.*"
+			strcpy(pBody, "*");				// Use "*"
 
 		else if (*pTail == NULCH)			// If ends in path character
-			strcat(pTail, "*.*");			// Append "*.*"
+			strcat(pTail, "*");				// Append "*"
 
 		else if (strcmp(pTail, ".") == 0)	// If ends in "."
-			strcpy(pTail, "*.*");			// Replace it with "*.*"
+			strcpy(pTail, "*");				// Replace it with "*"
 
 		else if (strcmp(pTail, "..") == 0)	// If ends in ".."
-			strcat(pTail, "\\*.*");			// Append "\*.*"
+			strcat(pTail, "\\*");			// Append "\*"
 		}
-
+// BWJ PROBABLY DOESNT MAKE SENSE HERE
 	else if (fmode & FW_SUBD)				// If looking only for directories...
 		{
 		if (strlen(pBody) == 0)				// If no search string body
@@ -580,6 +580,9 @@ fwinit (						/* Initialize the wild filename system */
 
 		else if (*pTail == NULCH)			// If ends in path character
 			strcat(pTail, ".");				// Append "."
+
+//		else if (*pTail == NULCH)			// If ends in path character
+//			strcat(pTail, "*");				// Append "*"
 		}
 
 //printf("pattern3: \'%s\'\n", p);
@@ -717,10 +720,10 @@ e_disp(ep, "Main switch", ONENTRY);
 						{
 						n = (int)((ep->pLast + 1) - (ep->proto));
 						copyn(ep->search, ep->proto, n);
-						strcat(ep->search, "*.*");
+						strcat(ep->search, "*");
 						}
 					else
-						strcpy(ep->search, "*.*");
+						strcpy(ep->search, "*");
 					}
 				else			/* Not wild, make only a search string */
 					{
@@ -734,34 +737,16 @@ e_disp(ep, "Main switch", ONENTRY);
 // printf("last:  %s\n", ep->pLast	? ep->pLast	 : "null" );
 // printf("next:  %s\n", ep->pNext	? ep->pNext	 : "null" );
 // printf("srch:  %s\n", ep->search ? ep->search : "null" );
-					if (hp->mode & FW_DSTAR)	/* Check for implied ".*" */
-						{
-						p = (ep->pLast) ? (ep->pLast) : (ep->proto);
-						if ((strchr(p, '.') == NULL)  &&  ( ! _fnchkdir(ep->proto)))
-							{
-							if (fnchkunc(ps))	// UNC fixup
-								{
-								ep->dta.sh = INVALID_HANDLE_VALUE;
-								strcpy(ep->found, ep->proto);
-								ep->state = NONW_T;
-								}
-							else
-								{
-								strcat(ps, ".*");
-								ep->state = NONW_FX;
-								}
-							}
-						}
 
-					else if (fnchkunc(ps))	 // UNC fixup
+					if (fnchkunc(ps))	 // UNC fixup
 						{
 #ifdef SHOWSRCH
 printf("srch:  %s\n", ep->search ? ep->search : "null" );
 #endif
 						if (_findf(&ep->dta, ps, (hp->mode & FW_ALL) | FW_SUBD) != 0)
 							{
-							strcat(ps, "\\*.*");
-							ep->state = NONW_FX;
+							strcat(ps, "\\*");
+							ep->state = NONW_F;
 							ep->pLast  = ep->proto + strlen(ep->proto);
 							}
 						}
@@ -804,13 +789,9 @@ e_disp(ep, "RECW", ONEXIT);
 
 				if (ep->dta.dta_type & ATT_SUBD)		/* Check if SUBD */
 					{
-					if ((strcmp(ep->dta.dta_name,  ".") == 0)
-					||	(strcmp(ep->dta.dta_name, "..") == 0))
-						break;
-
 					if (*ep->pNext)			/* Process non-terminal subd */
 						{
-						if (fnmatch(ep->pNext + 1, ep->dta.dta_name, hp->mode & FW_DSTAR))
+						if (fnmatch2(ep->pNext + 1, ep->dta.dta_name))
 							{
 							if (hp->exActive && (hp->xmode & XD_BYNAME) && fexcludeCheck(ep->dta.dta_name))
 								break;
@@ -849,7 +830,7 @@ e_disp(ep, "RECW", ONEXIT);
 					{
 					if (*ep->pNext)				/* Process non-terminal file */
 						{
-						if (fnmatch(ep->pNext + 1, ep->dta.dta_name, hp->mode & FW_DSTAR))
+						if (fnmatch2(ep->pNext + 1, ep->dta.dta_name))
 							{
 							if (hp->exActive && (hp->xmode & XF_BYNAME) && fexcludeCheck(ep->dta.dta_name))
 								break;
@@ -929,10 +910,8 @@ e_disp(ep, "WILD", ONEXIT);
 #endif
 				if (*ep->pNext)			/* If terminal name, set match mode */
 					m_mode = 0;
-				else // (not *ep->pNext)
-					m_mode = hp->mode & FW_DSTAR;
 
-				if (!fnmatch(ep->pattern, ep->dta.dta_name, m_mode))
+				if (!fnmatch2(ep->pattern, ep->dta.dta_name))
 					break;
 
 				if (ep->dta.dta_type & ATT_SUBD)		/* Check if SUBD */
@@ -988,27 +967,12 @@ e_disp(ep, "WILD", ONEXIT);
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-			case NONW_FX:						/* Non wild search */
 			case NONW_F:
 			case NONW_N:
 
 #ifdef	VERBOSEOUT
 e_disp(ep, "NONW", ONENTRY);
 #endif
-				if (ep->state == NONW_FX)		/* Search for file */
-					{
-// printf("\nNONW: findf on \"%s\" (1)\n", ep->search);
-#ifdef SHOWSRCH
-printf("srch:  %s\n", ep->search ? ep->search : "null" );
-#endif
-					findFail  = _findf(&ep->dta, ep->search, (hp->mode & FW_ALL) | FW_SUBD);
-					if (findFail )
-						{
-						*(ep->search + (strlen(ep->search) - 2)) = '\0';
-						ep->state = NONW_F;
-						}
-					}
-
 				if (ep->state == NONW_F)
 					{
 // printf("\nNONW: findf on \"%s\" (2)\n", ep->search);
@@ -1187,7 +1151,6 @@ e_disp(ep, s, flag)
 	switch (ep->state)
 		{
 		case FRESH:		printf("State______FRESH\n");	break;
-		case NONW_FX:	printf("State______NONW_FX\n"); break;
 		case NONW_F:	printf("State______NONW_F\n");	break;
 		case NONW_N:	printf("State______NONW_N\n");	break;
 		case NONW_T:	printf("State______NONW_T\n");	break;

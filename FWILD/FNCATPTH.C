@@ -23,8 +23,15 @@
 
 #include  "fwild.h"
 
+/* ----------------------------------------------------------------------- */
 
 //#define TEST	// Define this to include the test main and diagnostics
+
+//#define DEBUG	// Define this to include the diagnostics
+
+#ifdef TEST
+#define DEBUG
+#endif
 
 #define	  ispath(ch)	(((ch) == '/') || ((ch) == '\\'))
 
@@ -43,8 +50,8 @@ fncatpth (					/* Return s2 concatenated onto s1 */
 	char  *q;				/* Temorary pointer into the p path string */
 
 
-#ifdef TEST
-printf("fncatpth Entry \"%s\    \"%s\"\n", s1, s2);
+#ifdef DEBUG
+printf("fncatpth Entry \"%s\"   \"%s\"\n", s1, s2);
 fflush(stdout);
 #endif
 	while (ispath(*s2))		/* Eliminate any leading s2 path character */
@@ -70,13 +77,13 @@ fflush(stdout);
 			strcat(p, s2);
 			}
 		}
-#ifdef TEST
+#ifdef DEBUG
 printf("fncatpth - fnreduce: \"%s\"\n", p);
 fflush(stdout);
 #endif
 	if (fnreduce(p) < 0)
 		{
-#ifdef TEST
+#ifdef DEBUG
 printf("fncatpth Return: NULL\n");
 fflush(stdout);
 #endif
@@ -84,7 +91,7 @@ fflush(stdout);
 		return (NULL);
 		}
 
-#ifdef TEST
+#ifdef DEBUG
 printf("fncatpth Return: \"%s\"\n", p);
 fflush(stdout);
 #endif
@@ -92,7 +99,7 @@ fflush(stdout);
 	}
 
 /* ----------------------------------------------------------------------- */
-#ifdef TESTM
+#ifdef TEST
 main (						/* Test program */
 	int    argc,
 	char  *argv [])

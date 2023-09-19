@@ -10,7 +10,7 @@
 |				   16-Aug-97
 |
 |	    char *		Return the volume name of the disk
-|	p = vol_name (s);	Drive listed in this string (or *.*)
+|	p = vol_name (s);	Drive listed in this string (or *)
 |	    char  *s;		Pointer to the drive/pathname
 |
 |	Returns NULL if no volume name
@@ -71,7 +71,7 @@ static char  rootname [] = "X:\\";	/* The constructed root directory name */
 \* ------------------------------------------------------------------------ */
 	char *
 vol_name (
-	char *s)		/* Drive listed in this string (or *.*) */
+	char *s)		/* Drive listed in this string (or *) */
 
 	{
 	int  n;			/* The drive number (0 for current drive) */
@@ -99,7 +99,7 @@ main (
 	if (argc >= 2)
 		p = argv[1];
 	else
-		p = "\\*.*";
+		p = "\\*";
 	printf("Scan string = %s\n", p);
 
 	if (isdigit(*p))
