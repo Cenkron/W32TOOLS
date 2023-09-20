@@ -393,21 +393,25 @@ SameDisk (
 
 	{
 	char *xsrc;
+	int   result = 0;	// Assume not same disk
 
 	if (fnreduce(src) < 0)
 		fatal(src, "src fnreduce error");
 	
-	if ((xsrc = fnabspth(src)) == NULL)
+	else if ((xsrc = fnabspth(src)) == NULL)
 		fatal(dst, "dst fnabspth error");
 
 	// Note: also returns FALSE if UNC paths are specified
 
-	const int result = (tolower(xsrc[0]) == tolower(dst[0]))
-		&& (xsrc[1] == ':')
-		&& ( dst[1] == ':');
+	else
+		{
+		result = (tolower(xsrc[0]) == tolower(dst[0])
+			&& (xsrc[1] == ':')
+			&& (dst[1] == ':'));
 
-	if (xsrc)
-		free(xsrc);
+		if (xsrc)
+			free(xsrc);
+		}
 
 	return result;
 	}
@@ -427,7 +431,7 @@ move (char *src, char *dst)
 		printf("  to  %s", dst /*path*/);
 		}
 
-	const long dstdate = fgetfdt(dst);
+	const time_t dstdate = fgetfdt(dst);
 
 	if (dstdate != -1L)
 		{

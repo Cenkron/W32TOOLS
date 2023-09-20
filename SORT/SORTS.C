@@ -85,15 +85,15 @@ typedef	 SMETHOD  *PSMETHOD;		/* Pointer to an SMETHOD structure */
 typedef					/* The dynamic method structure */
 	struct				/* (built into each sorted object) */
 	{
-	BYTE	      type;		/* Sort type */
-	BYTE	      order;		/* Sort order */
+	BYTE			type;		/* Sort type */
+	BYTE			order;		/* Sort order */
 	union
 		{
-		long      value;            /* Numeric or Date sort */
-		struct                      /* String sort */
+		INT64		value;		/* Numeric or Date sort */
+		struct					/* String sort */
 			{
-			UINT  offset;
-			UINT  length;
+			UINT	offset;
+			UINT	length;
 			} s;
 		} u;
 	}  IMETHOD;
@@ -142,11 +142,11 @@ typedef					/* The sort control block */
 		UINT	      _line_count;	/* The number of lines in the current heap */
 		UINT	      _line_total;	/* The total number of lines sorted */
 		int		      _tab_size;	/* The tab size */
-		int		      _tfd;		/* The temporary FILE, when open */
+		int		      _tfd;			/* The temporary FILE, when open */
 		PSORTDATA    *_table;		/* Pointer to the table array */
-		HEAP_RECORD  *_crp;		/* Current run pointer */
-		HEAP_RECORD  *_frp;		/* Pointer to first run */
-		HEAP_RECORD  *_lrp;		/* Pointer to last run */
+		HEAP_RECORD  *_crp;			/* Current run pointer */
+		HEAP_RECORD  *_frp;			/* Pointer to first run */
+		HEAP_RECORD  *_lrp;			/* Pointer to last run */
 		void (*_fnsort)(int, int);	/* Pointer to the sort function */
 		int (*_fnstrcmp)(PCSTR, PCSTR, size_t);  /* Pointer to the string compare function */
 		}  SORTCB;
@@ -185,13 +185,13 @@ static	char   *tempfile = TEMPNAME;
 |  Private function prototypes
 \* ----------------------------------------------------------------------- */
 
-static	void	quicksort	(int, int);
-static	void	shakersort	(int, int);
-static	int	compare		(PSORTDATA, PSORTDATA);
-static	void   *fat_alloc	(int);
+static	void	quicksort		(int, int);
+static	void	shakersort		(int, int);
+static	int		compare			(PSORTDATA, PSORTDATA);
+static	void   *fat_alloc		(int);
 static	void	save_to_heap	(void);
-static	int	get_table_line	(char **ppstr);
-static	int	get_heap_line	(char **ppstr);
+static	int		get_table_line	(char **ppstr);
+static	int		get_heap_line	(char **ppstr);
 static	void	get_heap_record (HEAP_RECORD *);
 
 static	int	sort_xxx
@@ -1265,9 +1265,9 @@ compare (			/* Master compare routine */
 	int	       result = 0;	/* The returned result, 0 for equal */
 	int	       cycles;		/* Number of sort cycles */
 	int	       sdiff;		/* Temporary difference */
-	long       ldiff;		/* Temporary difference */
-	IMETHOD   *pia;		/* Pointers to the IMETHOD structures */
-	IMETHOD   *pib;		/* Pointers to the IMETHOD structures */
+	UINT64     ldiff;		/* Temporary difference */
+	IMETHOD   *pia;			/* Pointers to the IMETHOD structures */
+	IMETHOD   *pib;			/* Pointers to the IMETHOD structures */
 	BYTE       order;		/* The sort order */
 
 

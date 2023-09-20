@@ -36,7 +36,7 @@ copy (char *src, char *dst, char *path)
     int		src_attr	= (-1);
     int		dst_attr	= (-1);
     int		srcfh;
-    long	src_dt;
+    time_t	src_dt;
 
     // Set the mode for the input file
     if (AZ_Flags.a)
@@ -118,7 +118,7 @@ copy (char *src, char *dst, char *path)
 	else if (fsetfdt(dst, src_dt) != 0)
 	    error(dst, "error setting destination time/date");
 // BWJ
-printf(" - TImestamp value is %08lX", src_dt);
+printf(" - TImestamp value is %08llX", src_dt);
 	}
 
 err_exit:

@@ -58,9 +58,9 @@ NULL
 
 /* ----------------------------------------------------------------------- */
 
-__time32_t	touchtime   = 0L;	/* The time to touch to */
-__time32_t	oldertime   = 0L;	/* The older time bound */
-__time32_t	youngertime = 0L;	/* The younger time bound */
+time_t	touchtime   = 0L;	/* The time to touch to */
+time_t	oldertime   = 0L;	/* The older time bound */
+time_t	youngertime = 0L;	/* The younger time bound */
 
 char	swch = '-';		/* The switch character */
 
@@ -86,10 +86,10 @@ main (
 
 	{
 	int    smode = FW_FILE;		/* File search mode attributes */
-	long   t;				/* DATETIME of the file */
-	int    option;			/* Option character */
+	time_t t;					/* DATETIME of the file */
+	int    option;				/* Option character */
 	void  *hp   = NULL;			/* Pointer to wild file data block */
-	char  *ap;				/* Argument pointer */
+	char  *ap;					/* Argument pointer */
 	char  *fnp  = NULL;			/* Input file name pointer */
 
 static	char   *optstring = "?cCf:F:hHiIlLo:O:qQrRsSt:T:X:y:Y:zZ";
@@ -204,7 +204,7 @@ printf("option = %c\n", option);
 		usage();
 
 	if (touchtime == 0L)		/* Use current time as the default */
-		_time32(&touchtime);
+		time(&touchtime);
 
 	while (optind < argc)
 		{

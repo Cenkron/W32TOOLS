@@ -33,7 +33,7 @@ copy (char *src, char *dst, char *path)
 	const int	p_flag		= azFlags.p;
 	int		pmode;
 	int		srcfh;
-	long	src_dt;
+	time_t	src_dt;
 
 	// Set the mode for the input file
 	if (AZ_Flags.a)

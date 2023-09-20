@@ -140,20 +140,20 @@ char	buffer [BUFSIZ];		/* Buffer for stdout */
 #define	DC_LARGER	 (4)
 
 
-void	filepair1 (char *, char *);
-void	filepair2 (char *, char *);
-void	process   (char *, char *);
+void	filepair1	(char *, char *);
+void	filepair2	(char *, char *);
+void	process		(char *, char *);
 void	cantfind	(char *);
 void	file1error	(char *);
 void	file2error	(char *);
-void	f_err	    (char *);
+void	f_err		(char *);
 int		putdiff		(int, char *);
 int		datacomp	(int fd1, int fd2);
 int		unixcomp	(int fd1, int fd2);
 char   *qname		(char *);
 
-__time32_t	oldertime   = 0L;			/* The older-than time */
-__time32_t	youngertime = 0L;			/* The younger-than time */
+time_t	oldertime   = 0L;			/* The older-than time */
+time_t	youngertime = 0L;			/* The younger-than time */
 
 /* ----------------------------------------------------------------------- */
 	static int
@@ -162,7 +162,7 @@ timebound (
 	char *fnp)
 
 	{
-		__time32_t  t;
+		time_t  t;
 
 	if (o_flag || y_flag)
 		{
@@ -171,14 +171,14 @@ timebound (
 		if (v_flag >= 2)
 			{
 			printf("\n");
-			printf("Datetime: %s", asctime(_localtime32(&t)));
-			printf("Datetime: %ld\n", t);
+			printf("Datetime: %s", asctime(localtime(&t)));
+			printf("Datetime: %lld\n", t);
 			printf("y_flag: %d\n", y_flag);
 			if (youngertime != 0L)
-				printf("Younger:  %s", asctime(_localtime32(&youngertime)));
+				printf("Younger:  %s", asctime(localtime(&youngertime)));
 			printf("o_flag: %d\n", o_flag);
 			if (oldertime != 0L)
-				printf("Older:    %s", asctime(_localtime32(&oldertime)));
+				printf("Older:    %s", asctime(localtime(&oldertime)));
 //			printf("\n");
 //			fflush(stdout);
 			}
@@ -555,8 +555,9 @@ filepair2 (					/* Process the pathnames backward */
 // printf("2 Pattern: \"%s\"\n", fnppat2);
 //   fflush(stdout);
 
-	if (strlen(fnppat2) == 0)		// Handle cat -b .. . case
-		fnppat2 = ".";
+	if ((fnppat2)
+	&&  (strlen(fnppat2) == 0))		// Handle cat -b .. . case
+		strcat(fnppat2, ".");
 
 	if ((hp = fwinit(fnppat2, filetypes)) == NULL)	/* Find the first path1 file */
 		fwinitError(fnppat2);
@@ -600,25 +601,25 @@ process (				/* Compare one pair one of input files */
 	char  *fnp2)		/* Input file name 2 */ 
 
 	{
-	int   exist1    = FALSE;	/* TRUE if file 1 exists */
-	int   exist2    = FALSE;	/* TRUE if file 2 exists */
-	int   younger   = FALSE;	/* TRUE if file 1 is younger than file 2 */
-	int   older     = FALSE;	/* TRUE if file 1 is older than file 2 */
-	int   larger    = FALSE;	/* TRUE if file 1 is larger than file 2 */
-	int   smaller   = FALSE;	/* TRUE if file 1 is smaller than file 2 */
-	int   different = FALSE;	/* TRUE if a data difference */
-	int   dc;			/* The result from datacomp() */
-	int   diff;			/* OR of the above flags */
-	int   error;		/* OR of the above flags */
-	int   cflag     = FALSE;	/* TRUE if comma needed in message */
-	int   fd1       = -1;	/* Input file descriptor 1 */
-	int   fd2       = -1;	/* Input file descriptor 2 */
-	int   dir1;			/* TRUE if file 1 is a directory */
-	int   dir2;			/* TRUE if file 2 is a directory */
-	unsigned long  td1;		/* File 1 time/date */
-	unsigned long  td2;		/* File 2 time/date */
-	UINT64         size1;	/* File 1 size */
-	UINT64         size2;	/* File 2 size */
+	int		exist1    = FALSE;	/* TRUE if file 1 exists */
+	int		exist2    = FALSE;	/* TRUE if file 2 exists */
+	int		younger   = FALSE;	/* TRUE if file 1 is younger than file 2 */
+	int		older     = FALSE;	/* TRUE if file 1 is older than file 2 */
+	int		larger    = FALSE;	/* TRUE if file 1 is larger than file 2 */
+	int		smaller   = FALSE;	/* TRUE if file 1 is smaller than file 2 */
+	int		different = FALSE;	/* TRUE if a data difference */
+	int		dc;					/* The result from datacomp() */
+	int		diff;				/* OR of the above flags */
+	int		error;				/* OR of the above flags */
+	int		cflag     = FALSE;	/* TRUE if comma needed in message */
+	int		fd1       = -1;		/* Input file descriptor 1 */
+	int		fd2       = -1;		/* Input file descriptor 2 */
+	int		dir1;				/* TRUE if file 1 is a directory */
+	int		dir2;				/* TRUE if file 2 is a directory */
+	time_t	td1;				/* File 1 time/date */
+	time_t	td2;				/* File 2 time/date */
+	UINT64	size1;				/* File 1 size */
+	UINT64	size2;				/* File 2 size */
 
 
 	if (c_flag)

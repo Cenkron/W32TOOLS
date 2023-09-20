@@ -12,7 +12,7 @@
 |
 |	return = hgetfdt (int  fh)	The open file handle
 |
-|	    long  return;		The returned File TimeDate
+|	    time_t  return;		The returned File TimeDate
 |
 \* ----------------------------------------------------------------------- */
 
@@ -24,12 +24,12 @@
 /* ----------------------------------------------------------------------- *\
 |  hgetfdt ()  -  Get the file time/date (via open file handle)
 \* ----------------------------------------------------------------------- */
-	long
+	time_t
 hgetfdt (
 	int  fh)				/* The open file handle */
 
 	{
-	long         result;	/* The returned time */
+	time_t       result;	/* The returned time */
 	struct stat  s;			/* The stat structure */
 
 

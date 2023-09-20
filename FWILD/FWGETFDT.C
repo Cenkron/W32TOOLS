@@ -10,7 +10,7 @@
 |				   26-May-90
 |				   19-Aug-97
 |
-|	    long		Return the long UNIX timedate
+|	    time_t		Return the UNIX timedate
 |	dt = fwgetfdt(	Get the timedate of the current fwild file
 |	    void *hp)	Pointer to the fwild header
 |
@@ -23,7 +23,7 @@
 #include  "fwild.h"
 
 /* ------------------------------------------------------------------------ */
-	long				/* Return the long UNIX timedate word */
+	time_t				/* Return the UNIX timedate word */
 fwgetfdt (hp)			/* Get the UNIX timedate of the current file */
 	DTA_HDR  *hp;		/* Pointer to the DTA header */
 

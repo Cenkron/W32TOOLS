@@ -41,7 +41,7 @@ extern          time_t  y_time;
 extern char *           buffer;
 extern unsigned int     bsize;
 
-extern long     timedelta;
+extern time_t	timedelta;
 #define  OneHour (60L * 60L)
 
 extern  int     can_copy (char *, char *, char *);
@@ -54,7 +54,7 @@ extern  INT64   dfree (char *);
 extern  void    error (char *, char *);
 extern  void    fatal (char *);
 extern  int     get_screen_width (void);
-extern  long    gfildt();
+extern  time_t  gfildt();
 extern  char *  gfn (char*);
 extern  int     init_buffer (void);
 extern  int     is_readonly (char *filename);

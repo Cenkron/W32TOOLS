@@ -48,18 +48,18 @@ static  char    noread [] = "Unable to read timedate file: \"%s\"\n";
 |  Private function prototypes
 \* ----------------------------------------------------------------------- */
 
-static  long    td_of_file  (char *s);
-static  long    td_in_file  (char *s);
+static  time_t    td_of_file  (char *s);
+static  time_t    td_in_file  (char *s);
 
 /* ----------------------------------------------------------------------- *\
 |  fwsgettd () - Parse a string to a UNIX time - Use file extensions
 \* ----------------------------------------------------------------------- */
-	long				/* Return the UNIX timedate, or -1L if err */
+	time_t				/* Return the UNIX timedate, or -1L if err */
 fwsgettd (
 	char  *s)   		/* Pointer to the time/date string or filename */
 
 	{
-	long   timedate;			/* The returned UNIX time/date */
+	time_t   timedate;			/* The returned UNIX time/date */
 
 
 	if (*s == '@')
@@ -80,12 +80,12 @@ fwsgettd (
 /* ----------------------------------------------------------------------- *\
 |  td_of_file () - Return the timedate OF the specified file
 \* ----------------------------------------------------------------------- */
-	static long
+	static time_t
 td_of_file (
 	char  *s)   		/* Pointer to the time/date search filename */
 
 	{
-	long   timedate = -1L;	/* The returned result */
+	time_t timedate = -1L;	/* The returned result */
 	char  *p;				/* Pointer to the found filename */
 
 
@@ -103,12 +103,12 @@ td_of_file (
 /* ----------------------------------------------------------------------- *\
 |  td_in_file () - Return the timedate IN the specified file
 \* ----------------------------------------------------------------------- */
-	static long
+	static time_t
 td_in_file (
 	char  *s)				/* Pointer to the time/date search filename */
 
 	{
-	long   timedate = -1L;		/* The returned result */
+	time_t   timedate = -1L;	/* The returned result */
 	char  *p;					/* Pointer to the found filename */
 	FILE  *fp;                  /* Pointer to the opened FILE structure */
 
@@ -147,7 +147,7 @@ fwserrtd (void)
 /* ----------------------------------------------------------------------- *\
 |  Test main
 \* ----------------------------------------------------------------------- */
-#ifdef  TESTMODE
+#ifdef  TEST
 
 #include  <time.h>
 
@@ -155,16 +155,16 @@ fwserrtd (void)
 main (int argc, char *argv [])
 
 	{
-	long  retval;
+	time_t  retval;
 
 
 	printf("String: %s\n", *++argv);
 		retval = fwsgettd(*argv);
 
-	printf("Timedate: %08lX;  Message: %s\n", retval, fwserrtd());
+	printf("Timedate: %08llX;  Message: %s\n", retval, fwserrtd());
 
 	if (retval > 0L)
-		printf("Time: %s", _ctime32(&retval));
+		printf("Time: %s", ctime(&retval));
 	}
 #endif
 /* ----------------------------------------------------------------------- */

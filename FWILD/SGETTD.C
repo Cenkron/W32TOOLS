@@ -152,7 +152,7 @@ typedef						/* FIELD definition */
 	{
 	UINT16	 possattr;		/* Possible attributes (bits) of the field */
 	UINT16	 reqattr;		/* Required attributes (bits) of the field */
-	int	 	 value;			/* Decoded value of the field */
+	time_t 	 value;			/* Decoded value of the field */
 	}  FIELD;
 
 typedef						/* PHRASE definition */
@@ -171,8 +171,8 @@ typedef						/* PHRASE definition */
 	{
 	int		 pcount;		/* Number of phrases successfully parsed */
 	int      tderror;		/* The error returned to the caller */
-	long	 ct;			/* The current time */
-	long	 mt;			/* The modified time */
+	time_t	 ct;			/* The current time */
+	time_t	 mt;			/* The modified time */
 	TSTR     ctstr;			/* The current time structure */
 	TSTR     mtstr;			/* The modified time structure */
 	PHRASE  *timephrase;	/* The PHRASE which describes the time */
@@ -195,14 +195,14 @@ static	int		alpha_eval  (PHRASE *pp, char *s);
 static	int		num_parse   (PHRASE *pp, char *s, char **sret);
 static	int		zulu_eval   (PHRASE *pp, char *s, char **sret);
 static	int		num_eval    (PHRASE *pp, UINT16 n);
-static	int		fld_entry   (PHRASE *pp, UINT16 pattr, UINT16 rattr, int n);			/* The field value */
+static	int		fld_entry   (PHRASE *pp, UINT16 pattr, UINT16 rattr, time_t n);			/* The field value */
 
 static	int		phr_reduce  (PHRASE *pp);
 static	int		pair_reduce (void);
 static	int		pair_check  (void);
 static	int		datematch   (PHRASE *pp);
 static	int		timematch   (PHRASE *pp);
-static	long	finalparse  (void);
+static	time_t	finalparse  (void);
 static	FIELD  *fld_find    (UINT16 attr);
 
 #ifdef  TESTMODE
@@ -212,17 +212,17 @@ extern	void	prn_tstr    (TSTR *t);
 /* ----------------------------------------------------------------------- *\
 |  sgettd () - Parse a string to a UNIX time
 \* ----------------------------------------------------------------------- */
-	long				/* Return the UNIX timedate, or -1L if err */
+	time_t				/* Return the UNIX timedate, or -1L if err */
 sgettd (
 	char *s)			/* Pointer to the time/date string */
 
 	{
-	long   timedate;	/* The returned UNIX time/date */
-	PTSTR pTS;			/* Pointer to the TSTR */
+	time_t timedate;	/* The returned UNIX time/date */
+	PTSTR  pTS;			/* Pointer to the TSTR */
 
 
-	x.ct = (long)(_time32(NULL));	/* Initialize data structures */
-	if ((pTS = _localtime32(&x.ct)) != NULL)
+	x.ct = time(NULL);	/* Initialize data structures */
+	if ((pTS = localtime(&x.ct)) != NULL)
 		{
 		memcpy(&x.ctstr, pTS, sizeof(TSTR));
 		x.pcount     = 0;
@@ -457,9 +457,9 @@ DBG("alpha_parse()", result);
 typedef			/* STRINGS alpha identifier table definition */
 	struct
 	{
-	char   *s;			/* Pointer to the match string */
+	char   *s;				/* Pointer to the match string */
 	int     class;			/* Parse class */
-	int     value;			/* Value (or selector code) */
+	time_t  value;			/* Value (or selector code) */
 	}  STRINGS;
 
 #define  X_MON1		(0)		/* Class definitions */
@@ -529,8 +529,8 @@ alpha_eval (
 
 	{
 	int		  result = DTR_SUCCESS;	/* Returned result */
-	int		  delta;				/* Relative day offset */
-	int		  value;				/* Local copy of p->value */
+	time_t	  delta;				/* Relative day offset */
+	time_t	  value;				/* Local copy of p->value */
 	TSTR     *tstrp;				/* Pointer to the TSTR */
 	STRINGS  *p;					/* Pointer into the string table */
 
@@ -576,8 +576,8 @@ alpha_eval (
 				delta = 7 * (p->value - 8);
 				}
 			delta += ((7 + value - x.ctstr.tm_wday) % 7) - 7;
-			x.mt = x.ct + ((long)(delta) * 86400L);
-			if (tstrp = _localtime32(&x.mt))
+			x.mt = x.ct + (delta * 86400L);
+			if (tstrp = localtime(&x.mt))
 				memcpy(&x.mtstr, tstrp, sizeof(TSTR));
 			fld_entry(pp, A_DAY,  A_DAY,   x.mtstr.tm_mday);
 			fld_entry(pp, A_MON,  A_MON,  (x.mtstr.tm_mon + 1));
@@ -586,8 +586,8 @@ alpha_eval (
 
 		case X_RDAY:
 			pp->reqattr |= CL_DATE;
-			x.mt = x.ct + ((long)(p->value) * 86400L);
-			if (tstrp = _localtime32(&x.mt))
+			x.mt = x.ct + (p->value * 86400L);
+			if (tstrp = localtime(&x.mt))
 				memcpy(&x.mtstr, tstrp, sizeof(TSTR));
 			fld_entry(pp, A_DAY,  A_DAY,   x.mtstr.tm_mday);
 			fld_entry(pp, A_MON,  A_MON,  (x.mtstr.tm_mon + 1));
@@ -797,7 +797,7 @@ fld_entry (
 	PHRASE  *pp,		/* Pointer to the PHRASE structure */
 	UINT16   possattr,	/* The possible attribute */
 	UINT16   reqattr,	/* The required attribute */
-	int      n)			/* The field value */
+	time_t   n)			/* The field value */
 
 	{
 	int     result;		/* The returned result */
@@ -1113,14 +1113,14 @@ DBG("timematch()", result);
 /* ----------------------------------------------------------------------- *\
 |  finalparse () - Perform the final parse to build the TSTR
 \* ----------------------------------------------------------------------- */
-	static long
+	static time_t
 finalparse (void)
 
 	{
 	int     flag = FALSE;	/* Field set flag */
-	int     temp;			/* Temporary value */
+	time_t  temp;			/* Temporary value */
 	FIELD  *fp;				/* Pointer to the FIELD structure */
-	long    tresult;		/* The returned time result */
+	time_t  tresult;		/* The returned time result */
 
 
 	/* Default midnight */
@@ -1135,38 +1135,38 @@ finalparse (void)
 			temp += 2000;
 		else if (temp <= 99)
 			temp += 1900;
-		x.mtstr.tm_year = temp - 1900;	/* UNIX correction */
+		x.mtstr.tm_year = (int)(temp - 1900);	/* UNIX correction */
 		flag = TRUE;
 		}
 
 	if ((fp = fld_find(A_MON)) != NULL)
 		{
-		x.mtstr.tm_mon = fp->value - 1;	/* UNIX correction */
+		x.mtstr.tm_mon = (int)(fp->value - 1);	/* UNIX correction */
 		flag = TRUE;
 		}
 	else if (flag)
 		x.mtstr.tm_mon = 0;		/* January */
 
 	if ((fp = fld_find(A_DAY)) != NULL)
-		x.mtstr.tm_mday = fp->value;
+		x.mtstr.tm_mday = (int)(fp->value);
 	else  if (flag)
 		x.mtstr.tm_mday = 1;	/* 1st of month */
 
     if (x.timephrase)
 		{
 		if (x.timephrase->f[0].possattr & A_HOUR)
-			x.mtstr.tm_hour = x.timephrase->f[0].value;
+			x.mtstr.tm_hour = (int)(x.timephrase->f[0].value);
 		if (x.timephrase->f[1].possattr & A_MIN)
-			x.mtstr.tm_min  = x.timephrase->f[1].value;
+			x.mtstr.tm_min  = (int)(x.timephrase->f[1].value);
 		if (x.timephrase->f[2].possattr & A_SEC)
-			x.mtstr.tm_sec  = x.timephrase->f[2].value;
+			x.mtstr.tm_sec  = (int)(x.timephrase->f[2].value);
 		}
 
 	/* Set tm_isdst FALSE; if it changes, then there */
 	/* is a one hour error which needs to be corrected */
 
 	x.mtstr.tm_isdst = FALSE;
-	tresult = (long)(_mktime32(&x.mtstr));
+	tresult = mktime(&x.mtstr);
 	if (x.mtstr.tm_isdst)
 		tresult -= (60L * 60L);
 
@@ -1261,7 +1261,7 @@ prn_fld (
 	int i)
 
 	{
-	printf("Field    %d: %d\n", i, fp->value);
+	printf("Field    %d: %lld\n", i, fp->value);
 	printf("  Possible: ");
 	prn_attr(fp->possattr);
 	printf("  Required: ");
@@ -1312,10 +1312,10 @@ prn_both (void)
 /* ----------------------------------------------------------------------- */
 	static void
 prn_dt (
-	long t)
+	time_t t)
 
 	{
-	printf("Time: %s", _ctime32(&t));
+	printf("Time: %s", ctime(&t));
 	}
 
 /* ----------------------------------------------------------------------- */
@@ -1340,7 +1340,7 @@ main (
 	char *argv [])
 
 	{
-	long  retval;
+	time_t  retval;
 
 	++argv;
 	retval = sgettd(*argv);

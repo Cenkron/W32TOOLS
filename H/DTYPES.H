@@ -5,6 +5,7 @@
 //////////////////////////////////////////////////////////////////////////
 
 #ifndef _DTYPES_H
+#define _DTYPES_H
 
 #include <limits.h>
 
@@ -280,7 +281,6 @@ typedef
 #define	NO_FILE	(-1)
 #endif
 
-#define _DTYPES_H
 #endif
 
 /****************************************************/

@@ -14,7 +14,7 @@
 |
 |		return = fsetfdt (
 |			char  *fnp,			Pointer to the path/filename
-|			long   fdt)			The new file timedate
+|			time_t fdt)			The new file timedate
 |
 |			int	   result;		0 for success, -1 for failure	
 |
@@ -36,12 +36,12 @@
 	int									/* Returns success (0) fail (-1) result */
 fsetfdt (
 	char  *fnp,							/* Pointer to the path/filename */
-	long   fdt)							/* The new File date/time */
+	time_t fdt)							/* The new File date/time */
 
 	{
-	int                    result;		/* The returned result */
-	struct __utimbuf32     ut;			/* The time structure */
-	TIME_ZONE_INFORMATION  TZinfo;		/* Retrieved TZ info (currently unused) */
+	int						result;		/* The returned result */
+	struct _utimbuf			ut;			/* The time structure */
+	TIME_ZONE_INFORMATION	TZinfo;		/* Retrieved TZ info (currently unused) */
 
 
 	fdt = ((fdt + 1) & ~1);				/* FAT vs NTFS resolution */
@@ -88,7 +88,7 @@ fsetfdt (
 
 	ut.actime  = fdt;
 	ut.modtime = fdt;
-	result     = _utime32(fnp, &ut);
+	result     = _utime(fnp, &ut);
 	if (result == -1)
 		fprintf(stderr, "\007fsetfdt: Error setting file datetime (errno = %d)\n", errno);
 

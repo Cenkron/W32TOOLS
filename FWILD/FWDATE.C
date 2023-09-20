@@ -51,7 +51,7 @@ fwdate (hp)				/* Get the date of the current filename */
 		strcpy(&date[0], " --------");
 	else
 		{
-		ptm  = _localtime32(&hp->f_fdt);
+		ptm  = localtime(&hp->f_fdt);
 		year = ptm->tm_year;
 		if (year >= 100)
 			year -= 100;

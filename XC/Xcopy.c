@@ -129,7 +129,7 @@ PRIVATE void    filepair (char *s1, char *s2);
 A_Z_FLAGS       AZ_Flags        = {0};
 A_Z_FLAGS       azFlags         = {0};
 unsigned int    bsize			= 0;
-long            timedelta       = 0L;	/* Timestamp compare correction */
+time_t          timedelta       = 0L;	/* Timestamp compare correction */
 char *          buffer			= NULL;
 int             cols            = 40;
 INT64           filesize        = 0;

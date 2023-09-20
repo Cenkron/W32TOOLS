@@ -23,10 +23,10 @@
 /* ----------------------------------------------------------------------- */
 	void
 fmemdump (				/* Dump n bytes of memory */
-	FILE  *fp,			/* The output file */
-	char  *p,			/* Pointer to the byte buffer */
-	int    n,			/* The number of bytes to dump */
-	long   offset)		/* The offset field value */
+	FILE   *fp,			/* The output file */
+	char   *p,			/* Pointer to the byte buffer */
+	int		n,			/* The number of bytes to dump */
+	long	offset)		/* The offset field value */
 
 	{
 	int    i;			/* Byte counter */
@@ -36,13 +36,13 @@ fmemdump (				/* Dump n bytes of memory */
 
 	while (n > 0)
 		{
-		m = min(n, LINLEN);			/* Calculate the line length */
-		n -= m;						/* Update the remaining length */
+		m = min(n, LINLEN);				/* Calculate the line length */
+		n -= m;							/* Update the remaining length */
 
 		fprintf(fp, "%08lX ", offset);	/* Print the byte number */
-		offset += LINLEN;			/* Update it */
+		offset += LINLEN;				/* Update it */
 
-		q = (unsigned char *)(p);	/* Dump in hexadecimal */
+		q = (unsigned char *)(p);		/* Dump in hexadecimal */
 		for (i = 0; i < LINLEN; ++i)
 			{
 			if ((i & 0x0003) == 0)

@@ -12,7 +12,7 @@
 |
 |		return = fgetfdt (char *fnp)	Pointer to the path/filename
 |
-|	    long  return;					The returned File TimeDate
+|	    time_t  return;					The returned File TimeDate
 |
 \* ----------------------------------------------------------------------- */
 
@@ -29,13 +29,13 @@
 /* ----------------------------------------------------------------------- *\
 |  fgetfdt ()  -  Get the file time/date (via filename)
 \* ----------------------------------------------------------------------- */
-	long								/* Returns the file date/time, or -1 */
+	time_t								/* Returns the file date/time, or -1 */
 fgetfdt (
 	char  *fnp)							/* Pointer to the path/filename */
 
 	{
-	long         fdt;					/* The returned date/time value */
-	struct _stat32i64  s;				/* The stat structure */
+	time_t				fdt;			/* The returned date/time value */
+	struct _stat32i64	s;				/* The stat structure */
 	TIME_ZONE_INFORMATION  TZinfo;		/* Retrieved TZ info (unused) */
 
 

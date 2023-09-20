@@ -125,8 +125,8 @@ int		itemcode = 0;					/* Exit code for each item */
 
 int		QuoteFlag = 1;					/* Quote filenames with spaces */
 
-__time32_t	oldertime = 0L;					/* The older-than time */
-__time32_t	youngertime = 0L;				/* The younger-than time */
+time_t	oldertime = 0L;					/* The older-than time */
+time_t	youngertime = 0L;				/* The younger-than time */
 
 /* ----------------------------------------------------------------------- */
 
@@ -464,7 +464,7 @@ static	char   *optstring = "?aA:cC:dDeEfF:hHiIlL:mM:nN:o:O:pP:qQrR:sStTuUvwW:VxX
 timebound (void)
 
 	{
-	__time32_t  t;
+	time_t  t;
 
 	if (o_flag	||	y_flag	||	(x_flag > 0))
 		t = fwgetfdt(hp);
@@ -472,17 +472,17 @@ timebound (void)
 	if (x_flag > 0)
 		{
 #if 1
-		printf("Unixtime: %08lX\n", t = fwgetfdt(hp));
+		printf("Unixtime: %08llX\n", t = fwgetfdt(hp));
 #endif
-		printf("Datetime: %s", asctime(_localtime32(&t)));
+		printf("Datetime: %s", asctime(localtime(&t)));
 		if (x_flag > 1)
-			printf("Datetime: %ld\n", t);
+			printf("Datetime: %lld\n", t);
 		if (z_flag)
 			{
 			if (youngertime != 0L)
-				printf("Younger:  %s", asctime(_localtime32(&youngertime)));
+				printf("Younger:  %s", asctime(localtime(&youngertime)));
 			if (oldertime != 0L)
-				printf("Older:    %s", asctime(_localtime32(&oldertime)));
+				printf("Older:    %s", asctime(localtime(&oldertime)));
 			}
 		}
 

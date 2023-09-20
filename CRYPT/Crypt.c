@@ -144,7 +144,7 @@ main (
 		while (optind < argc)
 			{
 			int  processed;
-			long fdt;
+			time_t fdt;
 
 			ap = argv[optind++];
 			hp = finit(ap, smode);		// Process the input list

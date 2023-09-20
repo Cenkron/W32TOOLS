@@ -22,28 +22,28 @@ static	char	cbuffer [DATASIZE];
 
 /* ----------------------------------------------------------------------- */
 	int
-fcopy (				/* Copy one file from fnp1 to fnp2 */
+fcopy (					/* Copy one file from fnp1 to fnp2 */
 	char  *fnp1,		/* Input file name 1 */ 
 	char  *fnp2,		/* Output file name 2 */ 
 	int    flags)		/* Control flags (FCF_xxxx) */
 
 	{
-	int   result;		/* The returned result (FCR_xxxx) */
-	int   aflag;		/* Altered dest attr flag */
-	int   attr;			/* File attribute flags */
-	int   fh1;			/* Input file handle 1 */
-	int   fh2;			/* Output file handle 2 */
-	int   len;			/* Length of data read */
-	long  dt;			/* File datetime */
+	int		result;		/* The returned result (FCR_xxxx) */
+	int		aflag;		/* Altered dest attr flag */
+	int		attr;		/* File attribute flags */
+	int		fh1;		/* Input file handle 1 */
+	int		fh2;		/* Output file handle 2 */
+	int		len;		/* Length of data read */
+	time_t	dt;			/* File datetime */
 
 
-	result = FCR_SUCCESS;		/* Assume success */
-	aflag  = FALSE;			/* Assume dest is not read only */
+	result = FCR_SUCCESS;				/* Assume success */
+	aflag  = FALSE;						/* Assume dest is not read only */
 	if ((attr = fgetattr(fnp2)) >= 0)	/* Check if dest exists */
 		{
-		if (attr & ATT_RONLY)		/* Check if dest is read only */
+		if (attr & ATT_RONLY)			/* Check if dest is read only */
 			{
-			if (flags & FCF_ROK)	/* Check if ok to copy anyway */
+			if (flags & FCF_ROK)		/* Check if ok to copy anyway */
 				{
 				if (fsetattr(fnp2, (attr & ~ATT_RONLY))) /* Remove RO attr */
 					{
@@ -51,11 +51,11 @@ fcopy (				/* Copy one file from fnp1 to fnp2 */
 					goto exit2;
 					}
 				else
-					aflag = TRUE;	/* Remember it was read only */
+					aflag = TRUE;		/* Remember it was read only */
 				}
 			else
 				{
-				result = FCR_RO;	/* RO and not FCF_ROK */
+				result = FCR_RO;		/* RO and not FCF_ROK */
 				goto exit2;
 				}
 			}
@@ -109,7 +109,7 @@ exit1:
 
     else if ((result == FCR_SUCCESS)  &&  aflag)
 		{
-		if (fsetattr(fnp2, attr))		/* Restore the RO attribute */
+		if (fsetattr(fnp2, attr))			/* Restore the RO attribute */
 			result = FCR_SATTR;
 		}
 

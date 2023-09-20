@@ -31,10 +31,10 @@ static	char   *month [] =	/* The month name array [0..11] */
 /* ----------------------------------------------------------------------- */
 	char *				/* Return a pointer to a date string */
 strdate (				/* Convert a unix timedate to a date string */
-	__time32_t dt)		/* The unix timedate */
+	time_t dt)			/* The unix timedate */
 
 	{
-	timestr = _localtime32(&dt);	/* Convert to a tm structure */
+	timestr = localtime(&dt);	/* Convert to a tm structure */
 
 	while (timestr->tm_year >= 100)	/* Convert to 2 digits */
 		timestr->tm_year -= 100;

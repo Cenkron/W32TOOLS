@@ -29,11 +29,11 @@ static	struct tm	t =
 	};
 
 /* ------------------------------------------------------------------------ */
-	long			/* Return the long UNIX timedate word */
+	time_t			/* Return the long UNIX timedate word */
 zerotime (void)
 
 	{
-	return ((long)(_mktime32(&t)));
+	return (mktime(&t));
 	}
 
 /* ------------------------------------------------------------------------ */

@@ -44,8 +44,8 @@ should_copy (
 	{
 	BOOL        copy_flag = FALSE;
 	int         attrib	    = 0;
-	long        dst_dt;
-	long        src_dt;
+	time_t      dst_dt;
+	time_t      src_dt;
 	UINT64      dst_size;
 	UINT64      src_size;
 	char       *abssrc;
@@ -78,7 +78,7 @@ should_copy (
 	dst_dt   = fgetfdt(dst);
 	fgetsize(src, &src_size);
 	fgetsize(dst, &dst_size);
-//	printf("%%ld %ld %ld %ld\n", src_dt, dst_dt, src_size, dst_size);
+//	printf("%%lld %lld %lld %lld\n", src_dt, dst_dt, src_size, dst_size);
 
 	if ((azFlags.m  && MISSING(dst_dt) )
 	||  (azFlags.e  && EXIST(dst_dt) )

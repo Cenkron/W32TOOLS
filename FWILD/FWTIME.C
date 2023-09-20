@@ -43,7 +43,7 @@ fwtime (				/* Get the time of the current filename */
 		strcpy(&timeb[0], " -----");
 	else
 		{
-		ptm  = _localtime32(&hp->f_fdt);
+		ptm  = localtime(&hp->f_fdt);
 		hour = ptm->tm_hour;
 
 		if (hour >= 12)

@@ -91,7 +91,7 @@ typedef	enum
 	} SegType;
 
 
-typedef				/* The DTA object used by findf/finfn/findc */
+typedef				/* The DTA object used by findf/findn/findc */
 	struct
 		{
 		char		dta_type;				// File attribute, type
@@ -110,7 +110,7 @@ typedef				// Recursive DTA list element object
 	struct dtaele  *pLink;					// Link to the next (inactive) DTA_ELE
 		int			wild;					// Current wild search mode
 		int			state;					// Current state
-		long		fdt;					// The file timestamp
+		time_t		fdt;					// The file timestamp
 		char	   *pLast;					// Pointer to prototype string, block delimiter
 		char	   *pNext;					// Pointer to prototype string, next char
 		char		search  [FWP_MAX];		// Pointer to current search filename
@@ -177,11 +177,6 @@ typedef				/* File Pair (FP) structure */
 |  Miscellaneous definitions
 \* ------------------------------------------------------------------------ */
 
-#ifndef _TIME_T_DEFINED
-typedef long time_t;
-#define _TIME_T_DEFINED
-#endif
-
 #ifndef  TRUE
 #define  TRUE	1
 #define  FALSE	0
@@ -213,7 +208,7 @@ extern  int		fwtype (DHV *);							/* Return the type of the current fn */
 extern  char   *fwdate (DHV *);							/* Return the date of the current fn */
 extern  char   *fwtime (DHV *);							/* Return the time of the current fn */
 extern  char   *fwtimes (DHV *);						/* Return the time of the current fn (secs) */
-extern  long	fwgetfdt (DHV *);						/* Return the current file timedate */
+extern  time_t	fwgetfdt (DHV *);						/* Return the current file timedate */
 extern  UINT64	fwsize (DHV *);							/* Return the size of the current fn */
 extern	int		fwvalid (char *);						/* Validate a file/path string */
 extern	char   *fwerror (void);							/* Return the fwerrno error string */
@@ -221,13 +216,13 @@ extern  char   *vol_name (char *);						/* Return vol name of the spec drive */
 extern  char   *_volname (int);							/* Return vol name of the spec drive */
 extern	int		fgetattr (char *fnp);					/* Get file attributes (filename) */
 extern	int		hgetattr (int fh);						/* Get file attributes (handle) */
-extern	long	fgetfdt (char *fnp);					/* Get timedate (filename) */
-extern	long	hgetfdt (int fh);						/* Get timedate (handle) */
+extern	time_t	fgetfdt (char *fnp);					/* Get timedate (filename) */
+extern	time_t	hgetfdt (int fh);						/* Get timedate (handle) */
 extern	int		fgetsize (char *fnp, PUINT64 size);  	/* Get file size (filename) */
 extern	int		hgetsize (int fh, PUINT64 size);     	/* Get file size (handle) */
 extern	int		fsetattr (char *fnp, int attr);			/* Set file attr (filename) */
-extern	int		fsetfdt (char *fnp, long fdt);			/* Set timedate (filename) */
-extern	long	zerotime (void);						/* Return lowest usable UNIX time */
+extern	int		fsetfdt (char *fnp, time_t fdt);		/* Set timedate (filename) */
+extern	time_t	zerotime (void);						/* Return lowest usable UNIX time */
 
 extern	int		getopt (int, char **, char *);			/* Decode command options */
 extern	int		optvalue								/* Get numeric option value */
@@ -309,8 +304,8 @@ extern	void	farset (void far *dst, int value,     unsigned int n);
 extern	char   *strdate  (time_t dt);					/* Convert a DOS timedate to a date string */
 extern	char   *strtime  (time_t dt);					/* Convert a DOS timedate to a time string */
 extern	char   *strtime2 (time_t dt);					/* Convert a DOS timedate to a time string */
-extern	long	sgettd   (char *s);						/* Parse a TIMEDATE string */
-extern	long	fwsgettd (char *s);						/* Parse a TIMEDATE string (filename) */
+extern	time_t	sgettd   (char *s);						/* Parse a TIMEDATE string */
+extern	time_t	fwsgettd (char *s);						/* Parse a TIMEDATE string (filename) */
 extern	char   *serrtd   (void);						/* Return TD error string */
 extern	char   *fwserrtd (void);						/* Return TD error string (filename) */
 extern  char   *strtoken (char *string, char *control, TOKENCB *tokenblk);
