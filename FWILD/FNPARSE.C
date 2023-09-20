@@ -35,6 +35,19 @@
 #define PATHCH	('\\')
 
 /* ----------------------------------------------------------------------- */
+	static char *			// Returned pointer to the duplicated pathname
+strdupMax(
+	char* s)				// Pointer to the pathname string
+
+	{
+	char *p = malloc(MAX_PATH);
+
+	if (p)	
+		strcpy_s(p, MAX_PATH, s);
+	return (p);
+	}
+	
+/* ----------------------------------------------------------------------- */
 	int					// Returnd 0 for success, else -1 if a bad pathspec
 fnParse (				// Point the non-directory tail of path s
 	char  *s,			// Pointer to the pathname string
@@ -46,7 +59,7 @@ fnParse (				// Point the non-directory tail of path s
 	char  *p;			// Pointer past the prefix, if any
 	char  *pStart;		// Pointer past the prefix, if any
 
-	if ((pPath = strdup(s)) != NULL)
+	if ((pPath = strdupMax(s)) != NULL)
 		{
 		strsetp(pPath, PATHCH);
 		if (fnreduce(pPath) < 0)

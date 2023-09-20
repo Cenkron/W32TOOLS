@@ -75,8 +75,8 @@ typedef unsigned __int64  UINT64, *PUINT64;
 #define  f_fdt   pLink->fdt				/* File attribute, timestamp */
 #define  f_size  pLink->dta.dta_size	/* File attribute, size */
 
-#define FWP_MAX		(500)	// Fwild path buffers are larger than just barely adequate
-#define LEVEL_MAX	(30)	// Number of fwild segment buffers
+#define FWP_MAX		(MAX_PATH + 100)	// Fwild path buffers are larger than just barely adequate
+#define LEVEL_MAX	(30)				// Number of fwild segment buffers
 
 
 typedef	enum

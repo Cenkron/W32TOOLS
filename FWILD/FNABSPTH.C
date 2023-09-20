@@ -21,6 +21,7 @@
 |
 \* ----------------------------------------------------------------------- */
 
+#include  <windows.h>
 #include  <stdio.h>
 #include  <ctype.h>
 #include  <stdlib.h>
@@ -84,7 +85,7 @@ printf("Before fnreduce: \"%s\"\n", temp);
 
 	if (fnreduce(&temp[0]) >= 0)	/* Reduce the pathname */
 		{
-		p = fmalloc((int)(strlen(&temp[0])) + 1);	/* Build the return string */
+		p = fmalloc(MAX_PATH);	/* Build the return string */
 		strcpy(p, &temp[0]);
 		}
 	else // Fatal error	

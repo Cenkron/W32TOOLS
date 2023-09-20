@@ -54,7 +54,7 @@ pmatch (				/* Test two filenames for filename match */
 
 	if (isalpha(*p) && (*(p + 1) == ':'))
 		p += 2;
-	r = fmalloc(strlen(p) + 4);
+	r = fmalloc(MAX_PATH);
 	strcpy(r, p);
 	strsetp(r, (char)('/'));
 	if (fnreduce(r) <0)
@@ -71,7 +71,7 @@ pmatch (				/* Test two filenames for filename match */
 
 	if (isalpha(*q) && (*(q + 1) == ':'))
 		q += 2;
-	s = fmalloc(strlen(q) + 1);
+	s = fmalloc(MAX_PATH);
 	strcpy(s, q);
 	strsetp(s, (char)('/'));
 	if (fnreduce(s) < 0)

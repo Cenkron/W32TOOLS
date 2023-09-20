@@ -46,7 +46,7 @@ fnchkunc (					/* Verify the existence of a directory */
 	else if (_fnchkdir(pbuff1))
 		result = FALSE;
 
-	else if ((pbuff2 = malloc(strlen(pbuff1) + 2)) == NULL)
+	else if ((pbuff2 = malloc(MAX_PATH)) == NULL)
 		result = FALSE;
 
 	else

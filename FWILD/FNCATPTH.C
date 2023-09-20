@@ -17,6 +17,7 @@
 |
 \* ----------------------------------------------------------------------- */
 
+#include  <windows.h>
 #include  <stdio.h>
 #include  <stdlib.h>
 #include  <string.h>
@@ -59,7 +60,7 @@ fflush(stdout);
 
 	len1 = (int)(strlen(s1));
 	len2 = (int)(strlen(s2));
-	p = fmalloc(len1 + len2 + 2);
+	p = fmalloc(MAX_PATH);
 
 	if (len1 == 0)
 		strcpy(p, s2);		/* Path 1 is an empty string */
