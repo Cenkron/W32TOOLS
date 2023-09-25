@@ -24,14 +24,19 @@
 
 #define MASK  (ATT_VOLU | ATT_SUBD)
 
-int     plus_flags  = 0;
-int     minus_flags = 0;
-int     c_flag      = 0;
+int		plus_flags  = 0;	// Attribute changes added
+int		minus_flags = 0;	// Attribute changes removed
+
+int		c_flag      = 0;	// Compare attributes with proposed change, only 
+int		f_flag      = 0;	// Force updates, even if no change
+int		l_flag      = 0;	// List all files, not just those changed
+int		q_flag      = 0;	// Query flag
+int		Q_flag      = 0;	// Quiet output
+int		change_req  = 0;	// Nonzero if any change requests entered
+
 #if defined(DIRECTORIES)
-int     d_flag      = 0;
+int		d_flag      = 0;
 #endif
-int     q_flag      = 0;
-int     v_flag      = 0;
 
 static	char   *fargv [] = { "" };		/* Fake argv array */
 
@@ -65,8 +70,10 @@ usagedoc [] =
 #if defined(DIRECTORIES)
 "-d        directory: change attributes on directories also",
 #endif
-"-v        verbose:   do not output filenames as they are changed",
+"-f        force:     force change even if no change needed",
+"-l        list:      list all files processed, not only those that are changed",
 "-q        query:     ask before changing each file",
+"-Q        Quiet:     do not output anything, except errors",
 "-X <pathspec> e/X/clude (possibly wild) matching pathspec",
 "-X @<xfile>   e/X/clude files that match pathspec(s) in xfile",
 "-X-       disable default file exclusion(s)",
@@ -120,40 +127,51 @@ process (
 	char *fnp)             /* Process one input file */
 
 	{
-	int attrib = fgetattr(fnp);
+	int attrib_old = fgetattr(fnp);
+	int attrib_new = attrib_old;
+	int changed    = FALSE;
 
-	if (attrib < 0)
+	if (attrib_old < 0)
 		printf("\7Unable to get attributes: %s\n", fnp);
 	else if (plus_flags | minus_flags)
 		{
-		if (!c_flag)	// Change flags
-			{
-			attrib &= (~minus_flags);
-			attrib |= plus_flags;
+		attrib_new &= (~minus_flags);	// Determine the requested flags
+		attrib_new |= plus_flags;
 
-			if (query(fnp)  &&  (fsetattr(fnp, attrib) < 0))
-				printf("\7Unable to change attributes: %s\n", fnp);
-			attrib = fgetattr(fnp);
-			} 
+		if (!c_flag)	// Change flags, not just compare them
+			{
+			if (f_flag || (attrib_new != attrib_old))
+				{
+				if (query(fnp)  &&  (fsetattr(fnp, attrib_new) < 0))
+					printf("\7Unable to change attributes: %s\n", fnp);
+				else
+					{
+					++changed;
+#if 0
+					printf("Changed attributes: %s\n", fnp);
+#endif
+					}
+				}
+			attrib_old = fgetattr(fnp);	// Refresh the flags
+			}
+
 		else  /* c_flag, only compare flags */
 			{
-			if ((plus_flags & attrib) != plus_flags)
-				exit(0);
-			else if ((minus_flags & attrib) != 0)
+			if (attrib_new != attrib_old)
 				exit(0);
 			else
 				exit(1);
 			}
 		}
 
-	if (q_flag || !v_flag)
+	if ( !Q_flag && (l_flag || !change_req || changed))
 		{
 		printf("%c%c%c%c%c   %s\n",
-			((attrib & _A_ARCH)   ? 'a' : '-'),
-			((attrib & _A_RDONLY) ? 'r' : '-'),
-			((attrib & _A_HIDDEN) ? 'h' : '-'),
-			((attrib & _A_SYSTEM) ? 's' : '-'),
-			((attrib & _A_SUBDIR) ? 'd' : ' '),
+			((attrib_old & _A_ARCH)   ? 'a' : '-'),
+			((attrib_old & _A_RDONLY) ? 'r' : '-'),
+			((attrib_old & _A_HIDDEN) ? 'h' : '-'),
+			((attrib_old & _A_SYSTEM) ? 's' : '-'),
+			((attrib_old & _A_SUBDIR) ? 'd' : ' '),
 			fnp);
 		}
 	}
@@ -175,20 +193,24 @@ configMinusOptions (
 
 	switch (optchar)
 		{
-		case 'c':   ++c_flag;	break;
+		case 'c':
 		case 'C':   ++c_flag;	break;
 #if defined(DIRECTORIES)
-		case 'd':   ++d_flag;	break;
+		case 'd':
 		case 'D':   ++d_flag;	break;
 #endif
-		case 'q':   ++q_flag;	break;
-		case 'Q':   ++q_flag;	break;
+		case 'f':
+		case 'F':   ++f_flag;	break;
 
-		case 'v':   ++v_flag;	break;
-		case 'V':   ++v_flag;	break;
+		case 'l':
+		case 'L':   ++l_flag;	break;
+
+		case 'q':   ++q_flag;	break;
+		case 'Q':   ++Q_flag;	break;
 
 		case '?':   help();
 
+		case 'x':
 		case 'X':
 			if      (optarg[0] == '-')			// (Upper case)
 				fexcludeDefEnable(FALSE);		/* Disable default file exclusion(s) */
@@ -201,16 +223,16 @@ configMinusOptions (
 			break;
 
 
-		// Attribute settings
+		// Attribute setting requests
 
-		case 'a':   minus_flags |= _A_ARCH;		break;
-		case 'A':   minus_flags |= _A_ARCH;		break;
-		case 'h':   minus_flags |= _A_HIDDEN;	break;
-		case 'H':   minus_flags |= _A_HIDDEN;	break;
-		case 'r':   minus_flags |= _A_RDONLY;	break;
-		case 'R':   minus_flags |= _A_RDONLY;	break;
-		case 's':   minus_flags |= _A_SYSTEM;	break;
-		case 'S':   minus_flags |= _A_SYSTEM;	break;
+		case 'a':   minus_flags |= _A_ARCH;		++change_req;	break;
+		case 'A':   minus_flags |= _A_ARCH;		++change_req;	break;
+		case 'h':   minus_flags |= _A_HIDDEN;	++change_req;	break;
+		case 'H':   minus_flags |= _A_HIDDEN;	++change_req;	break;
+		case 'r':   minus_flags |= _A_RDONLY;	++change_req;	break;
+		case 'R':   minus_flags |= _A_RDONLY;	++change_req;	break;
+		case 's':   minus_flags |= _A_SYSTEM;	++change_req;	break;
+		case 'S':   minus_flags |= _A_SYSTEM;	++change_req;	break;
 
 		default:    
 			fprintf(stdout, "invalid \'-\' option \'%c\'\n", optchar);
@@ -236,10 +258,10 @@ configPlusOptions (
 
 	switch (tolower(optchar))
 		{
-		case 'a':   plus_flags  |= _A_ARCH;		break;
-		case 'h':   plus_flags  |= _A_HIDDEN;	break;
-		case 'r':   plus_flags  |= _A_RDONLY;	break;
-		case 's':   plus_flags  |= _A_SYSTEM;	break;
+		case 'a':   plus_flags  |= _A_ARCH;		++change_req;	break;
+		case 'h':   plus_flags  |= _A_HIDDEN;	++change_req;	break;
+		case 'r':   plus_flags  |= _A_RDONLY;	++change_req;	break;
+		case 's':   plus_flags  |= _A_SYSTEM;	++change_req;	break;
 
 		default:    
 			fprintf(stdout, "invalid \'+\' option '%c'\n", optchar);
@@ -274,10 +296,10 @@ static int onceonly = 1;
 	switch (tolower(optchar))
 		{
 		case '0': break;
-		case 'a': plus_flags |= (_A_ARCH);   minus_flags &= ~(_A_ARCH);   break;
-		case 'h': plus_flags |= (_A_HIDDEN); minus_flags &= ~(_A_HIDDEN); break;
-		case 'r': plus_flags |= (_A_RDONLY); minus_flags &= ~(_A_RDONLY); break;
-		case 's': plus_flags |= (_A_SYSTEM); minus_flags &= ~(_A_SYSTEM); break;
+		case 'a': plus_flags |= (_A_ARCH);   minus_flags &= ~(_A_ARCH);   ++change_req;	break;
+		case 'h': plus_flags |= (_A_HIDDEN); minus_flags &= ~(_A_HIDDEN); ++change_req;	break;
+		case 'r': plus_flags |= (_A_RDONLY); minus_flags &= ~(_A_RDONLY); ++change_req;	break;
+		case 's': plus_flags |= (_A_SYSTEM); minus_flags &= ~(_A_SYSTEM); ++change_req;	break;
 		default:
 			fprintf(stdout, "invalid \'=\' option '%c'\n", optchar);
 			result = -1;
@@ -327,9 +349,9 @@ diagnostics (void)
 // getopt initialization data
 /*--------------------------------------------------------------------*/
 
-OPTINIT	minusOptions = { NULL, '-', "aAhHrRsS?cqvVX:", configMinusOptions };
-OPTINIT	plusOptions  = { NULL, '+', "aAhHrRsS",        configPlusOptions  };
-OPTINIT	equalOptions = { NULL, '=', "0aAhHrRsS",       configEqualOptions };
+OPTINIT	minusOptions = { NULL, '-', "aAfFhHlLrRsS?cqQX:",	configMinusOptions };
+OPTINIT	plusOptions  = { NULL, '+', "aAhHrRsS", 			configPlusOptions  };
+OPTINIT	equalOptions = { NULL, '=', "0aAhHrRsS",    		configEqualOptions };
 
 /*--------------------------------------------------------------------*/
 // main()

@@ -6,13 +6,12 @@
 |				Brian W Johnson
 |				   26-May-90
 |				   17-Dec-94
+|				   23-Sep-23 (consistency update)
 |
-|	    int
-|	result = prename (path1, path2); Build the path and rename the file
-|	    char  *path1;		Old path/filename
-|	    char  *path2;		New path/filename
-|
-|	    int    result;		Returned result code
+|		int							Success (0) or error code (-1)
+|	prename (						Build the path and rename the file
+|	    const char  *pFileSpec1,	Old path/filename
+|	    const char  *pFileSpec2)	New path/filename
 |
 |	prename() is equivalent to rename() except it will build the path also.
 |
@@ -34,39 +33,32 @@
 
 #include  "fwild.h"
 
+// ---------------------------------------------------------------------------
+
+//#define DEBUG	// Define this for debug output
+
 /* ----------------------------------------------------------------------- */
 	int
-prename (				/* Build path and rename() a file */
-	char  *path1,		/* Pointer to the old path/filename */
-	char  *path2)		/* Pointer to the new path/filename */
+prename (						// Build path and rename() a file
+	const char  *pFileSpec1,	// Pointer to the old path/filename
+	const char  *pFileSpec2)	// Pointer to the new path/filename
 
 	{
-	int  finished = 0;		/* Finished flag */
-	int  result;			/* File number or error code */
-	char  *p;				/* Pointer into the temporary string */
-	char  temp [1024];		/* Temporary path/filename string */
+	int  finished = FALSE;		// Finished flag (support retry after build)
+	int  result;				// File number or error code
 
 
 	for (;;)
 		{
-		if (((result = rename(path1, path2)) == 0) || finished++)
+		if (((result = rename(pFileSpec1, pFileSpec2)) == 0) || finished++)
 			break;
 
-		p = &temp[0];		/* Attempt to build the path */
-		do  {
-			strcpy(&temp[0], path2);
-			if (p = strpbrk((p + 1), "/\\"))
-				{
-				*p = '\0';
-				if ( ! fnchkdir(&temp[0]))
-					{
-					if ((result = mkdir(&temp[0])) != 0)
-						break;
-					}
-				}
-			} while (p);
+		// Rename failed; Attempt to build pFileSpec2
 
+		if ((result = fnBuildPath(pFileSpec2) != 0))
+			break;
 		}
+
 	return  (result);
 	}
 

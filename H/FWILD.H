@@ -32,8 +32,16 @@ extern "C" {
 
 #include "FEXCLUDE.h"
 
+/* ------------------------------------------------------------------------ *\
+|  Special definitions
+\* ------------------------------------------------------------------------ */
+
 typedef signed   __int64  INT64,  *PINT64;
 typedef unsigned __int64  UINT64, *PUINT64;
+
+#ifndef MAX_PATH
+#define MAX_PATH (260)	// Per https://learn.microsoft.com/en-us/windows/win32
+#endif
 
 /* ------------------------------------------------------------------------ *\
 |  fwild() internal / external definitions
@@ -91,7 +99,7 @@ typedef	enum
 	} SegType;
 
 
-typedef				/* The DTA object used by findf/findn/findc */
+typedef				// The DTA object used by findf/findn/findc
 	struct
 		{
 		char		dta_type;				// File attribute, type
@@ -232,6 +240,7 @@ extern	int		expression (char *, long *);			/* Evaluate numeric expression */
 extern	char   *expression_error (void);				/* Return expression() error string */
 
 extern  char   *fnabspth (char *);						/* Return absolute name of the fn */
+extern	int		fnBuildPath (const char *);				// Verifies/constructs a filespec path
 extern  char   *fncatpth (char *, char *);				/* Return concatenated name */
 extern  char   *fntail (char *);						/* Return the tail of the filename */
 extern	int		fnsubpth (char *, char *);				/* Check if s1 is a subpath of s2 */
@@ -240,6 +249,8 @@ extern	int		fnCondense(char *);						/* Condense a non-prefix pathname */
 extern	int		fnchkdir (char *);						/* Test if a directory exists */
 extern	int		fnchkfil (char *);						/* Test if a file exists */
 extern  int 	fnchkunc (char *);						/* Test if a UNC root */
+extern	char   *fnGetPath (const char *);				// returns ptr to allocated path string
+extern	int		fnMakePath (const char *);				// Verifies/constructs a specifed path
 extern  int		fnreduce (char *);						/* Reduce a filename */
 extern	int		fnValidName (char *);					/* Test if a path is valid nonwild filename syntax */
 extern  int		fndot (char *);							/* Test if a "dot" directory */
@@ -247,16 +258,17 @@ extern	int		fnmatch (char *, char *, int);			/* Match a wild file name segment *
 extern	int		fnmatch2 (char *, char *);				/* Match a wild file name segment */
 extern  int		iswild (char *);						/* Test if a "wild" path */
 extern	int 	fnParse (char *, int *, int *);			/* Parse a filename path */
-extern	int		pmatch (char *, char *, int);			/* Test two fnames for match */
-extern	int		psubmatch (char *, char *, int);		/* Test two fnames for submatch */
+//extern int	pmatch (char *, char *, int);			/* Test two fnames for match (deprecated) */
+//extern int	psubmatch (char *, char *, int);		/* Test two fnames for submatch (deprecated) */
 
-extern	int		pathmake (char *);						/* Build a path */
-extern	int		pcreat (char *, int);					/* Build path and creat() a file */
-extern	int		popen (char *, int, ...);				/* Build path and open() a file */
-extern	int		prename (char *, char *);				/* Build path and rename() a file */
+//extern int	MakePath (const char *);				/* Build a path (deprecated) */
+extern	int		pcreat (const char *, int);				/* Build path and creat() a file */
+extern	int		popen (const char *, int, int);			/* Build path and open() a file */
+extern	int		prename (const char *, const char *);	/* Build path and rename() a file */
 extern	char   *QueryDrivePrefix (char *s, int);		/* Query if s points a drive spec */
 extern	char   *QueryUNCPrefix (char *s);				/* Query if s points a UNC spec */
 extern	char   *PointPastPrefix (char *s, int);			/* Returns ptr past any prefix */
+extern	int		isRooted (void);						// "rooted" property of last PointPastPrefix() call
 
 #ifdef _FILE_DEFINED
 extern  FILE   *pfopen (const char *pathname, const char *mode);
@@ -308,6 +320,7 @@ extern	time_t	sgettd   (char *s);						/* Parse a TIMEDATE string */
 extern	time_t	fwsgettd (char *s);						/* Parse a TIMEDATE string (filename) */
 extern	char   *serrtd   (void);						/* Return TD error string */
 extern	char   *fwserrtd (void);						/* Return TD error string (filename) */
+extern	char   *strdupMax(const char *s);				/* strdup always with size MAX_PATH */
 extern  char   *strtoken (char *string, char *control, TOKENCB *tokenblk);
 
 #ifdef  FWILD_INTERNAL

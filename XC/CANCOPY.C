@@ -54,12 +54,15 @@ can_copy (
 		{
 		if (azFlags.r  &&  is_readonly(dst))
 			clr_readonly(dst);
+			
+#if 1 // 24-Sep-23 No need to unlink it, just overwrite it
 			if ((unlink(dst) != 0)  &&  (errno == EACCES))
 				{
 				error(src, "cannot delete output file");
 				retval = FALSE;
 				goto exit;
 				}
+#endif
 			}
 		}
 

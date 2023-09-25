@@ -1,20 +1,19 @@
 /* ----------------------------------------------------------------------- *\
 |
-|				     POPEN
+|					     POPEN
 |
-|		    Copyright (c) 1985, 1990 all rights reserved
-|				Brian W Johnson
-|				   26-May-90
-|				   17-Dec-94
-|				   08-Oct-10 (corrections to looping)
+|			    Copyright (c) 1985, 1990, all rights reserved
+|					Brian W Johnson
+|					   26-May-90
+|					   17-Dec-94
+|					   08-Oct-10 (corrections to looping)
+|					   23-Sep-23 (consistency update)
 |
-|	    int
-|	fd = popen (path, mode, perm);	Build the path and open the file
-|	    char  *path;		Path/filename
-|	    int    mode;		Open mode
-|	    int    perm;		Create permission (O_CREAT mode)
-|
-|	    int    fd;			File number or error code
+|	    int						File number or error code
+|	fd = popen (				Build the path and open the file
+|		const char *FileSpec,	Path/filename
+|	    int    mode,			File open mode
+|	    int    perm)			Create permission (O_CREAT mode)
 |
 |	popen() is equivalent to open() except it will build the path also.
 |
@@ -36,47 +35,49 @@
 
 #include  "fwild.h"
 
-/* ----------------------------------------------------------------------- */
-	int
-popen (					/* Build path and open() a file */
-	char  *s,			/* Pointer to the path/filename */
-	int    mode,		/* Open mode */
-	int    perm)		/* Create permission */
+// ---------------------------------------------------------------------------
+
+//#define DEBUG	// Define this for debug output
+
+// ---------------------------------------------------------------------------
+	int						// Return file descriptor if successful, else (-1)
+popen (						// Build path and open() a file
+	const char  *pFileSpec,	// Pointer to the path/filename
+	int			 mode,		// Open mode
+	int			 perm)		// Create permission
 
 	{
-	int    finished = 0;	/* Try once more after creating the directory string */
-	int    fd;				/* File number or error code */
-	char  *p;				/* Pointer into the temporary string */
-	char   temp [1024];		/* Temporary path/filename string */
+	int  finished = FALSE;	// Finished flag (support retry after build)
+	int  writeReq;			// TRUE if write requested
+	int  fd;				// File number or error code (-1)
 
 
-	strcpy(&temp[0], s);
-	p = PointPastPrefix(temp, TRUE);	// Skip over any prefix, single mode
+	// Determine whether this is a write request
+
+	writeReq = ((mode & (O_CREAT | O_WRONLY | O_RDWR)) != 0);
+
+	// Make a temporary copy of the pathname string
+
 	for (;;)
 		{
-		if (((fd = open(s, mode, perm)) >= 0) || finished++)
+		if (((fd = _open(pFileSpec, mode, perm)) >= 0) || finished++)
 			break;			// File successfully opened
 
-		if ((mode & (O_CREAT | O_WRONLY | O_RDWR)) == 0)
-			break;			// No intent to write, just report error
+		if ( ! writeReq)
+			break;			// Only wanted to read, and file was not found
 
-		// Failed; skip past a possible root separator,
-		// and attempt to build the path, one directory at a time
+		// Create failed; Attempt to build the path
 
-		do  {
-			if ((p = strpbrk((p + 1), "/\\")) != NULL)
-				{
-//printf("\npopen: (%d) \"%s\"  \"%d\"\n", count, &temp[0], (p - &temp[0]));
-				*p = '\0';							// Truncate the path
-				if (( ! fnchkdir(&temp[0]))			// Accept existing directory
-				&& ((fd = mkdir(&temp[0])) != 0))	// Make missing directory
-					break;	// Path building complete
-				}
-			strcpy(&temp[0], s);	// Recopy to reverse the truncation
-			} while (p); // do-while
-		} // for
+		if ((fd = fnBuildPath(pFileSpec) != 0))
+			break;
+
+#ifdef DEBUG
+printf("\npopen: \"%s\"\n", pTemp));
+#endif
+
+		}
 
 	return  (fd);
 	}
 
-/* ----------------------------------------------------------------------- */
+// ---------------------------------------------------------------------------

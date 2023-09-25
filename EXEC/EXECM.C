@@ -28,14 +28,14 @@ char	copyright [] =
 
 char	buffer [BUFSIZ];		/* Buffer for stdout */
 
-int	c_flag  = FALSE;		/* Command file flag */
-int	e_flag  = TRUE;			/* Process empty lines flag */
-int	q_flag  = FALSE;		/* Query flag */
+int	c_flag  = FALSE;			/* Command file flag */
+int	e_flag  = TRUE;				/* Process empty lines flag */
+int	q_flag  = FALSE;			/* Query flag */
 int	Q_flag  = TRUE;		        /* Quote flag */
-int	w_flag  = FALSE;		/* Wait code flag */
-int	x_flag  = FALSE;		/* Execute flag */
-int	y_flag  = TRUE;			/* Echo command flag */
-int	z_flag  = FALSE;		/* Ignore child error flag */
+int	w_flag  = FALSE;			/* Wait code flag */
+int	x_flag  = FALSE;			/* Execute flag */
+int	y_flag  = TRUE;				/* Echo command flag */
+int	z_flag  = FALSE;			/* Ignore child error flag */
 
 char	swch    = '-';			/* The user's switch character */
 char	metach  = '%';			/* The meta-character */

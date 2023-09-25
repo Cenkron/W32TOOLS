@@ -126,19 +126,19 @@ PRIVATE void    filepair (char *s1, char *s2);
 
 /**********************************************************************/
 
-A_Z_FLAGS       AZ_Flags        = {0};
-A_Z_FLAGS       azFlags         = {0};
-unsigned int    bsize			= 0;
-time_t          timedelta       = 0L;	/* Timestamp compare correction */
-char *          buffer			= NULL;
-int             cols            = 40;
-INT64           filesize        = 0;
-int             mode            = 0;
-time_t          o_time          = 0L;
-char            path_char		= 0;
-char            temp_name [80]	= "";
-time_t          y_time          = 0L;
-int				copy_rename		= 0;	// Enables direct copy and rename option
+A_Z_FLAGS       AZ_Flags             = {0};
+A_Z_FLAGS       azFlags              = {0};
+unsigned int    bsize                = 0;
+time_t          timedelta            = 0L;	/* Timestamp compare correction */
+char *          buffer               = NULL;
+int             cols                 = 40;
+INT64           filesize             = 0;
+int             mode                 = 0;
+time_t          o_time               = 0L;
+char            path_char            = 0;
+char            temp_name [MAX_PATH] = "";
+time_t          y_time               = 0L;
+int				copy_rename		     = 0;	// Enables direct copy and rename option
 
 /* ----------------------------------------------------------------------- */
 

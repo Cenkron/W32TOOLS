@@ -7,8 +7,8 @@
 |				   26-May-90
 |
 |	    char *		Return pointer to the tail of s
-|	p = fntail (s);		Point the tail of a path
-|	    char  *s		Pointer to the pathname
+|	p = fntail (	Point the tail of a path
+|	    char  *s)	Pointer to the pathname
 |
 |	Returns a pointer to the last component of path s
 |	The path delimiter is not returned as part of the string.
@@ -34,9 +34,10 @@ fntail (				/* Return pointer to the last component of path s */
 				/* Skip over all path delimiters */
 
 	while ((p = strchr(s, '/')) || (p = strchr(s, '\\')))
-		s = p + 1;
+		s = (p + 1);
 
 	return (s);
 	}
 
+/* ----------------------------------------------------------------------- */
 /* ----------------------------------------------------------------------- */

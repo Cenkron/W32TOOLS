@@ -28,12 +28,16 @@
 	EXPORT int
 copy (char *src, char *dst, char *path)
 	{
-	int		dstfh;
-	int		errorflg;   // = FALSE;
-	const int	p_flag		= azFlags.p;
-	int		pmode;
-	int		srcfh;
-	time_t	src_dt;
+	int			srcfh;
+	int			dstfh;
+	const int	p_flag = azFlags.p;
+	int			pmode;
+	int			errorflg; // == FALSE;
+	time_t		src_dt;
+
+#ifdef DEBUG
+printf("Copy Entry \"%s\",  \"%s\",  \"%s\"\n", src, dst, path);
+#endif
 
 	// Set the mode for the input file
 	if (AZ_Flags.a)
@@ -78,6 +82,10 @@ copy (char *src, char *dst, char *path)
 			}
 		}
 
+#if 0
+printf("\nCopy open in  \"%s\"\n", src);
+#endif
+
 	if ( (srcfh=open(src, O_RDONLY | pmode)) < 0 )
 		{
 		error(src, "cannot open input file");
@@ -85,19 +93,46 @@ copy (char *src, char *dst, char *path)
 		goto err_exit;
 		}
 
+#if 0 // 24-Sep-23 changed from creat() to open() [Didn't work]
+#ifdef DEBUG
+printf("\nCopy creat \"%s\"\n", dst);
+#endif
+
 	if ((!azFlags.n)
-	&&  ( (dstfh=pcreat(dst, S_IWRITE)) < 0 ))
+	&&  ( (dstfh=popen(dst, (_O_CREAT | _O_WRONLY | pmode), _S_IWRITE)) < 0 ))
 		{
 		error(dst, "cannot open output file");
 		errorflg = TRUE;
 		goto err_exit;
 		}
 
+#else
+#if 0
+printf("\nCopy open out \"%s\"\n", dst);
+#endif
+
+	if ((!azFlags.n)
+	&&  ( (dstfh=pcreat(dst, _S_IWRITE)) < 0 ))
+		{
+		error(dst, "cannot open output file");
+		errorflg = TRUE;
+		goto err_exit;
+		}
+#endif
+
+#if 0
+printf("\ninit_buffer\n");
+#endif
+
 	if (!init_buffer())
 		{
 		errorflg = TRUE;
 		goto err_exit;
 		}
+
+#if 0
+printf("\ninit_buffer done\n");
+#endif
 
 	// ReSharper disable once CppDeclaratorMightNotBeInitialized
 	errorflg = copy_loop(src, srcfh, dst, dstfh);
@@ -108,8 +143,14 @@ copy (char *src, char *dst, char *path)
 	if (!azFlags.n)
 		{
 		if (p_flag)
+			{		
+#ifdef DEBUG
+printf("\nunlink copy temp_name \"%s\"\n", temp_name);
+#endif
 			unlink(temp_name);
-#if 1 // BWJ THIS IS A TEST FOR W7 - retry this until it takes?
+			}
+		
+#if 0 // BWJ THIS IS A TEST FOR W7 - retry this until it takes? REMOVE THIS
 		{
 		int count = 25;
 		do  {
@@ -131,6 +172,10 @@ copy (char *src, char *dst, char *path)
 
 err_exit:
 
+#if 0
+printf("\err_exit eflag: %d\n", errorflg);
+#endif
+
 	if (!azFlags.n)
 		{
 		int src_attr = fgetattr(src);
@@ -146,6 +191,9 @@ err_exit:
 
 		if (errorflg && p_flag)
 			{
+#ifdef DEBUG
+printf("\nunlink copy dst \"%s\"\n", dst);
+#endif
 			unlink(dst);
 			if (rename(temp_name,dst) == (-1))
 				error(dst, "unsuccessful unprotect");
@@ -164,6 +212,10 @@ err_exit:
 	if (!azFlags.l && !azFlags.q)
 		putchar('\n');
 	    
+#ifdef DEBUG
+printf("Copy Return \"%s\",  \"%s\",  \"%s\"\n", src, dst, path);
+#endif
+
 	return (errorflg);
 	}
 
@@ -266,6 +318,10 @@ copy_loop (char *src, int srcfh, char *dst, int dstfh)
 	{
 	int		errorflg	= FALSE;
 	UINT64	readsize;
+
+#ifdef DEBUG
+printf("Copy loop \"%s\"\n", dst);
+#endif
 
 	if ((!azFlags.n)  &&  AZ_Flags.v)
 		{

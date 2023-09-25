@@ -42,6 +42,10 @@
 #define	  COLCH			(':')
 
 // ------------------------------------------------------------------------------------------------
+
+int rooted = FALSE;		// "rooted" property of the most recent call to PointPastPrefix()
+
+// ------------------------------------------------------------------------------------------------
 // Skip over the UNC prefix, if any
 // ------------------------------------------------------------------------------------------------
 	char *				// Returns ptr past the found prefix, or NULL if no prefix found
@@ -66,7 +70,7 @@ QueryUNCPrefix (		// Skips over the UNC spec, if found
 				if (*pScan == PATHCH)
 					{
 					if (--countdown == 0)
-						return (++pScan);	// UNC path found; point past the UNC
+						return (++pScan);	// UNC path found; point just past the UNC
 					}
 				else if ( ! isValidUNC(*pScan))
 					break;					// Invalid UNC char found
@@ -98,7 +102,10 @@ QueryDrivePrefix (		// Skips over the drive spec, if found
 			++pScan;						// Found a drive letter, skip over it
 			}
 		else if (*pScan == COLCH)
-			return (++pScan);				// Found the ':'; point past the drive spec
+			{
+			++pScan;						// Found the ':'; point just past the drive spec
+			return (pScan);					// Return the pointer to the path root
+			}
 		else // Not part of a drive spec
 			break;
 		}
@@ -118,12 +125,33 @@ PointPastPrefix (		// Skips over the UNC or drive spec, if found
 	char *pResult;		// Returned pointer
 
 	if ((pResult = QueryUNCPrefix(s)) != NULL)	// Skips over the UNC spec, if found
+		{
+		rooted = (TRUE); // by definition
 		return (pResult);
+		}
 
 	if ((pResult = QueryDrivePrefix(s, single)) != NULL)	// Skips over the DRIVE spec, if found
+		{
+		rooted = (*pResult == PATHCH);			
 		return (pResult);
+		}
 
-	return (s);							// Did not find any prefix, so nothing skipped
+//	else
+//		{
+		rooted = (*s == PATHCH);
+		return (s);							// Did not find any prefix, so nothing skipped
+//		}
 	}
 
+// ------------------------------------------------------------------------------------------------
+// Skip over the UNC or DRIVE prefix, if any
+// ------------------------------------------------------------------------------------------------
+	int					// Returns TRUE iff the most recent PointPastPrefix() call found it rooted
+isRooted (void)			// Check ths root status of the most recent PointPastPrefix() call
+
+	{
+	return (rooted);
+	}
+
+// ------------------------------------------------------------------------------------------------
 // ------------------------------------------------------------------------------------------------

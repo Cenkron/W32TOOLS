@@ -59,7 +59,7 @@
 
 //#define DEBUG	// Define this to include the diagnostics
 
-#ifdef TEST
+#ifdef  TEST
 #define DEBUG
 #endif
 
@@ -445,6 +445,11 @@ fflush(stdout);
 
 	// If the reported effective depth is negative, this is a phsically impossible path.
 
+#ifdef DEBUG
+printf("fnreduce Return: \"%s\"\n", s);
+fflush(stdout);
+#endif
+
 	return (CWDdepth + depth);		// Report the effective depth of the tested path
 	}
 
@@ -466,7 +471,7 @@ main ()					/* Test main program */
 		}
 	}
 
-#endif
+#endif // TEST
 /* ----------------------------------------------------------------------- */
 /* ----------------------------------------------------------------------- */
 

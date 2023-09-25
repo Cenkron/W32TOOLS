@@ -31,7 +31,7 @@ extern          A_Z_FLAGS AZ_Flags;
 
 extern          int     mode;
 extern          INT64   filesize;
-extern          char    temp_name [80];
+extern          char    temp_name [];	// MAX_PATH
 extern          char    path_char;
 extern          int     cols;
 

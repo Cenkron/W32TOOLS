@@ -1,19 +1,18 @@
 /* ----------------------------------------------------------------------- *\
 |
-|				    PCREAT
+|					    PCREAT
 |
-|		    Copyright (c) 1985, 1990, all rights reserved
-|				Brian W Johnson
-|				   26-May-90
-|				   17-Dec-94
-|				   08-Oct-10 (corrections to looping)
+|			    Copyright (c) 1985, 1990, all rights reserved
+|					Brian W Johnson
+|					   26-May-90
+|					   17-Dec-94
+|					   08-Oct-10 (corrections to looping)
+|					   23-Sep-23 (consistency update)
 |
-|	    int
-|	fd = pcreat (path, perm);	Build the path and create the file
-|	    char  *path;		Path/filename
-|	    int    perm;		Creat permission
-|
-|	    int    fd;			File number or error code
+|	    int					File number or error code
+|	fd = pcreat (			Build the path and create the file
+|	    const char *path,	Path/filename
+|	    int    perm)		Creat permission
 |
 |	pcreat() is equivalent to creat() except it will build the path also.
 |
@@ -34,43 +33,42 @@
 
 #include  "fwild.h"
 
-/* ----------------------------------------------------------------------- */
+// ---------------------------------------------------------------------------
+
+//#define DEBUG	// Define this for debug output
+
+// ---------------------------------------------------------------------------
 	int
-pcreat (				/* Build path and creat() a file */
-	char  *s,			/* Pointer to the path/filename */
-	int    perm)		/* Create permission */
+pcreat (					// Build path and creat() a file
+	const char  *pFileSpec,	// Pointer to the path/filename
+	int			 perm)		// Create permission
 
 	{
-	int    finished = 0;	/* Try once more after creating the directory string */
-	int    fd;				/* File number or error code */
-	char  *p;				/* Pointer into the temporary string */
-	char   temp [1024];		/* Temporary path/filename string */
+	int  finished = FALSE;	// Finished flag (support retry after build)
+	int  fd = -1;			// File number or error code (-1)
 
 
-	strcpy(&temp[0], s);
-	p = PointPastPrefix(temp, TRUE);	// Skip over any prefix, single mode
 	for (;;)
 		{
-		if (((fd = creat(s, perm)) >= 0) || finished++)
-			break;		// File successfully created
+		if (((fd = _creat(pFileSpec, perm)) >= 0) || finished++)
+			break;			// File successfully opened
 
-		// Failed; skip past a possible root separator,
-		// and attempt to build the path, one directory at a time
+#ifdef DEBUG
+printf("\npcreat retry: \"%s\"\n", pFileSpec);
+#endif
 
-		do  {
-			if ((p = strpbrk((p + 1), "/\\")) != NULL)
-				{
-//printf("\npcreat: (%d) \"%s\"  \"%d\"\n", count, &temp[0], (p - &temp[0]));
-				*p = '\0';							// Truncate the path
-				if (( ! fnchkdir(&temp[0]))			// Accept existing directory
-				&& ((fd = mkdir(&temp[0])) != 0))	// Make missing directory
-					break;	// Path building complete
-				}
-			strcpy(&temp[0], s);	// Recopy to reverse the truncation
-			} while (p); // do-while
-		} // for
+		// Create failed; Attempt to build the path
+
+		if ((fd = fnBuildPath(pFileSpec) != 0))
+			break;
+		}
+
+#ifdef DEBUG
+printf("\npcreat: %d \"%s\"\n", fd, pFileSpec);
+#endif
 
 	return  (fd);
 	}
 
-/* ----------------------------------------------------------------------- */
+// ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------

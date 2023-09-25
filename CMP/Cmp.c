@@ -439,6 +439,14 @@ filepair1 (					/* Process the pathnames forward */
 	char s2save[1024];
 	strcpy(s2save, s2);
 
+
+#if 0
+	if (v_flag >= 3)
+		{
+		printf("filepair1: Pat F1 ('%s')  F2 ('%s')\n", s1, s2);
+		fflush(stdout);
+		}
+#endif
 	if (iswild(s2))			/* Ensure non-wild path2 */
 		f_err("Path2 cannot be wild");
 

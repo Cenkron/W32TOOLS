@@ -51,6 +51,9 @@ process (
 
 	if (!azFlags.n && azFlags.p)
 		{
+#ifdef DEBUG
+printf("\nunlink process \"%s\"\n", temp_name);
+#endif
 		unlink(temp_name);
 		if (rename(dst,temp_name) == (-1))
 			error(dst,"unsuccessful protect");
@@ -101,11 +104,14 @@ move (
 
 	if (!azFlags.n)
 		{
+#ifdef DEBUG
+printf("\nunlink process move1 \"%s\"\n", dst);
+#endif
 		unlink(dst);
 
 		_splitpath(dst, drive, dir, fname, ext);
 		_makepath(path, drive, dir, NULL, NULL);
-		pathmake(path);
+
 
 		if (rename(src, dst) != 0)
 			{
@@ -118,7 +124,12 @@ move (
 				}
 			}
 		else
+			{
+#ifdef DEBUG
+printf("\nunlink process move2 \"%s\"\n", temp_name);
+#endif
 			unlink(temp_name);
+			}
 		}
 
 //	if (!azFlags.l && !azFlags.q)

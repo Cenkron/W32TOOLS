@@ -28,18 +28,20 @@
 
 /*--------------------------------------------------------------------*/
 
+int		d_flag	= FALSE;
 int		l_flag	= FALSE;
 long	l_value	= 0;
-int		o_flag	= FALSE;
-time_t	o_time	= 0;
 int		q_flag	= FALSE;
 int		r_flag	= FALSE;
 int		t_flag	= FALSE;
-int		y_flag	= FALSE;
-time_t	y_time	= 0;
 int		z_flag	= FALSE;
 
-int		verbosity = 1;
+int		o_flag	= FALSE;
+time_t	o_time	= 0;
+int		y_flag	= FALSE;
+time_t	y_time	= 0;
+
+int		verbosity = 0;
 
 /*--------------------------------------------------------------------*/
 
@@ -75,6 +77,7 @@ usagedoc [] = {
 	"Remove (erase, delete) a [list of] file[s]",
 	"The file_list may contain wildcards '?', '*', and '**'.",
 	"",
+	"-d    don't report 'files not found')",
 	"-h    include /H/idden files",
 	"-lN   remove only if /L/arger than N bytes",
 	"-n    /N/o screen output (default: report failures)",
@@ -110,7 +113,7 @@ main (
 
 	optenv = getenv("RM");
 
-	while ( (c=getopt(argc,argv,"hHl:L:nNo:O:qQrRsStTvVX:y:Y:zZ?")) != EOF )
+	while ( (c=getopt(argc,argv,"dDhHl:L:nNo:O:qQrRsStTvVX:y:Y:zZ?")) != EOF )
 	switch (tolower(c))
 		{
 		case 'x' :
@@ -128,6 +131,10 @@ main (
 				printf("\7Exclusion string fault: \"%s\"\n", optarg);
 				usage();
 				}
+			break;
+
+		case 'd' :
+			++d_flag;
 			break;
 
 		case 'h' :
@@ -192,7 +199,7 @@ main (
 
 	if (optind == argc)
 		{
-		fprintf(stderr, "No file(s) specified.\n");
+		fprintf(stderr, "No file(s) specified\n");
 		usage();
 		return(0);
 		}
@@ -243,8 +250,8 @@ process (
 	if ((fn = fwild(dta)) == NULL)
 		{
 		dta = NULL;
-		if (verbosity > 0)
-			printf("%s not found.\n", s);
+		if ((verbosity > 0) && !d_flag)
+			printf("%s not found\n", s);
 		return;
 		}
     else
@@ -283,7 +290,7 @@ proc_file (
 		if ( (attrib & ATT_RONLY) && !r_flag)
 			{
 			if (verbosity > 0)
-				printf("%s is read/only.\n", s);
+				printf("%s is read/only\n", s);
 			}
 		else
 			{
@@ -293,7 +300,7 @@ proc_file (
 		
 				if (verbosity > 1)
 					{
-					printf("%s",s);
+					printf("%s", s);
 					OutDone = TRUE;
 					}
     
@@ -301,7 +308,7 @@ proc_file (
 				&& (fsetattr(s, _A_NORMAL) < 0)
 				&& (verbosity > 0))
 					{
-					printf(" attribute change failed.");
+					printf(" attribute change failed");
 					OutDone = TRUE;
 					}
 
@@ -314,13 +321,13 @@ proc_file (
 					{
 					if (verbosity == 1)
 						{
-						printf("%s",s);
+						printf("%s", s);
 						OutDone = TRUE;
 						}
 
 					if (verbosity > 0)
 						{
-						printf(" remove failed.");
+						printf(" remove failed");
 						OutDone = TRUE;
 						}
 					}
@@ -328,7 +335,7 @@ proc_file (
 					{
 					if (verbosity > 1)
 						{
-						printf(" removed.");
+						printf(" removed");
 						OutDone = TRUE;
 						}
 					}
@@ -442,18 +449,18 @@ remove_directories (void)
 		if (query(s))
 			{
 			if (verbosity > 1)
-				printf("%s <DIR>",s);
+				printf("%s <DIR>", s);
 			if (rmdir(s) == 0)
 				{
 				if (verbosity > 1)
-					printf(" removed.\n");
+					printf(" removed\n");
 				}
 			else
 				{
 				if (verbosity == 1)
-					printf("%s <DIR>",s);
+					printf("%s <DIR>", s);
 				if (verbosity > 0)
-					printf(" remove error.\n");
+					printf(" remove error\n");
 				}
 			}
 		}

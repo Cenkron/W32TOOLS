@@ -6,17 +6,21 @@
 |				Brian W Johnson
 |				   26-May-90
 |				   17-Dec-94
+|				   23-Sep-23 (consistency update)
 |
 |	    int
 |	result = pathmake(path);	Build the path (if necessary)
-|	    char  *path;		Pathname
+|	    char  *path;			Pathname
 |
-|	    int    result;		0 if successful
+|	    int    result;			0 if successful
 |
 |	path is the pathname of a directory.
 |	pathmake() attempts to create the path if it does not exist.
 |
 |	pathmake() returns (0) for success, or (-1) for failure.
+|
+|	This function has been deprecated and is removed from the build.
+|	It is replaced by the new function fnBuildPath().
 |
 \* ----------------------------------------------------------------------- */
 
@@ -28,31 +32,72 @@
 
 #include  "fwild.h"
 
-#define  PATHLIMIT	1024
+/* ----------------------------------------------------------------------- */
+
+#define PATHCH	('\\')
 
 /* ----------------------------------------------------------------------- */
-	int				/* Build path and open() a file */
+	int						// returns TRUE if successful, else FALSE
 pathmake (
-	char *s)		/* Pointer to the directory pathname */
+	const char *pathname)	/* Pointer to the pathspec */
 
 	{
-	int  result = 0;		/* Returned result */
-	char  *p;			/* Pointer into the temporary string */
-	char  temp [PATHLIMIT + 1];	/* Temporary path/filename string */
+	int	   fail = FALSE;	// TRUE if failed to verify or build
+	char  *p;				/* Pointer into the temporary string */
+	char  *pTemp;			/* Pointer to the temporary pathname string */
 
-	p = &temp[0];		/* Attempt to build the path */
-	do  {
-		strncpy(&temp[0], s, PATHLIMIT);
-		if (p = strpbrk((p + 1), "/\\"))
-			{
-			*p = '\0';
-			if (( ! fnchkdir(&temp[0]))
-			&& ((result = mkdir(&temp[0])) != 0))
-				break;
-			}
-		} while (p);
 
-	return  (result);
+	// Make a temporary copy of the pathname string
+
+	if ((pTemp = strdupMax(pathname)) == NULL)
+		return (FALSE);
+
+	strsetp(pTemp, PATHCH);				// Standardize the path characters
+	p = PointPastPrefix(pTemp, TRUE);	// Skip over any prefix, single mode
+	if (*p == PATHCH)					// Skip past any root separator
+		++p;
+
+	// For each path element,
+	// verify that the directory exists, or try to create it
+
+	if (*p != NULCH)					// If no path, don't bother 
+		{
+		do  {
+			if ((p = strpbrk(p, "\\")) != NULL)	// Find the next path separator
+				{
+//printf("\npathmake: (%d) \"%s\"  \"%d\"\n", count, pTemp, (p - pTemp));
+				if (p)
+					*p = '\0';					// Truncate the path
+				fail  = ((! fnchkdir(pTemp))	// Accept existing directory, or
+					 &&  (mkdir(pTemp) != 0))	// Make missing directory
+				if (p)
+					*p = PATHCH;				// Replace the path separator
+				}
+			} while ((! fail) && (p != NULL); // do-while
+		}
+
+	if (pTemp)
+		free(pTemp);
+	return  (! fail);
 	}
 
 /* ----------------------------------------------------------------------- */
+/* ----------------------------------------------------------------------- */
+
+	do  {
+		if ((p = strpbrk(p, "\\")) != NULL)	// Find the next path separator
+			{
+//printf("\npathmake: (%d) \"%s\"  \"%d\"\n", count, pTemp, (p - pTemp));
+			if (p)
+				*p = '\0';					// Truncate the path
+			fail  = ((! fnchkdir(pTemp))	// Accept existing directory, or
+				 &&  (mkdir(pTemp) != 0))	// Make missing directory
+			if (p)
+				*p = PATHCH;				// Replace the path separator
+			}
+		} while ((! fail) && (p != NULL); // do-while
+
+	if (pTemp)
+		free(pTemp);
+	return  (result);
+	}

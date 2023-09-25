@@ -21,13 +21,13 @@
 
 #include  "fwild.h"
 
-#define	 LINESIZE	1024		/* Text line buffer size */
+#define	 LINESIZE	1024	/* Text line buffer size */
 
-#define	 INCLUDE	   0		/* Include specified fields mode */
-#define	 EXCLUDE	   1		/* Exclude specified fields mode */
-#define	 COMPATIBILITY	   2		/* Compatibility mode */
+#define	 INCLUDE	   0	/* Include specified fields mode */
+#define	 EXCLUDE	   1	/* Exclude specified fields mode */
+#define	 COMPATIBILITY 2	/* Compatibility mode */
 
-#define	 MAXTOKEN	  10		/* Max number of tokens */
+#define	 MAXTOKEN	  10	/* Max number of tokens */
 
 extern	int	z_flag;			/* Ignore child error flag */
 extern	int	Q_flag;			/* Quoted argument flag */
@@ -48,20 +48,20 @@ extern	int	w_flag;			/* Wait code flag */
 extern	int	x_flag;			/* Execute flag */
 extern	int	y_flag;			/* Echo flag */
 
-extern	char	metach;			/* The meta-character */
-extern	char	swch;			/* The user's switch character */
+extern	char	metach;		/* The meta-character */
+extern	char	swch;		/* The user's switch character */
 
-extern	char   *cfnp;			/* Command input filename */
+extern	char   *cfnp;		/* Command input filename */
 
 /* ----------------------------------------------------------------------- */
 
-FILE   *cfp     = NULL;			/* Command file descriptor */
-FILE   *ifp     = NULL;			/* Input line file descriptor */
+FILE   *cfp     = NULL;		/* Command file descriptor */
+FILE   *ifp     = NULL;		/* Input line file descriptor */
 
-char   *pattern = NULL;			/* The current pattern */
-char   *indata  = NULL;			/* Input line buffer */
-char   *command = NULL;			/* Command line buffer */
-char   *token   = NULL;			/* Token buffer */
+char   *pattern = NULL;		/* The current pattern */
+char   *indata  = NULL;		/* Input line buffer */
+char   *command = NULL;		/* Command line buffer */
+char   *token   = NULL;		/* Token buffer */
 
 char   *tokenptr [MAXTOKEN] = { NULL };	/* Array of token pointers */
 int     quoted   [MAXTOKEN] = { 0 };	/* Array of quote flags */
@@ -108,7 +108,7 @@ process (			/* Main program segment */
 			}
 		}
 
-	if (c_flag)			/* Accept patterns from a file */
+	if (c_flag)				/* Accept patterns from a file */
 		{
 		if ((cfp = fopen(cfnp, "r")) == NULL)
 			{
@@ -119,7 +119,7 @@ process (			/* Main program segment */
 	else if (argc > 0)		/* Build the pattern from the command line */
 		buildpat(argv);
 	else
-		usage();		/* We MUST have a command ! */
+		usage();			/* We MUST have a command ! */
 
     // Initialization is complete, generate and execute (write) the commands
 
@@ -181,18 +181,18 @@ buildpat (				/* Build the pattern from the argv list */
 	}
 
 /* ----------------------------------------------------------------------- */
-	int						// Return 0, or (-1) if error
-tokenize (void)             // Separate the input line into tokens
+	int							// Return 0, or (-1) if error
+tokenize (void)             	// Separate the input line into tokens
 
     {
-#define  ST_SPACE       (0)	// Processing whitespace
-#define  ST_TOKENENTRY  (1)	// Entering a normal token
-#define  ST_TOKEN       (2)	// Processing a normal token
-#define  ST_QUOTEENTRY  (3)	// Entering a quoted token
-#define  ST_QUOTE       (4)	// Processing a quoted token
+#define  ST_SPACE       (0)		// Processing whitespace
+#define  ST_TOKENENTRY  (1)		// Entering a normal token
+#define  ST_TOKEN       (2)		// Processing a normal token
+#define  ST_QUOTEENTRY  (3)		// Entering a quoted token
+#define  ST_QUOTE       (4)		// Processing a quoted token
 
-	int    i     = 0;		// Token pointer index
-	char  *p     = indata;	// Pointer to the input data line
+	int    i     = 0;			// Token pointer index
+	char  *p     = indata;		// Pointer to the input data line
 	int    state = ST_SPACE;    // The parser state
 
 
@@ -262,11 +262,11 @@ buildcmd (void)			/* Build a command from the pattern and data */
 	{
 	char  *pPattern     = pattern;	/* Pointer to the current pattern */
 	char  *pCommand     = command;	/* Pointer to the command string */
-	char  *pQuote;			/* Pointer to the working begin quote ptr */
-	char  *pBegin;			/* Pointer to the most recent first non-white char */
-	char  *pToken;			/* Pointer to the macro token string */
-	char   ch;				/* The current character */
-	int    quoteFlag;			/* TRUE if the string is to be quoted */
+	char  *pQuote;					/* Pointer to the working begin quote ptr */
+	char  *pBegin;					/* Pointer to the most recent first non-white char */
+	char  *pToken;					/* Pointer to the macro token string */
+	char   ch;						/* The current character */
+	int    quoteFlag;				/* TRUE if the string is to be quoted */
 	int    quoteActive  = FALSE;	/* TRUE if quoting is active */
 	int    prevSpace    = TRUE;		// TRUE if the previous character was a space
 
@@ -274,24 +274,24 @@ buildcmd (void)			/* Build a command from the pattern and data */
 //fprintf(stderr, "pattern: %s\n", pattern);
 	while ((ch = *pPattern) != '\0')
 		{
-		if ( ! isspace(ch))				// If not white space...
+		if ( ! isspace(ch))					// If not white space...
 			{
 			if (prevSpace)
 				pBegin = pCommand;			// Remember the first non-white char of the string
 			prevSpace = FALSE;
 			}
-		else // (isspace(ch) is TRUE)			// It is whitespace...
+		else // (isspace(ch) is TRUE)		// It is whitespace...
 			{
 			if (quoteActive)				// If quoting is active
-				*pCommand++ = '"';				// Write the suffix quote
-			quoteActive = FALSE;				// End the active quote region
+				*pCommand++ = '"';			// Write the suffix quote
+			quoteActive = FALSE;			// End the active quote region
 			prevSpace = TRUE;
 			}
 
-		if (ch == metach)				/* If it is the Meta-character... */
+		if (ch == metach)					// If it is the Meta-character...
 			{
 			++pPattern;
-			if (*pPattern == metach)			/* Quoted meta-character */
+			if (*pPattern == metach)		// Quoted meta-character
 				*pCommand++ = *pPattern++;
 			else
 				{
@@ -304,28 +304,28 @@ buildcmd (void)			/* Build a command from the pattern and data */
 						quoteActive = TRUE;
 						for (pQuote = pCommand++; (pQuote > pBegin); --pQuote)
 								*(pQuote) = *(pQuote-1);	// Shift the argument buffer up one byte
-							*pQuote = '"';			// Write the prefix quote
+							*pQuote = '"';	// Write the prefix quote
 						}
 					while (*pToken)			// Copy the token to the command buffer
 						*pCommand++ = *pToken++;
 					}
-				else					/* Invalid token */
+				else						// Invalid token
 					{
 					fprintf(stderr, "\7Invalid token: %s\n", pPattern);
 					usage();
 					}
 				}
 			}
-		else if (ch == '\n')				/* Ignored LF character */
+		else if (ch == '\n')				// Ignored LF character
 			++pPattern;
 		else						/* Ordinary character */
 			*pCommand++ = *pPattern++;
 		}
 
-	if (quoteActive)					// If quoting is not yet complete
-		*pCommand++ = '"';				// Suffix quote
+	if (quoteActive)						// If quoting is not yet complete
+		*pCommand++ = '"';					// Suffix quote
 
-	*pCommand = '\0';					// Terminator
+	*pCommand = '\0';						// Terminator
 	}
 
 /* ----------------------------------------------------------------------- */
@@ -352,41 +352,41 @@ static	char	basename  [1024];       // The base name identification
 static	char	extension [1024];       // The extension identification
 
 
-	ch = **pp;				// Check for a mode determining switch
+	ch = **pp;					// Check for a mode determining switch
 	if (ch == '+')
 		{
-		dflag = FALSE;			// Use INCLUDE mode
+		dflag = FALSE;				// Use INCLUDE mode
 		pflag = FALSE;
 		nflag = FALSE;
 		eflag = FALSE;
 		mode  = INCLUDE;
-		++(*pp);			// Skip over the switch character
+		++(*pp);				// Skip over the switch character
 		}
 	else if (ch == '-')
 		{
-		dflag = TRUE;			// Use EXCLUDE mode
+		dflag = TRUE;				// Use EXCLUDE mode
 		pflag = TRUE;
 		nflag = TRUE;
 		eflag = TRUE;
 		mode  = EXCLUDE;
-		++(*pp);			// Skip over the switch character
+		++(*pp);				// Skip over the switch character
 		}
 	else
 		{
-		dflag = TRUE;			// Use COMPATIBILITY mode (default)
+		dflag = TRUE;				// Use COMPATIBILITY mode (default)
 		pflag = TRUE;
 		nflag = TRUE;
 		eflag = TRUE;
 		mode  = COMPATIBILITY;
 		}
 
-	i = -1;						// Set the sentinel value
+	i = -1;							// Set the sentinel value
 	while (ch = *((*pp)++))
 		{
 		ch = tolower(ch);
-		if (isdigit(ch))		// Accept the arg index
+		if (isdigit(ch))			// Accept the arg index
 			{
-			i = ch - '0';		// Select the argument
+			i = ch - '0';			// Select the argument
 			*quote = quoted[i];		// Return the quote request
 			break;
 			}
@@ -423,19 +423,19 @@ static	char	extension [1024];       // The extension identification
 				}
 			}
 
-		else if (ch == 'e')		// Accept the 'e' flag
+		else if (ch == 'e')			// Accept the 'e' flag
 			{
 			if (mode == INCLUDE)
-				++eflag;		// Include the extension
+				++eflag;			// Include the extension
 			else
 				eflag = FALSE;		// Exclude the extension
 			}
-		else if (ch == 'l')		// Accept the 'l' flag
+		else if (ch == 'l')			// Accept the 'l' flag
 			{
 			lflag = 1;
 			uflag = 0;
 			}
-		else if (ch == 'u')		// Accept the 'u' flag
+		else if (ch == 'u')			// Accept the 'u' flag
 			{
 			lflag = 0;
 			uflag = 1;
@@ -444,17 +444,17 @@ static	char	extension [1024];       // The extension identification
 			break;
 		}
 
-	if (i < 0)			// If invalid syntax, return NULL
+	if (i < 0)						// If invalid syntax, return NULL
 		return (NULL);
 
-	tokp = tokenptr[i];		// If no token, return empty string
+	tokp = tokenptr[i];				// If no token, return empty string
 	if (tokp == NULL)
 		{
 		*quote = FALSE;
 		return ("");
 		}
 
-	if ((dflag == FALSE)	// If no flag set, return empty string
+	if ((dflag == FALSE)			// If no flag set, return empty string
 	&&  (pflag == FALSE)
 	&&  (nflag == FALSE)
 	&&  (eflag == FALSE))
@@ -463,7 +463,7 @@ static	char	extension [1024];       // The extension identification
 		return ("");
 		}
 
-	if ((dflag)			// If all flags set, return the original token
+	if ((dflag)						// If all flags set, return the original token
 	&&  (pflag)
 	&&  (nflag)
 	&&  (eflag))
@@ -474,17 +474,17 @@ static	char	extension [1024];       // The extension identification
 		{
 		_splitpath(tokp, drive, path, basename, extension);
 
-		*token = '\0';			// Initialize the target
-		if (dflag)			// Conditionally include the drive
+		*token = '\0';				// Initialize the target
+		if (dflag)					// Conditionally include the drive
 			strcat(token, drive);
 
-		if (pflag)			// Conditionally include the path
+		if (pflag)					// Conditionally include the path
 			strcat(token, path);
 
-		if (nflag)			// Conditionally include the base name
+		if (nflag)					// Conditionally include the base name
 			strcat(token, basename);
 
-		if (eflag)			// Conditionally include the extension
+		if (eflag)					// Conditionally include the extension
 			{
 			if (nflag)
 				strcat(token, extension);	// with "dot"
@@ -496,14 +496,14 @@ static	char	extension [1024];       // The extension identification
 			{
 			char  *p = &token[strlen(token) - 1];
 			if ((*p == '\\')  ||  (*p == '/'))
-			*p = '\0';		// Delete the terminal '\' or '/'
+			*p = '\0';				// Delete the terminal '\' or '/'
 			}
 		}
 
 
-	if (lflag)				// Conditionally convert to lower case
+	if (lflag)						// Conditionally convert to lower case
 		strlwr(token);
-	else if (uflag)			// Conditionally convert to upper case
+	else if (uflag)					// Conditionally convert to upper case
 		strupr(token);
 
 	return (token);

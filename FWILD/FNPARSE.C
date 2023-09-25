@@ -24,47 +24,40 @@
 #include  <malloc.h>
 #include  <string.h>
 
-//#define  FWILD_INTERNAL
-
 #include  "fwild.h"
 
 /* ----------------------------------------------------------------------- */
 
-// #define DEBUG	// Define this to include diagnostics
+//#define DEBUG	// Define this to include diagnostics
 
 #define PATHCH	('\\')
 
 /* ----------------------------------------------------------------------- */
-	static char *			// Returned pointer to the duplicated pathname
-strdupMax(
-	char* s)				// Pointer to the pathname string
-
-	{
-	char *p = malloc(MAX_PATH);
-
-	if (p)	
-		strcpy_s(p, MAX_PATH, s);
-	return (p);
-	}
-	
-/* ----------------------------------------------------------------------- */
-	int					// Returnd 0 for success, else -1 if a bad pathspec
+	int					// Returns 0 for success, else -1 if a bad pathspec
 fnParse (				// Point the non-directory tail of path s
 	char  *s,			// Pointer to the pathname string
-	int   *pCatIndex,	// Ptr to callers concatenation index
-	int   *pTermIndex)	// Ptr to callers termination index
+	int   *pCatIndex,	// Ptr to callers concatenation index (if not NULL)
+	int   *pTermIndex)	// Ptr to callers termination index (if not NULL)
 
 	{
-	char  *pPath;		// Pointer to a temporary path buffer
+	char  *pPath = NULL;// Pointer to a temporary path buffer
 	char  *p;			// Pointer past the prefix, if any
 	char  *pStart;		// Pointer past the prefix, if any
 
+#ifdef DEBUG
+printf("fnParse() Entry \"%s\"\n", s);
+fflush(stdout);
+#endif
 	if ((pPath = strdupMax(s)) != NULL)
 		{
 		strsetp(pPath, PATHCH);
 		if (fnreduce(pPath) < 0)
 			{
-			free(pPath);
+			if (pPath)
+				{
+				free(pPath);
+				pPath = NULL;
+				}
 			return (-1);
 			}
 
@@ -72,13 +65,17 @@ fnParse (				// Point the non-directory tail of path s
 
 		if (strcmp(pStart, ".") == 0)					// "." is a special case
 			{
-			*pTermIndex	= (int)(pStart - pPath);
-			*pCatIndex  = (int)(pStart - pPath);
+			if (pTermIndex)
+				*pTermIndex	= (int)(pStart - pPath);
+			if (pCatIndex)
+				*pCatIndex  = (int)(pStart - pPath);
 			}
 		else if (strcmp(pStart, "\\.") == 0)					// "\." is a special case
 			{
-			*pTermIndex	= (int)(pStart+1 - pPath);
-			*pCatIndex  = (int)(pStart+1 - pPath);
+			if (pTermIndex)
+				*pTermIndex	= (int)(pStart+1 - pPath);
+			if (pCatIndex)
+				*pCatIndex  = (int)(pStart+1 - pPath);
 			}
 			
 		else
@@ -110,14 +107,18 @@ printf("Char %c\n", ((*p == '\0') ? '-' : *p));
 					{
 					if ((*p == '/') || (*p == '\\'))
 						{
-						*pTermIndex	= (int)((p + 1) - pPath);
-						*pCatIndex  = (int)((p + 1) - pPath);	// All path elements excluded, rooted
+						if (pTermIndex)
+							*pTermIndex	= (int)((p + 1) - pPath);
+						if (pCatIndex)
+							*pCatIndex  = (int)((p + 1) - pPath);	// All path elements excluded, rooted
 						break;
 						}
 					else // Root separator not present
 						{
-						*pTermIndex	= (int)((p - pPath));
-						*pCatIndex  = (int)((p - pPath));		// All path elements excluded, unrooted or UNC
+						if (pTermIndex)
+							*pTermIndex	= (int)((p - pPath));
+						if (pCatIndex)
+							*pCatIndex  = (int)((p - pPath));		// All path elements excluded, unrooted or UNC
 						break;
 						}
 					}
@@ -133,8 +134,10 @@ printf("Test \"%s\"\n", pPath);
 #endif
 						if (fnchkdir(pPath))
 							{
-							*pTermIndex	= (int)((p - pPath));
-							*pCatIndex  = (cs == '\0') ? (int)((p - pPath)) : (int)(((p +1) - pPath));
+							if (pTermIndex)
+								*pTermIndex	= (int)((p - pPath));
+							if (pCatIndex)
+								*pCatIndex  = (cs == '\0') ? (int)((p - pPath)) : (int)(((p +1) - pPath));
 #ifdef DEBUG
 printf("Accepted \"%s\"\n", pPath);
 #endif
@@ -148,16 +151,24 @@ printf("Accepted \"%s\"\n", pPath);
 				}
 			}
 
-		free(pPath);
+		if (pPath)
+			{
+			free(pPath);
+			pPath = NULL;
+			}
 		}
 
 #ifdef DEBUG
-printf("CatIndex  %d\n", *pCatIndex);
-printf("TermIndex %d\n", *pTermIndex);
+printf("fnParse() Return \"%s\"\n", s);
+printf("CatIndex  %d\n", ((pCatIndex != NULL)  ? (*pCatIndex)  :"NULL"));
+printf("TermIndex %d\n", ((pTermIndex != NULL) ? (*pTermIndex) :"NULL"));
 fflush(stdout);
 #endif
 
+	if (pPath)
+		free(pPath);
 	return (0);
 	}
 
+/* ----------------------------------------------------------------------- */
 /* ----------------------------------------------------------------------- */

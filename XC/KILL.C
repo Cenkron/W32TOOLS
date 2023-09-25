@@ -30,7 +30,9 @@ kill (
 
 		if (!azFlags.l)
 			notify(DELETING, src, NULL, NULL);
-
+#ifdef DEBUG
+printf("\nunlink kill \"%s\"\n", src);
+#endif
 		if (unlink(src) == 0)
 			printf(" OK\n");
 		else

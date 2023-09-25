@@ -63,11 +63,11 @@ pmatch (				/* Test two filenames for filename match */
 		return (FALSE);
 		}
 
-    /* Handle a reduced "." directories by replacing it with "*.*" */
+    /* Handle a reduced "." directory by replacing it with "*" */
 
 	r_len = strlen(r);
 	if ((r_len == 0) || (*(r + (r_len - 1)) == '/'))
-		strcat(r, "*.*");
+		strcat(r, "*");
 
 	if (isalpha(*q) && (*(q + 1) == ':'))
 		q += 2;
