@@ -11,7 +11,7 @@
 |	return = fgetattr (char *fnp)	Pointer to the path/filename
 |
 |	    int  return;		The returned file attribute word
-|					(or -1 for failure)
+|							(or -1 for failure)
 |
 \* ----------------------------------------------------------------------- */
 
@@ -19,21 +19,21 @@
 
 #define  FWILD_INTERNAL
 
-#include  "fwild.h"
+#include  "fWild.h"
 
 /* ----------------------------------------------------------------------- *\
 |  fgetattr ()  -  Get the file attribute word (via file pathname)
 \* ----------------------------------------------------------------------- */
 	int
 fgetattr (
-	char *fnp)			/* Pointer to the path/filename */
+	const char *fnp)			/* Pointer to the path/filename */
 
 	{
 	int    result;			/* The returned result */
 	DWORD  Attr;			/* The WIN32 attributes */
 
-	Attr = GetFileAttributes(fnp);
-	if (Attr == 0xFFFFFFFF)
+	Attr = GetFileAttributesA(fnp);
+	if (Attr == INVALID_FILE_ATTRIBUTES)
 		result = -1;
 	else
 		result = AttrFromWin32(Attr);

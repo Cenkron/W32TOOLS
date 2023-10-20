@@ -19,15 +19,15 @@
 #include  <stdio.h>
 #include  <stdlib.h>
 
-#include  "fwild.h"
+#include  "fWild.h"
 
 #define	  ispath(ch)	(((ch) == '/') || ((ch) == '\\'))
 
 /* ----------------------------------------------------------------------- */
 	int
 fnsubpth (				/* Check if s1 is a subpath of s2 */
-    char  *s1,			/* Pointer to the filename sub-path */
-    char  *s2)			/* Pointer to the filename super-path */
+	const char  *s1,	/* Pointer to the filename sub-path */
+	const char  *s2)	/* Pointer to the filename super-path */
 
 	{
 	int  result = TRUE;	/* Default result for identical strings */

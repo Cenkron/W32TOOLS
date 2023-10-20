@@ -14,8 +14,8 @@
 |				    9-Aug-98 (Convert to system calls)
 |
 |	    char *		Return a pointer to a date string
-|	p = fwdate(		Get the date of the current fwild filename
-|	    void *hp)	Pointer to the fwild header
+|	p = fwdate(		Get the date of the current fWild filename
+|	    void *hp)	Pointer to the fWild header
 |
 \* ----------------------------------------------------------------------- */
 
@@ -25,7 +25,7 @@
 
 #define  FWILD_INTERNAL
 
-#include  "fwild.h"
+#include  "fWild.h"
 
 
 static	char	date [11];	/* The returned date string */
@@ -41,17 +41,19 @@ static	char   *month [] =	/* The month string lookup table */
 /* ------------------------------------------------------------------------ */
 	char *				/* Return a pointer to a date string */
 fwdate (hp)				/* Get the date of the current filename */
-	DTA_HDR   *hp;		/* Pointer to the DTA header */
+	FW_HDR   *hp;		/* Pointer to the DTA header */
 
 	{
 	int        year;		/* The year number */
 	struct tm *ptm;			/* Ptr to the struct tm */
+	time_t	   fdt;			// The file datetime
 
-	if (hp->f_fdt < 0)
+	
+	if ((! fwActive(hp))  ||  ((fdt = hp->file_fdt) == 0))
 		strcpy(&date[0], " --------");
 	else
 		{
-		ptm  = localtime(&hp->f_fdt);
+		ptm  = localtime(&hp->file_fdt);
 		year = ptm->tm_year;
 		if (year >= 100)
 			year -= 100;

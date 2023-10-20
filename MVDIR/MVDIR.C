@@ -15,7 +15,7 @@
 #include  <direct.h>
 #include  <ctype.h>
 
-#include  "fwild.h"
+#include  "fWild.h"
 #include  "mvd.h"
 
 #ifndef TRUE
@@ -38,7 +38,7 @@ int	c_flag = FALSE;			/* Create path flag */
 int	e_flag = FALSE;			/* Exists OK flag */
 int	l_flag = FALSE;			/* List file names flag */
 int	m_flag = FALSE;			/* Use old create/copy/delete mode */
-int	p_flag = FALSE;			/* List path names flag */
+int	v_flag = FALSE;			/* Verbose - List path names flag */
 
 int	f_exist = FALSE;		/* Final_path exists flag */
 
@@ -56,15 +56,15 @@ char  *usagedoc [] =
 "mvdir moves a single directory and all of its contents from one",
 "place in the directory tree to another.",
 "",
-"    %cc  creates any part of the final_path which does not",
+"    %cc  /c/reates any part of the final_path which does not",
 "        already exist, otherwise if an intermediate directory ",
 "        is missing, an error will result",
-"    %ce  allows the move even if the final_path directory",
+"    %ce  allows the move /e/ven if the final_path directory",
 "        already exists, otherwise if the directory already",
 "        exists, an error will result",
-"    %cl  lists the file and directory names as they are moved",
-"    %cm  renames in place; rather than old create/copy/delete mode",
-"    %cp  lists the resolved path names",
+"    %cl  /l/ists the file and directory names as they are moved",
+"    %cm  rena/m/es in place; rather than old create/copy/delete mode",
+"    %cv  /v/erbose - lists the resolved path names",
 "",
 "The initial_path name must be the non-wild name of a single",
 "existing directory which is to be moved, along with all of",
@@ -93,9 +93,10 @@ main (
 	{
 	int    option;		/* Option character */
 	int    nargs;		/* Number of arguments */
-	char  *ap;			/* POinter to the initial path */
+	char  *fnpSrc;		// Ptr to the src pathspec
+	char  *fnpDst;		// Ptr to the dst pathspec
 
-static	char   *optstring = "?cCeElLmMpP";
+static	char   *optstring = "?cCeElLmMvV";
 
 
 	swch   = egetswch();
@@ -121,8 +122,8 @@ static	char   *optstring = "?cCeElLmMpP";
 				m_flag = TRUE;
 				break;
 
-			case 'p':
-				++p_flag;
+			case 'v':
+				++v_flag;
 				break;
 
 			case '?':
@@ -140,9 +141,15 @@ static	char   *optstring = "?cCeElLmMpP";
 	if (nargs > 2)
 		fatalerr("Too many path names");
 
-	ap = argv[optind++];		/* Point the initial path */
+	fnpSrc = argv[optind++];	// pathspec to the src files
+	fnpDst = argv[optind];		// pathspec to the dst files
 
-	checkout(ap, argv[optind++]);
+	if (! isPhysical(fnpSrc))
+		fatalerr("Invalid source file/pathspec");
+	if (! isPhysical(fnpDst))
+		fatalerr("Invalid destination file/pathspec");
+	
+	checkout(fnpSrc, fnpDst);
 	exit(0);
 	}
 
@@ -158,27 +165,27 @@ checkout (				/* Process one input file */
 	char  *p3;			/* Pointer to absolute current directory */
 
 
+	if ( ! isSameDevice(s1, s2))
+		fatalerr("Both paths must be on the same device");
+
 	if (wild(s1) || wild(s2))
 		fatalerr("Path names can not be wild");
 
-	if ((p1 = fnabspth(s1)) < 0)
+	if ((p1 = fnabspth(s1)) == NULL)
 		fatalerr("src fnabspth error");
 
-	if ((p2 = fnabspth(s2)) < 0)
+	if ((p2 = fnabspth(s2)) == NULL)
 		fatalerr("dst fnabspth error");
 
-	if ((p3 = fnabspth(".")) < 0)
-		fatalerr("fnabspth error");
+	if ((p3 = fnabspth(".")) == NULL)
+		fatalerr("misc fnabspth error");
 
-	if (p_flag)
+	if (v_flag)
 		{
 		printf("Current_path: %s\n", p3);
 		printf("Initial_path: %s\n", p1);
 		printf("Final_path:   %s\n", p2);
 		}
-
-	if (p1[0] != p2[0])
-		fatalerr("Both paths must be on the same drive");
 
 	if (strlen(p1) == 3)
 		fatalerr("Can't move the root directory");
@@ -198,6 +205,13 @@ checkout (				/* Process one input file */
 	bldfinal(p2);		/* Verify the existence of final_path */
 
 	mvdir(p1, p2, l_flag, m_flag);	/* Perform the recursive move */
+
+	if (p1)
+		free(p1);
+	if (p2)
+		free(p2);
+	if (p3)
+		free(p3);
 	}
 
 /* ----------------------------------------------------------------------- */

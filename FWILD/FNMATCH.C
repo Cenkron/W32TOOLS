@@ -17,7 +17,7 @@
 |	    char  *q,		Test name (must be a pure file name)
 |	    int    mode)	If TRUE, missing p ext matches any q ext (support FW_DSTAR)
 |
-|	This function is retired and removed from the build.
+|	This function is deprecated and removed from the build.
 |	It is replaced by fnmatch2().	
 |
 \* ----------------------------------------------------------------------- */
@@ -28,20 +28,20 @@
 #include  <string.h>
 #include  <ctype.h>
 
-#include  "fwild.h"
+#include  "fWild.h"
 
 /* ----------------------------------------------------------------------- */
 
 // #define TEST	// Define this to include the test main
 
-static	char   *basecopy  (char *, char *);
-static	int	namematch (char *, char *);
+static	char   *basecopy  (char *, const char *);
+static	int	namematch (const char *, const char *);
 
 /* ----------------------------------------------------------------------- */
 	int						/* Return TRUE if the names match */
 fnmatch 		(			/* Test two filenames for filename match */
-	char  *p,				/* Pattern name (may include wild cards) */
-	char  *q,				/* Test name (must be a pure file name) */
+	const char  *p,			/* Pattern name (may include wild cards) */
+	const char  *q,			/* Test name (must be a pure file name) */
 	int    mode)			/* If TRUE, missing ext matches any ext */
 
 	{
@@ -85,11 +85,11 @@ fnmatch 		(			/* Test two filenames for filename match */
 /* ----------------------------------------------------------------------- */
 	static int				/* Returns offset to the extension */
 getext (					/* Find the last '.' */
-	char  *p)				/* Ptr to the origin string */
+	const char  *p)			/* Ptr to the origin string */
 
 	{
-	int    length;				/* Length of the origin string */
-	char  *end;					/* Ptr to the end of the src string */
+	int			 length;	/* Length of the origin string */
+	const char  *end;		/* Ptr to the end of the src string */
 
 
 	if ((length = (int)(strlen(p))) == 0)
@@ -113,8 +113,8 @@ getext (					/* Find the last '.' */
 /* ----------------------------------------------------------------------- */
 	static char *		/* Returns ptr to the extension */
 basecopy (				/* String copy src to dst except the extension */
-	char  *dst,			/* Destination string pointer */
-	char  *src)			/* Source string pointer */
+	char		*dst,	/* Destination string pointer */
+	const char  *src)	/* Source string pointer */
 
 	{
 	int  extoffset;		/* Offset to the extension (if any) */
@@ -123,14 +123,14 @@ basecopy (				/* String copy src to dst except the extension */
 	if ((extoffset = getext(src)) > 0)	/* Get the extension offset */
 		strncpy(dst, src, extoffset);	/* Copy the basename */
 	*(dst + extoffset) = '\0';			/* Terminate it */
-	return (src + extoffset);			/* Return ptr to the extension part */
+	return ((char *)(src + extoffset));	/* Return ptr to the extension part */
 	}
 
 /* ----------------------------------------------------------------------- */
 	static int			/* Returns TRUE if the names match */
 namematch (				/* Test two strings for filename match */
-	char  *p,			/* Pattern string (may include wild cards */
-	char  *q)			/* Test string (must not incl wild cards) */
+	const char  *p,		/* Pattern string (may include wild cards */
+	const char	*q)		/* Test string (must not incl wild cards) */
 
 	{
 	while (*p != 0)

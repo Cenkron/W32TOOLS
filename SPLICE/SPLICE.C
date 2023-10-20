@@ -16,7 +16,7 @@
 #include <sys\stat.h>
 
 #include <dtypes.h>
-#include <fwild.h>
+#include <fWild.h>
 #include <getoptns.h>
 
 /* ----------------------------------------------------------------------- */

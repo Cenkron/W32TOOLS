@@ -17,7 +17,7 @@
 #include <sys\stat.h>
 
 #include <dtypes.h>
-#include <fwild.h>
+#include <fWild.h>
 #include <getoptns.h>
 
 /* ----------------------------------------------------------------------- */
@@ -125,6 +125,9 @@ main (
 	void *  hp;
 
 
+	if ((hp = fwOpen()) == NULL)
+		exit(1);
+
 	optdata.pProc[GETOPT_A] = special_options;
 	optdata.pProc[GETOPT_B] = special_options;
 	optdata.pProc[GETOPT_L] = special_options;
@@ -145,11 +148,10 @@ main (
 		do  {
 			char *ap = argv[optind];
 
-			if ((hp = fwinit(ap, smode)) == NULL)	/* Process the input list */
-				fwinitError(ap);
-			if ((fnp = fwild(hp)) == NULL)
+			if (fwInit(hp, ap, smode) != FWERR_NONE)	/* Process the input list */
+				fwInitError(ap);
+			if ((fnp = fWild(hp)) == NULL)
 				{
-				hp = NULL;
 				cantopen(argv[optind]);
 				}
 			else
@@ -162,12 +164,12 @@ main (
 						}
 					else
 						cantopen(fnp);
-					} while ((fnp = fwild(hp)));
-				hp = NULL;
+					} while ((fnp = fWild(hp)));
 				}
 			} while (++optind < argc);
 		}
 
+	hp = fwClose(hp);
 	return (0);
 	}
 

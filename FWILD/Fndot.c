@@ -1,43 +1,36 @@
-/* ----------------------------------------------------------------------- *\
+/* ------------------------------------------------------------------------ *\
 |
-|				    FNDOT
-|			  for Lattice C on the IBM PC
+	|						    FNDOT
+|					  for Lattice C on the IBM PC
 |
-|		    Copyright (c) 1985, 1990, all rights reserved
-|				Brian W Johnson
-|				   26-May-90
-|				    1-Aug-06 Do not reject all ".*"
+|			    	Copyright (c) 1985, 1990, all rights reserved
+|						Brian W Johnson
+|						26-May-90
+|					     1-Aug-06 Do not reject all ".*"
+|						
 |
-|	    int
-|	bool = fndot(s);	Returns TRUE if s is a "." or ".." filename
-|	    char  *s;		Pointer to the [drive:path/]filename
+|	    int				Returns TRUE if s is a "." or ".." filename
+|	fndot(
+|	    char  *s)		Pointer to the [drive:path/]filename
 |
 |	Returns TRUE if s is a pathname whose last component is "." or ".."
 |
-\* ----------------------------------------------------------------------- */
+\* ------------------------------------------------------------------------ */
 
+#include  <stdio.h>
 #include  <string.h>
-#include  "fwild.h"
+
+#include  "fWild.h"
 
 /* ------------------------------------------------------------------------ */
 	int
 fndot (					/* Return TRUE if a dot or dotdot directory name */
-	char  *s)			/* Pointer to the filename string */
+	const char  *s)		/* Pointer to the filespec string */
 
 	{
-	char   ch;
-	char  *p = s;
+	const char  *p = _fntail(s);
 
-	for (p = s; ch = *p; )  /* Point the last component */
-		{
-		++p;
-		if ((ch == ':')
-		||  (ch == '/')
-		||  (ch == '\\'))
-			s = p;
-		}
-
-	return ((strcmp(s, ".") == 0)  ||  (strcmp(s, "..") == 0));
+	return ((strcmp(p, ".") == 0)  ||  (strcmp(p, "..") == 0));
 	}
 
 /* ------------------------------------------------------------------------ */

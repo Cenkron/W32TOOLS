@@ -1,18 +1,23 @@
 /* ----------------------------------------------------------------------- *\
 |
-|				    FNABSPTH
+|					    FNABSPTH
 |
-|		    Copyright (c) 1985, 1990, all rights reserved
-|				Brian W Johnson
-|				   26-May-90
-|				   17-Dec-94
-|				   17-Aug-97
-|				   25-Sep-97 UNC
-|				   10-Sep-23 consistent with new fnreduce
+|			Copyright (c) 1985, 1990, all rights reserved
+|					Brian W Johnson
+|						26-May-90
+|						17-Dec-94
+|						17-Aug-97
+|						25-Sep-97 UNC
+|						10-Sep-23 consistent with new fnreduce
 |
-|	    char *		Return an allocated string
-|	p = fnabspth (s);	Convert a filename to drive:/path/file
-|	    char  *s;		Pointer to the pathname
+|		int						Returns 0 for success, else (-1) if failed
+|	_fnabspth (					Convert a pathspec to absolute format
+|		char		*pDst,		Pointer to caller's destination buffer [MAX_PATH]
+|		const char  *pPath)		Pointer to the source filename string
+|
+|		char *					Returns an allocated string
+|	fnabspth (					Convert a filename to drive:/path/file
+|		const char	*pPath)		Pointer to the source filename string
 |
 |	The fnabspth() returns NULL if fnreduce() reports an error.
 |	The valid return string is allocated, and should be disposed with free()
@@ -27,96 +32,176 @@
 #include  <stdlib.h>
 #include  <string.h>
 
-#include  "fwild.h"
-
-#define	  ispath(ch)	(((ch) == '/') || ((ch) == '\\'))
-
-static	char	path [] = "/";
+#include  "fWild.h"
 
 /* ----------------------------------------------------------------------- */
-	char *
-fnabspth (					/* Convert a filename to absolute format */
-	char  *s)				/* Pointer to the source filename string */
+//	#define TEST	// Define this to include the test main
+//	#define DEBUG	// Define this to include the diagnostics
 
-	{
-	char  *p;				/* Temporary string pointer */
-	char   drive;			/* Drive number (1 => A) */
-	char   temp [1024];		/* Temporary string buffer */
-
-
-	path[0] = strpath(s);		/* Determine the path character */
-
-	if (isalpha(*s) && (*(s + 1) == ':'))
-		{
-		drive = toupper(*s) - ('A' - 1);
-		s += 2;						/* Determine the specified drive number */
-		}
-	else
-		drive = (char)(getdrive());	/* Determine the default drive number */
-
-	if (ispath(*s))					/* If the incoming path begins with '\' */
-		{
-		if (ispath(*(s + 1)))
-			strcpy(temp, s);		/* It is an absolute UNC path */
-		else
-			{
-			temp[0] = drive + ('A' - 1);/* Place the drive letter */
-			temp[1] = ':';			/* Place the ':' */
-			strcpy(&temp[2], s);	/* Use the specified absolute path */
-			}
-		}
-
-	else							/* The path is relative */
-		{
-		getdir(drive, &temp[0]);	/* Use the default directory path... */
-		if (*s)
-			{
-			int  Length = (int)(strlen(temp));
-
-			if ( ! ispath(temp[Length - 1]))
-			strcat(temp, &path[0]);
-			strcat(temp, s);		/* ...plus the relative path */
-			}
-		}
-
-#ifdef TEST
-printf("Before fnreduce: \"%s\"\n", temp);
+#ifdef  TEST
+#define DEBUG
 #endif
 
-	if (fnreduce(&temp[0]) >= 0)	/* Reduce the pathname */
-		{
-		p = fmalloc(MAX_PATH);	/* Build the return string */
-		strcpy(p, &temp[0]);
-		}
-	else // Fatal error	
-		p = NULL;
+#define  NULCH			('\0')
+#define	 isPath(ch)		(((ch) == '/') || ((ch) == '\\'))
+#define	 DriveIndex(ch)	((toupper(ch) - 'A') + 1)
+#define	 DriveLetter(n)	('A' + (n-1))
 
-	return (p);
+static	char   temp [MAX_PATH];		/* Temporary string buffer */
+
+/* ----------------------------------------------------------------------- */
+	static int					// Returns 0 for success, else (-1) if failed
+__fnabspth (					// Convert a pathspec to absolute format
+		  char  *pDst,			// Pointer to the destination buffer [MAX_PATH]
+	const char  *pPath)			// Pointer to the source filename string
+
+	{
+	char		*pTail;			// Pointer to the tail of the pathspec
+	char        *pCWD;			// Pointer to the CWD of the pathspec drive
+	int			drive = 0;		// Drive number, defaulted to default drive
+
+	if (QueryUNCPrefix(pPath))				// If the filespec is UNC,
+		{
+#ifdef DEBUG
+printf("__fnsabs UNC\n");
+#endif
+		strcpy(pDst, pPath);				//   it is absolute by definition
+		return (0);
+		}
+
+	if (pTail = QueryDrivePrefix(pPath))
+		{
+#ifdef DEBUG
+printf("__fnsabs Drv\n");
+#endif
+		if (isRooted())						// If drive prefixed and rooted,
+			{
+			pathCopy(pDst, pPath, MAX_COPY); //  the path is already absolute (with drive)
+			return (0);
+			}
+
+		drive = DriveIndex(*pPath);			// Remember the drive number
+		}
+
+	else if (pTail = QueryRootPrefix(pPath))
+		{	
+#ifdef DEBUG
+printf("__fnsabs Rooted\n");
+#endif
+//printf("\"%s\"\n", pPath);
+		MakePrefixNumber(0, pDst);			// Make a valid rooted drive prefix
+//printf("\"%s\"\n", pDst);
+		pathCat(pDst, pPath, MAX_COPY);		// Add the path body to the path
+//printf("\"%s\"\n", pDst);
+		return (0);
+		}
+
+	else
+		pTail = (char *)(pPath);			// The path IS the tail
+
+	// At this point, we have only the tail of the unrooted path, and the updated drive number
+
+	if ((pCWD = __getDir(drive)) == NULL)	// Get the CWD
+		return (-1);						// Error, apparently not a valid drive
+
+	pathCopy(pDst, pCWD, MAX_COPY);			// Copy the CWD
+	pathCat(pDst, pTail, MAX_COPY);			// Concatenate the path body
+
+	return (0);
+	}
+
+/* ----------------------------------------------------------------------- */
+	int							// Returns 0 for success, else (-1) if failed
+_fnabspth (						// Convert a pathspec to absolute format
+		  char  *pDst,			// Pointer to caller's destination buffer [MAX_PATH]
+	const char  *pPath)			// Pointer to the source filename string
+
+	{
+	int	result;					// The returned result
+
+	if ((pDst == NULL)						// Check for NULL pointers
+	||  (pPath == NULL))
+		return (-1);
+
+#ifdef DEBUG
+printf("_fnsabs Entry     \"%s\"\n", pPath);
+#endif
+
+	if (pDst == pPath)						// Single buffer
+		{
+		pathCopy(temp, pPath, MAX_COPY);	// Copy the src buffer to temp
+		result = __fnabspth(pDst, temp);	// Build the raw pathspec
+
+#ifdef DEBUG
+//printf("_fnsabs A  [%d] \"%s\"\n", result, pDst);
+#endif
+
+		}
+	else									// Separate buffers
+		{
+		result = __fnabspth(pDst, pPath);	// Build the raw pathspec
+
+#ifdef DEBUG
+//printf("_fnsabs B  [%d] \"%s\"\n", result, pDst);
+#endif
+		}
+
+	if (result == 0)						// Reduce the resultant pathspec
+		fnreduce(pDst);
+
+#ifdef DEBUG
+printf("_fnsabs Exit [%d] \"%s\"\n", result, pDst);
+#endif
+
+	return (result);
+	}
+
+/* ----------------------------------------------------------------------- */
+	char *						// Ptr to the returned allocated pathspec
+fnabspth (						// Convert a pathspec to absolute format
+	const char  *pPath)			// Pointer to the source filename string
+
+	{
+	char  *pAbsPath = fmalloc(MAX_PATH);
+
+	if ((pPath == NULL)				// Check the path
+	||  (pAbsPath == NULL))			// (only to make the compiler happy)
+		return (NULL);
+
+#ifdef DEBUG
+printf("fnabspth Entry \"%s\"\n", pPath);
+#endif
+
+	if (_fnabspth(pAbsPath, pPath) != 0) // Build the pathspec
+		{
+		free(pAbsPath);				// Bad filespec
+		return (NULL);
+		}
+		
+#ifdef DEBUG
+printf("fnabspth Exit  \"%s\"\n", pAbsPath);
+#endif
+
+	return (pAbsPath);
 	}
 
 /* ----------------------------------------------------------------------- */
 #ifdef TEST
-void main (
-	argc, argv)		/* Test program */
+main ()					/* Test main program */
 
-	int    argc;
-	char  *argv [];
+	{
+	char  s [1024];
+	int   result;
 
-    {
-    char  *p;
-
-    if (argc > 1)
+	for (;;)
 		{
-		p = *++argv;
-printf("Before fnabspth: \"%s\"\n", p);
-		printf("%s\n", p);
-		p = fnabspth(p);
-printf("After  fnreduce: \"%s\"\n", p);
-		free(p);
+		printf("\nPattern: ");
+		gets(s);
+		printf("\n");
+		result = _fnabspth(s, s);
+		printf("\nResult:  %d      \"%s\"\n\n", result, s);
 		}
-	else
-		printf("No pathname !\n");
-    }
+	}
 #endif
 /* ----------------------------------------------------------------------- */
 /* ----------------------------------------------------------------------- */

@@ -16,7 +16,7 @@
 #include  <string.h>
 #include  <ctype.h>
 
-#include  "fwild.h"
+#include  "fWild.h"
 
 #define  ESC	"\033"
 
@@ -91,6 +91,9 @@ main (
 	void  *hp  = NULL;			// Pointer to the wild file data block
 
 
+	if ((hp = fwOpen()) == NULL)
+		exit(1);
+
 	optenv = getenv("ENV");
 
 	while ((option = getopt(argc, argv, "9?d:D:lLn:N:r:R:")) != EOF)
@@ -157,10 +160,10 @@ main (
 		while (optind < argc)
 			{
 			ap = argv[optind++];
-			hp = finit(ap, smode);		// Process the input list
-			if ((fnp = fwild(hp)) == NULL)
+			if (fwInit(hp, ap, smode) != FWERR_NONE)	// Process the input list
+				fwInitError(ap);
+			if ((fnp = fWild(hp)) == NULL)
 				{
-				hp = NULL;
 				cantopen(ap);
 				}
 			else
@@ -173,8 +176,7 @@ main (
 						}
 					else
 						cantopen(fnp);
-					} while ((fnp = fwild(hp)));
-				hp = NULL;
+					} while ((fnp = fWild(hp)));
 				}
 			}
 		}
@@ -182,13 +184,15 @@ main (
     fflush(prfp);
     fclose(prfp);
     fclose(rafp);
+
+	hp = fwClose(hp);
     }
 
 /* ----------------------------------------------------------------------- *\
 |  process ()  -  Print "copies" envelope(s)
 \* ----------------------------------------------------------------------- */
     void
-process (			// Process one input file
+process (				// Process one input file
     FILE  *fp,			// The FILE pointer
     char  *fnp)			// The file name
 
@@ -200,13 +204,13 @@ process (			// Process one input file
 	printf("Printing: %s\n", fnp);
 
     for (i = 0; i < copies; ++i)
-	{
-	fseek(rafp, 0L, SEEK_SET);	// Rewind the RA file
-	fseek(  fp, 0L, SEEK_SET);	// Rewind the destination file
-	lj_prefix();
-	print_env(fp);
-	lj_suffix();
-	}
+		{
+		fseek(rafp, 0L, SEEK_SET);	// Rewind the RA file
+		fseek(  fp, 0L, SEEK_SET);	// Rewind the destination file
+		lj_prefix();
+		print_env(fp);
+		lj_suffix();
+		}
     }
 
 /* ----------------------------------------------------------------------- *\

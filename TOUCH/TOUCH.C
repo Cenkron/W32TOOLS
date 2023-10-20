@@ -23,7 +23,7 @@
 #include  <time.h>
 #include  <io.h>
 
-#include  "fwild.h"
+#include  "fWild.h"
 
 /* ----------------------------------------------------------------------- */
 
@@ -73,6 +73,8 @@ int	r_flag = FALSE;		/* Read-only flag */
 
 int	exitcode = 0;
 
+PHP		hp = NULL;				// FWILD instance pointer
+PEX		xp = NULL;				// FEX instance pointer
 
 static	void	trycreate (char *);
 static	void	process   (char *, int);
@@ -88,12 +90,16 @@ main (
 	int    smode = FW_FILE;		/* File search mode attributes */
 	time_t t;					/* DATETIME of the file */
 	int    option;				/* Option character */
-	void  *hp   = NULL;			/* Pointer to wild file data block */
 	char  *ap;					/* Argument pointer */
 	char  *fnp  = NULL;			/* Input file name pointer */
 
 static	char   *optstring = "?cCf:F:hHiIlLo:O:qQrRsSt:T:X:y:Y:zZ";
 
+
+	if ((hp = fwOpen()) == NULL)
+		exit(1);
+	if ((xp = fExcludeOpen()) == NULL)
+		exit(1);
 
 	swch   = egetswch();
 	optenv = getenv("TOUCH");
@@ -120,8 +126,8 @@ static	char   *optstring = "?cCf:F:hHiIlLo:O:qQrRsSt:T:X:y:Y:zZ";
 
 			case 'f':
 				++f_flag;
-				touchtime = fgetfdt(optarg);
-				if (touchtime == -1L)
+				if ((fgetfdt(optarg, &touchtime) != 0)
+				|| (touchtime == 0))
 					{
 					exitcode = 1;
 					printf("\7Time file not found - %s\n", fwserrtd());
@@ -130,7 +136,7 @@ static	char   *optstring = "?cCf:F:hHiIlLo:O:qQrRsSt:T:X:y:Y:zZ";
 				break;
 
 			case 'o':
-				if ((oldertime = fwsgettd(optarg)) < 0L)
+				if ((oldertime = fwsgettd(optarg)) == 0)
 					{
 					exitcode = 1;
 					printf("\7Older time - %s\n", fwserrtd());
@@ -151,7 +157,7 @@ static	char   *optstring = "?cCf:F:hHiIlLo:O:qQrRsSt:T:X:y:Y:zZ";
 				break;
 
 			case 't':
-				if ((touchtime = fwsgettd(optarg)) < 0L)
+				if ((touchtime = fwsgettd(optarg)) == 0)
 					{
 					exitcode = 1;
 					printf("\7Touch time - %s\n", fwserrtd());
@@ -166,12 +172,12 @@ printf("option = %c\n", option);
 					usage();
 
 				if      (optarg[0] == '-')
-					fexcludeDefEnable(FALSE);		/* Disable default file exclusion(s) */
+					fExcludeDefEnable(xp, FALSE);	// Disable default file exclusion(s)
 				else if (optarg[0] == '+')
-					fexcludeShowConf(TRUE);			/* Enable stdout of exclusion(s) */
+					fExcludeShowConf(xp, TRUE);		// Enable stdout of exclusion(s)
 				else if (optarg[0] == '=')
-					fexcludeShowExcl(TRUE);			/* Enable stdout of excluded(s) */
-				else if (fexclude(optarg))
+					fExcludeShowExcl(xp, TRUE);		// Enable stdout of excluded path(s)
+				else if (fExclude(xp, optarg))
 					{
 					exitcode = 1;
 					printf("\7Exclusion string fault: \"%s\"\n", optarg);
@@ -180,7 +186,7 @@ printf("option = %c\n", option);
 				break;
 
 			case 'y':
-				if ((youngertime = fwsgettd(optarg)) < 0L)
+				if ((youngertime = fwsgettd(optarg)) == 0)
 					{
 					exitcode = 1;
 					printf("\7Younger time - %s\n", fwserrtd());
@@ -209,18 +215,17 @@ printf("option = %c\n", option);
 	while (optind < argc)
 		{
 		ap = argv[optind++];
-		if ((hp = fwinit(ap, smode)) == NULL)	/* Process the input list */
-			fwinitError(ap);
-		fwExclEnable(hp, TRUE);					/* Enable file exclusion */
-		if ((fnp = fwild(hp)) != NULL)
+		if (fwInit(hp, ap, smode) != FWERR_NONE)	// Process the input list
+			fwInitError(ap);
+		fExcludeConnect(xp, hp);					// Connect the exclusion instance
+		if ((fnp = fWild(hp)) != NULL)
 			{
-			do  {			/* Process one filespec */
+			do  {									// Process one filespec
 				t = fwgetfdt(hp);
 				if (((youngertime == 0L)  ||  (t >= youngertime))
 				&&  ((oldertime   == 0L)  ||  (t <= oldertime)))
 					process(fnp, FALSE);
-				} while (fnp = fwild(hp));
-			hp = NULL;
+				} while (fnp = fWild(hp));
 			}
 		else if (c_flag)
 			trycreate(ap);
@@ -232,6 +237,8 @@ printf("option = %c\n", option);
 			}
 		}
 
+	xp = fExcludeClose(xp);					// Close the Exclusion instance
+	hp = fwClose(hp);						// Close the fWild instance
 	exit (exitcode);
 	}
 
@@ -245,7 +252,7 @@ trycreate (				/* Attempt to create the file */
 
 
 	strupr(fnp);
-	if (iswild(fnp))
+	if (isWild(fnp))
 		{
 		exitcode = 1;
 		printf("\7Unable to create wild filename: %s\n", fnp);

@@ -20,7 +20,7 @@
 #include  <io.h>
 #include  <limits.h>
 
-#include  "fwild.h"
+#include  "fWild.h"
 #include  "ptypes.h"
 
 #ifndef TRUE
@@ -109,6 +109,9 @@ main (
 static	char   *optstring = "?bBd:D:e:E:lLmMs:S:y";
 
 
+	if ((hp = fwOpen()) == NULL)
+		exit(1);
+
 	setbuf(stdout, fmalloc(BUFSIZ));
 	optenv = getenv("DUMP");
 	swch = egetswch();
@@ -176,11 +179,10 @@ static	char   *optstring = "?bBd:D:e:E:lLmMs:S:y";
 	while (optind < argc)
 		{
 		ap = argv[optind++];
-		if ((hp = fwinit(ap, smode)) == NULL)        /* Process the input list */
-			fwinitError(ap);
-		if ((fnp = fwild(hp)) == NULL)
+		if (fwInit(hp, ap, smode) != FWERR_NONE)	// Process the pattern
+			fwInitError(ap);
+		if ((fnp = fWild(hp)) == NULL)
 			{
-			hp = NULL;
 			cantopen(ap);
 			}
 		else
@@ -193,10 +195,11 @@ static	char   *optstring = "?bBd:D:e:E:lLmMs:S:y";
 					}
 				else
 					cantopen(fnp);
-				} while ((fnp = fwild(hp)));
-			hp = NULL;
+				} while ((fnp = fWild(hp)));
 			}
 		}
+
+	hp = fwClose(hp);
 	}
 
 /* ----------------------------------------------------------------------- */

@@ -10,7 +10,7 @@
 #include  <string.h>
 #include  <ctype.h>
 
-#include  "fwild.h"
+#include  "fWild.h"
 #include  "sr_exter.h"
 #include  "greplib.h"
 
@@ -22,6 +22,8 @@ usagedoc [] =
     "",
     "sed (stream editor) replaces a given text pattern in one or more files.",
     "",
+    "-c      Only convert line endings; don't edit the file",
+    "-d      Write ouput files in DOS format, else in (default) unix format",
     "-f      Don't print file names",
     "-g      Not global - replace first occurrence in each line",
     "-k      Keep backup (input.bak) file",
@@ -80,15 +82,20 @@ usagedoc [] =
 
 /* ----------------------------------------------------------------------- */
 
-int             case_flag       = 1;    /* TRUE to preserve case */
-int             debug           = 0;    /* Increment for debug output */
-int             fflag           = 1;
-int             gflag           = 1;
-int             kflag           = 0;
-char            lbuf [LMAX];            /* Line buffer for input  */
-char            llbuf [LMAX];           /* Lower-case line buffer */
-char *          pszReplacement;         /* Replacement string */
-SR_CPAT *       psr_cpat        = NULL;
+int			case_flag       = 1;    /* TRUE to preserve case */
+int			debug           = 0;    /* Increment for debug output */
+int			cflag           = 0;    /* Only convert line endings; don't edit */
+int			dflag           = 0;    /* Output in DOS format, else unix format */
+int			fflag           = 1;
+int			gflag           = 1;
+int			kflag           = 0;
+char		lbuf [LMAX];            /* Line buffer for input  */
+char		llbuf [LMAX];           /* Lower-case line buffer */
+char	   *pszReplacement;         /* Replacement string */
+SR_CPAT	   *psr_cpat        = NULL;
+
+PHP		hp = NULL;				// FWILD instance pointer
+PEX		xp = NULL;				// FEX instance pointer
 
 /* ----------------------------------------------------------------------- */
 
@@ -105,14 +112,20 @@ char *  MakeBakName     (char *fnp);
 main (
     int    argc,
     char  *argv [])
+
     {
-static char *   optstring = "?fFgGkKmMsSvVX:";
+static char *   optstring = "?cCdDfFgGkKmMsSvVX:";
     char *      ap;                     /* Argument pointer */
     char *      fnp   = NULL;           /* Input file name pointer */
-    void *      hp    = NULL;           /* Pointer to wild file data block */
     int         option;                 /* Option character */
     char *      pszPattern;             /* Pointer to regular expression */
     int         smode = FW_FILE;        /* File search mode attributes */
+
+
+	if ((hp = fwOpen()) == NULL)
+		exit(1);
+	if ((xp = fExcludeOpen()) == NULL)
+		exit(1);
 
     optenv = getenv("SED");
 
@@ -128,6 +141,8 @@ static char *   optstring = "?fFgGkKmMsSvVX:";
                 Sr_shortmatch = !Sr_shortmatch;
                 break;
 
+            case 'c':           cflag = !cflag;         break;
+            case 'd':           dflag = !dflag;         break;
             case 'f':           fflag = !fflag;         break;
             case 'g':           gflag = !gflag;         break;
             case 'k':           kflag = !kflag;         break;
@@ -138,10 +153,12 @@ static char *   optstring = "?fFgGkKmMsSvVX:";
 					usage();
 
 				if (optarg[0] == '-')
-					fexcludeDefEnable(FALSE);		/* Disable default file exclusion(s) */
+					fExcludeDefEnable(xp, FALSE);	// Disable default file exclusion(s)
 				else if (optarg[0] == '+')
-					fexcludeShowConf(TRUE);			/* Enable stdout of exclusion(s) */
-				else if (fexclude(optarg))
+					fExcludeShowConf(xp, TRUE);		// Enable stdout of exclusion(s)
+				else if (optarg[0] == '=')
+					fExcludeShowExcl(xp, TRUE);		// Enable stdout of excluded path(s)
+				else if (fExclude(xp, optarg))
                     {
                     printf("Exclusion string fault: \"%s\"\n", optarg);
                     usage();
@@ -156,33 +173,36 @@ static char *   optstring = "?fFgGkKmMsSvVX:";
             }
         }
 
-    if (optind >= argc)
-        {
-        printf("Search pattern missing\n");
-        usage();
-        }
-    else
-        {
-        pszPattern = argv[optind++];
-        if (!case_flag)
-            strlwr(pszPattern);
-        psr_cpat = sr_compile(precompile(pszPattern));
+	if (! cflag)	// Don't need patterns for only LE conversion
+		{
+		if (optind >= argc)
+			{
+			printf("Search pattern missing\n");
+			usage();
+			}
+		else
+			{
+			pszPattern = argv[optind++];
+			if (!case_flag)
+				strlwr(pszPattern);
+			psr_cpat = sr_compile(precompile(pszPattern));
         
-        if (debug >= 3)
-            fprintf(stderr, "Raw Pattern: '%s'\n", pszPattern);
-        if (debug >= 2)
-            fprintf(stderr, "Use Pattern: '%s'\n", precompile(pszPattern));
-        }
+			if (debug >= 3)
+				fprintf(stderr, "Raw Pattern: '%s'\n", pszPattern);
+			if (debug >= 2)
+				fprintf(stderr, "Use Pattern: '%s'\n", precompile(pszPattern));
+			}
 
-    if (optind >= argc)
-        {
-        printf("Replace pattern missing\n");
-        usage();
-        }
-    else
-        {
-        pszReplacement = argv[optind++];
-        }
+		if (optind >= argc)
+			{
+			printf("Replace pattern missing\n");
+			usage();
+			}
+		else
+			{
+			pszReplacement = argv[optind++];
+			}
+		}
 
     if (optind >= argc)
         {
@@ -194,24 +214,24 @@ static char *   optstring = "?fFgGkKmMsSvVX:";
         while (optind < argc)
             {
             ap = argv[optind++];
-            if ((hp = fwinit(ap, smode)) == NULL)	/* Process the input list */
-                fwinitError(ap);
-			fwExclEnable(hp, TRUE);					/* Enable file exclusion */
-            if ((fnp = fwild(hp)) == NULL)
+			if (fwInit(hp, ap, smode) != FWERR_NONE)	// Process the input list
+                fwInitError(ap);
+			fExcludeConnect(xp, hp);					// Connect the exclusion instance
+            if ((fnp = fWild(hp)) == NULL)
 				{
-				hp = NULL;
                 cantopen(ap);
 				}
             else
                 {
-                do  {                           	/* Process one filespec */
+                do  {                           		// Process one filespec
                     process(fnp);
-                    } while ((fnp = fwild(hp)));
-				hp = NULL;
+                    } while ((fnp = fWild(hp)));
                 }
             }
         }
 
+	xp = fExcludeClose(xp);					// Close the Exclusion instance
+	hp = fwClose(hp);						// Close the fWild instance
     exit(0);
     }
 
@@ -225,6 +245,8 @@ process (char *fnp)
     FILE *      fpOut   = NULL;
     char *      fnpBak  = NULL;
 
+	char *mode = (dflag ? "w" : "wb");
+
     if ((fnpBak=MakeBakName(fnp)) == NULL)
         fatalerr("Can't make bak name\n");
     
@@ -236,7 +258,7 @@ process (char *fnp)
     if ((fpIn=fopen(fnpBak, "r")) == NULL)
         fatalerr("Can't open input (bak) file\n");
     
-    if ((fpOut=fopen(fnp, "w")) == NULL)
+    if ((fpOut=fopen(fnp, mode)) == NULL)
         fatalerr("Can't open output file\n");
 
     sed(fpIn, fnp, fpOut);
@@ -264,11 +286,14 @@ sed (                           /* Scan the file for the pattern */
 	if (debug >= 3)
 	    printf("INPUT:  %s\n", lbuf);
 
-        /* Do the search/replace on the line */
-	if (gflag)
-	    m = sr_csrg(lbuf, psr_cpat, pszReplacement);
-	else
-	    m = sr_csr(lbuf, psr_cpat, pszReplacement);
+	if (! cflag)
+		{
+		/* Do the search/replace on the line */
+		if (gflag)
+			m = sr_csrg(lbuf, psr_cpat, pszReplacement);
+		else
+			m = sr_csr(lbuf, psr_cpat, pszReplacement);
+		}
 
 	if (debug >= 3)
 	    printf("OUTPUT: %s\n", lbuf);

@@ -15,7 +15,7 @@
 #include <io.h>
 
 #include <dtypes.h>
-#include <fwild.h>
+#include <fWild.h>
 
 #include "xcopy.h"
 #include "more_lib.h"
@@ -91,7 +91,7 @@ usagedoc [] = {
 	"-n        /n/o execute - just report what would be done",
 	"-o        copy only if source is /o/lder than destination",
 	"-Odt      copy only if source is /O/lder than 'dt'",
-	"-p        /p/rotect destination: rename, copy, erase original if good copy",
+	"-p        /p/rotect destination: rename, copy, erase original if copy good",
 	"-P        /P/redelete the destination file",
 	"-q        /q/uery stdin for each source file before copying",
 	"-Q        /Q/uery kbd for each source file before copying",
@@ -128,17 +128,27 @@ PRIVATE void    filepair (char *s1, char *s2);
 
 A_Z_FLAGS       AZ_Flags             = {0};
 A_Z_FLAGS       azFlags              = {0};
+int				v_flag				 = 0;
 unsigned int    bsize                = 0;
 time_t          timedelta            = 0L;	/* Timestamp compare correction */
 char *          buffer               = NULL;
 int             cols                 = 40;
-INT64           filesize             = 0;
+UINT64          filesize             = 0;
 int             mode                 = 0;
 time_t          o_time               = 0L;
 char            path_char            = 0;
 char            temp_name [MAX_PATH] = "";
 time_t          y_time               = 0L;
 int				copy_rename		     = 0;	// Enables direct copy and rename option
+
+PHP		hp = NULL;				// FWILD instance pointer
+PEX		xp = NULL;				// FEX instance pointer
+
+static char			src  	[MAX_PATH];	// src file/pathspec to filepair()
+static char			dst  	[MAX_PATH];	// dst file/pathspec to filepair()
+static char			temp 	[MAX_PATH];	// for error messages
+static char			dstName	[MAX_PATH];	// for building the destination filename
+static char			effPath [MAX_PATH];	// for the dst ref path in process()
 
 /* ----------------------------------------------------------------------- */
 
@@ -150,9 +160,13 @@ main (
 
 	{
 	int         c;
-	int         lastarg;
-	char *      dst;
-	char        src [1024];
+	int         nargs;
+
+
+	if ((hp = fwOpen()) == NULL)
+		exit(1);
+	if ((xp = fExcludeOpen()) == NULL)
+ 		exit(1);
 
 	optenv = getenv("XC");
 
@@ -191,18 +205,21 @@ main (
 			case 'u': azFlags.u  = !azFlags.u;  break;	/* if archive bit    */
 			case 'U': AZ_Flags.u = !AZ_Flags.u; break;	/* Unix output mode  */
 			case 'v': azFlags.v  = !azFlags.v;  break;	/* verify            */
-			case 'V': AZ_Flags.v = !AZ_Flags.v; break;	/* Verbose output    */
 			case 'w': azFlags.w  = !azFlags.w;  break;	/* Quiet if no files */
 			case 'x': azFlags.x  = !azFlags.x;  break;	/* exit on first error */
 
+			// Options that are treated differently
+
+			case 'V':	++v_flag;				break;	// Verbose output
+
 			case 'X':									/* exclude ... */
 				if      (optarg[0] == '-')
-					fexcludeDefEnable(FALSE);		/* Disable default file exclusion(s) */
+					fExcludeDefEnable(xp, FALSE);		/* Disable default file exclusion(s) */
 				else if (optarg[0] == '+')
-					fexcludeShowConf(TRUE);			/* Enable stdout of exclusion(s) */
+					fExcludeShowConf(xp, TRUE);			/* Enable stdout of exclusion(s) */
 				else if (optarg[0] == '=')
-					fexcludeShowExcl(TRUE);			/* Enable stdout of excluded path(s) */
-				else if (fexclude(optarg))
+					fExcludeShowExcl(xp, TRUE);			/* Enable stdout of excluded path(s) */
+				else if (fExclude(xp, optarg))
 					break;
 
 			case 'y': azFlags.y  = !azFlags.y;  break;	/* if younger        */
@@ -213,20 +230,20 @@ main (
 				break;
     
 			case 'O':									/* copy only if source is /O/lder than 'dt' */
-				if ((o_time=sgettd(optarg)) < 0)
+				if ((o_time=sgettd(optarg)) == 0)
 					{
-					sprintf(src, "Date-time %s error %s", optarg, serrtd());
-					fatal(src);
+					sprintf(temp, "Date-time %s error %s", optarg, serrtd());
+					fatal(temp);
 					}
 				else
 					++AZ_Flags.o;
 				break;
     
 			case 'Y':									/* copy only if source is /Y/ounger than 'dt' */
-				if ((y_time=sgettd(optarg)) < 0)
+				if ((y_time=sgettd(optarg)) == 0)
 					{
-					sprintf(src, "Date-time %s error %s", optarg, serrtd());
-					fatal(src);
+					sprintf(temp, "Date-time %s error %s", optarg, serrtd());
+					fatal(temp);
 					}
 				else
 					++AZ_Flags.y;
@@ -240,6 +257,9 @@ main (
 				fprintf(stderr, "invalid option '%c'\n", optchar);
 				usage();
 			}
+
+	if (v_flag)
+		printf("Verbose is %d\n", v_flag);
 
 	if (azFlags.s)
 		mode |= FW_SYSTEM;              /* even system files */
@@ -257,143 +277,160 @@ main (
 	&&  ((c=getcols()) > 80))
 		cols = c / 2;
 
-	if (optind < argc)
+	nargs = argc - optind;
+	if (nargs < 1)
+		fatal("At least one pathname is required");
+	if (nargs > 2)
+		fatal("Only two pathnames are allowed");
+
+	pathCopy(src, argv[optind++], MAX_COPY);	// Load the filename buffers
+	if (nargs == 2)
+		pathCopy(dst, argv[optind], MAX_COPY);
+	else // (nargs == 1)
+		strcpy(dst, "");
+//BWJ
+//	if (strcmp(src, ".") == 0)			// Change "." to "*"
+//		*src = '*';
+
+//BWJ - no longer needed  (see shcopy.c)
+//	if ((_fnabspth(dst, dst)) != 0)
+//		fatal("dst pathspec error");
+
+	if ((! isPhysical(src))
+	||  (fwValid(src) != FWERR_NONE))
+		fatal("Invalid source file/path specification");
+
+	if ((! isPhysical(dst))
+	||  (fwValid(dst) != FWERR_NONE))
+		fatal("Invalid destination file/path specification");
+
+	if (isWild(dst))
+		fatal("Destination cannot be wild");
+	if (pnOverlap(src, dst))
+		fatal("Source, destination overlap");
+
+	// if src is an existing file, and dst could be a valid filename after copying
+	// then treat it as a file copy with rename of the dst name
+
+	if (v_flag)
 		{
-		if (optind == (argc-1))
-			{
-			dst = ".";
-			lastarg = argc;
-			}
-		else
-			{
-			dst = argv[argc-1];
-			lastarg = argc-1;
-			}
-
-		if (fwvalid(dst) != FWERR_NONE)
-			fatal("Invalid destination path specification");
-		else if (fnchkfil(dst))
-			fatal("Destination cannot be an existing file");
-		else if (iswild(dst))
-			fatal("Cannot have wildcards in the destination");
-
-		if ((dst = fnabspth(dst)) == NULL)
-			fatal("dst pathspec error");
-
-		while (optind < lastarg)
-			{
-			strcpy(src, argv[optind]);
-
-			// if src is a file, and dst could be a valid filename after copying
-			// then treat it as a file copy with rename of the dst name
-
-			if (fnchkfil(src)
-			&&  !iswild(dst)
-			&&  !fnchkfil(dst)
-			&&  !fnchkdir(dst)
-			&&  fnValidName(dst))
-				copy_rename	= TRUE;
-
-			else if (fwvalid(src) != FWERR_NONE)
-				fatal("Invalid source file specification");
-
-			filepair(src, dst);
-
-			++optind;
-			}
-		free(dst);
+		printf("XC Src path:  \"%s\"\n", src);
+		printf("XC Dst path:  \"%s\"\n", dst);
 		}
 
-	else if (optind == (argc-1))
-		fatal("Must specify destination pathname");
+	// Handle the single file copy and rename case
 
-	else
-		usage();
+	if ((fnchkfil(src))
+	&&  (! fnchkdir(dst))
+	&&  (fnValidName(dst)))
+		{
+		if (v_flag)
+			printf("Doing a copy-rename to:  \"%s\"\n", dst);
+		copy_rename	= TRUE;
+		}
 
-	return(0);
+	else if (fnchkfil(dst) != FWERR_NONE)
+		fatal("Destination cannot be an existing file");
+
+	if (v_flag)
+		printf("Doing a normal copy to:  \"%s\"\n", dst);
+
+	filepair(src, dst);
+
+	xp = fExcludeClose(xp);					// Close the Exclusion instance
+	hp = fwClose(hp);
+	return (0);
 	}
 
 /* ----------------------------------------------------------------------- */
 
 /* ----------------------------------------------------------------------- */
-// doFileCopy ()
-/* ----------------------------------------------------------------------- */
-	static void
-directCopy (
-	char *src,				// Src pathname
-	char *dst)				// Dst pathname
-
-	{
-	copy(src, dst, "");
-	}
-
-/* ----------------------------------------------------------------------- */
 // filepair ()
 /* ----------------------------------------------------------------------- */
 	void
 filepair(     				/* Process the pathname pairs */
-	char* s1,				/* Pointer to the pathname1 string */
-	char* dstpath)			/* Pointer to the pathname2 string */
+	char *pSrcPath,			/* Pointer to the pathname1 string */
+	char *pDstPath)			/* Pointer to the pathname2 string */
 
 	{
 	int   CatIndex;			/* Concatenation index of the path */
 	int   TermIndex;		/* Termination index of the path (not used here) */
-	char* srcname;          /* Pointer to the path1 pathname */
-	char* dstname;          /* Pointer to the path2 pathname */
-	void* hp;				/* FWILD object pointer */
+	char *pSrcName;         /* Pointer to the path1 filename */
+	char *pDstName;         /* Pointer to the path2 filename */
+	char *pDstEffPath;		/* Pointer to the path2 pathname */
 
-	if (fnParse(s1, &CatIndex, &TermIndex) < 0)	/* Set pointer to construct path2 */
+	if (v_flag > 3)
+		{	
+printf("FP srcp: \"%s\"\n", pSrcPath);
+printf("FP dstp: \"%s\"\n", pDstPath);
+		}
+	if (fnParse(pSrcPath, &CatIndex, &TermIndex) < 0)	/* Set pointer to construct path2 */
 		fatal("src pathspec error");
 
-	if (fnreduce(dstpath) < 0)
-		fatal("dst pathspec error");
+	fnreduce(pDstPath);
 
-	if ((hp = fwinit(s1, mode)) == NULL)	/* Find the first path1 file */
-		fwinitError(s1);
-	fwExclEnable(hp, TRUE);					/* Enable file exclusion */
-	if ((srcname = fwild(hp)) == NULL)		/* Process files */
+	if (fwInit(hp, pSrcPath, mode) != FWERR_NONE)	// Process the pattern
+		fwInitError(pSrcPath);
+	fExcludeConnect(xp, hp);						// Connect the exclusion instance
+	if ((pSrcName = fWild(hp)) == NULL)				// Process files
 		{
-		hp = NULL;
-		notfound(s1);
+		notfound(pSrcPath);
 		}
 	else
 		{
-		do	{			/* Process all path1 files */
+		do	{			/* Process all srcPath files */
 			filesize = (__int64)(fwsize(hp));
 
-//printf("srcn: \"%s\"\n", srcname);
-//printf("dstp: \"%s\"\n", dstpath);
-//printf("tail:\"%s\"\n", fntail(srcname));
-//printf("ndx: \"%s\"\n", (srcname + CatIndex));
-//fflush(stdout);
+			if (copy_rename)	// For this case, pDstPath is actually the dst filename
+				{
+				pDstName = pDstPath;					// Use the dst path as the filename
+				int result = fnGetPath(effPath, pDstPath);		// Manufacture the dst path
+				if (! result)
+					fatal("dst pathspec error 1");
+				pDstEffPath = effPath;
+				}
 
-			if (copy_rename)
-				copy(srcname, dstpath, "");
-
+			else if (azFlags.f)	// For the remaining two cases, pDstPath is a dst directory
+				{
+				pDstName = dstName;
+				if ((_fncatpth(pDstName, pDstPath, fntail(pSrcName))) != 0)
+					fatal("dst pathspec error 2");
+				pDstEffPath = pDstPath;
+				}
 			else
 				{
-				if (azFlags.f)
+				pDstName = dstName;
+				if (v_flag > 3)
 					{
-					if ((dstname = fncatpth(dstpath, fntail(srcname))) == NULL)
-						fatal("dst pathspec error 1");
+printf("-pDstName  \"%s\"\n", pDstName);
+printf("-pSrcPath  \"%s\"\n", pDstPath);
+printf("-pSrcName  \"%s\"\n", pSrcName);
+printf("-[%d]       \"%s\"\n", CatIndex, (pSrcName + CatIndex));
 					}
-				
-				else
-					{
-
-					if ((dstname = fncatpth(dstpath, (srcname + CatIndex))) == NULL)
-						fatal("dst pathspec error 2");
-					}	
-//printf("dstn: \"%s\"\n", dstname);
-//fflush(stdout);
-				process(srcname, hp, dstname, dstpath);
-				free(dstname);
+				if ((_fncatpth(pDstName, pDstPath, (pSrcName + CatIndex))) != 0)
+					fatal("dst pathspec error 3");
+				pDstEffPath = pDstPath;
 				}
-			} while ((srcname = fwild(hp)) != NULL);
-		hp = NULL;
+
+			if (v_flag > 3)
+				{	
+printf("FP1 srcn: \"%s\"\n", pSrcName);
+printf("FP1 dstn: \"%s\"\n", pDstName);
+printf("FP1 EP:   \"%s\"\n", pDstEffPath);
+fflush(stdout);
+				}
+
+			process(hp, pSrcName, pDstName, pDstEffPath);
+
+			} while ((pSrcName = fWild(hp)) != NULL);
+
 		}
-//printf("done\n");
-//fflush(stdout);
+
+	if (v_flag)
+		{
+printf("done\n");
+fflush(stdout);
+		}
 	}
 
 /**********************************************************************\

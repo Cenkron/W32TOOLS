@@ -30,7 +30,7 @@
 #include  <io.h>
 #include  <direct.h>
 
-#include  "fwild.h"
+#include  "fWild.h"
 
 /* ----------------------------------------------------------------------- */
 
@@ -53,9 +53,7 @@ pathmake (
 		return (FALSE);
 
 	strsetp(pTemp, PATHCH);				// Standardize the path characters
-	p = PointPastPrefix(pTemp, TRUE);	// Skip over any prefix, single mode
-	if (*p == PATHCH)					// Skip past any root separator
-		++p;
+	p = PointPastPrefix(pTemp);			// Skip over any prefix, include root sep
 
 	// For each path element,
 	// verify that the directory exists, or try to create it
@@ -83,21 +81,3 @@ pathmake (
 
 /* ----------------------------------------------------------------------- */
 /* ----------------------------------------------------------------------- */
-
-	do  {
-		if ((p = strpbrk(p, "\\")) != NULL)	// Find the next path separator
-			{
-//printf("\npathmake: (%d) \"%s\"  \"%d\"\n", count, pTemp, (p - pTemp));
-			if (p)
-				*p = '\0';					// Truncate the path
-			fail  = ((! fnchkdir(pTemp))	// Accept existing directory, or
-				 &&  (mkdir(pTemp) != 0))	// Make missing directory
-			if (p)
-				*p = PATHCH;				// Replace the path separator
-			}
-		} while ((! fail) && (p != NULL); // do-while
-
-	if (pTemp)
-		free(pTemp);
-	return  (result);
-	}

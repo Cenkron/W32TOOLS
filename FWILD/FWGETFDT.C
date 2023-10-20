@@ -11,8 +11,8 @@
 |				   19-Aug-97
 |
 |	    time_t		Return the UNIX timedate
-|	dt = fwgetfdt(	Get the timedate of the current fwild file
-|	    void *hp)	Pointer to the fwild header
+|	dt = fwgetfdt(	Get the timedate of the current fWild file
+|	    void *hp)	Pointer to the fWild header
 |
 \* ----------------------------------------------------------------------- */
 
@@ -20,15 +20,15 @@
 
 #define  FWILD_INTERNAL
 
-#include  "fwild.h"
+#include  "fWild.h"
 
 /* ------------------------------------------------------------------------ */
-	time_t				/* Return the UNIX timedate word */
-fwgetfdt (hp)			/* Get the UNIX timedate of the current file */
-	DTA_HDR  *hp;		/* Pointer to the DTA header */
+	time_t				// Return the UNIX timedate word, or 0 if error
+fwgetfdt (hp)			// Get the UNIX timedate of the current file
+	FW_HDR  *hp;		// Pointer to the DTA header
 
 	{
-	return (hp->pLink->fdt);
+	return  (fwActive(hp) ? (hp->file_fdt) : ((time_t)(0)));
 	}
 
 /* ------------------------------------------------------------------------ */

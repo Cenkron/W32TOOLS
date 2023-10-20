@@ -1,7 +1,7 @@
 #include "stdio.h"
 #include "ctype.h"
 
-#include "fwild.h"
+#include "fWild.h"
 
 
 	void
@@ -18,7 +18,7 @@ main (
 	else
 		path = *++argv;
 
-	if (p = vol_name(path))
+	if (p = volName(path))
 		printf("Volume name is \"%s\"\n", p);
 	else
 		printf("The volume is unnamed\n");

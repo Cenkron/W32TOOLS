@@ -11,7 +11,7 @@
 #include  <stdio.h>
 #include  <stdlib.h>
 
-#include  "fwild.h"
+#include  "fWild.h"
 
 /* ----------------------------------------------------------------------- */
 	void

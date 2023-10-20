@@ -33,7 +33,7 @@
 #include  <stdlib.h>
 #include  <string.h>
 #include  <fcntl.h>
-#include  <fwild.h>
+#include  <fWild.h>
 
 /* ----------------------------------------------------------------------- *\
 |  Private variables
@@ -54,7 +54,7 @@ static  time_t    td_in_file  (char *s);
 /* ----------------------------------------------------------------------- *\
 |  fwsgettd () - Parse a string to a UNIX time - Use file extensions
 \* ----------------------------------------------------------------------- */
-	time_t				/* Return the UNIX timedate, or -1L if err */
+	time_t				/* Return the UNIX timedate, or 0 if error */
 fwsgettd (
 	char  *s)   		/* Pointer to the time/date string or filename */
 
@@ -80,46 +80,40 @@ fwsgettd (
 /* ----------------------------------------------------------------------- *\
 |  td_of_file () - Return the timedate OF the specified file
 \* ----------------------------------------------------------------------- */
-	static time_t
+	static time_t		// Returns file fdt, or 0 if error
 td_of_file (
 	char  *s)   		/* Pointer to the time/date search filename */
 
 	{
-	time_t timedate = -1L;	/* The returned result */
-	char  *p;				/* Pointer to the found filename */
-
-
-	if ((p = fwfirst(s)) == NULL)
-		sprintf(buffer, nofind, s);
-	else
+	time_t	fdt = 0;	/* The returned result */
+	
+	if ((s == NULL) || (fgetfdt(s, &fdt) != 0))
 		{
-		timedate  = fgetfdt(p);
-		buffer[0] = '\0';
+		sprintf(buffer, nofind, s);
+		return (0);
 		}
 
-	return (timedate);
+	buffer[0] = '\0';			/* No error from here */
+	return (fdt);
 	}
 
 /* ----------------------------------------------------------------------- *\
 |  td_in_file () - Return the timedate IN the specified file
 \* ----------------------------------------------------------------------- */
-	static time_t
+	static time_t		// Returns fdt from file, or 0 if error
 td_in_file (
-	char  *s)				/* Pointer to the time/date search filename */
+	char  *s)			/* Pointer to the time/date search filename */
 
 	{
-	time_t   timedate = -1L;	/* The returned result */
-	char  *p;					/* Pointer to the found filename */
 	FILE  *fp;                  /* Pointer to the opened FILE structure */
+	time_t   timedate = -1L;	/* The returned result */
 
-
-	if (((p  = fwfirst(s))    == NULL)
-	||  ((fp = fopen(p, "r")) == NULL))
+	if ((s == NULL) || ((fp = fopen(s, "r")) == NULL))
 		sprintf(buffer, nofind, s);
 	else
 		{
 		if (fgets(buffer, sizeof(buffer), fp) == NULL)
-			sprintf(buffer, noread, p);
+			sprintf(buffer, noread, s);
 		else
 			{
 			timedate  = sgettd(strtok(buffer, " \t"));

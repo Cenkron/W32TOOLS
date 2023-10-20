@@ -13,18 +13,18 @@
 #include  <sys\types.h>
 #include  <sys\stat.h>
 
-#include  "fwild.h"
+#include  "fWild.h"
 
 
-#define	DATASIZE	16384		/* Size of the file copy buffer */
+#define	DATASIZE	(1000000)	/* Size of the file copy buffer */
 
 static	char	cbuffer [DATASIZE];
 
 /* ----------------------------------------------------------------------- */
 	int
 fcopy (					/* Copy one file from fnp1 to fnp2 */
-	char  *fnp1,		/* Input file name 1 */ 
-	char  *fnp2,		/* Output file name 2 */ 
+	const char  *fnp1,	/* Input file name 1 */
+	const char  *fnp2,	/* Output file name 2 */
 	int    flags)		/* Control flags (FCF_xxxx) */
 
 	{
@@ -93,7 +93,7 @@ exit1:
 
 	if ((result == FCR_SUCCESS)  &&  (flags & FCF_FDT))
 		{
-		if ((dt = fgetfdt(fnp1)) < 0L)		/* Duplicate the date/time */
+		if ((fgetfdt(fnp1, &dt)) != 0)		/* Duplicate the date/time */
 			result = FCR_GFDT;
 		else if (fsetfdt(fnp2, dt))
 			result = FCR_SFDT;

@@ -31,11 +31,10 @@
 #include  <io.h>
 #include  <direct.h>
 
-#include  "fwild.h"
+#include  "fWild.h"
 
 // ---------------------------------------------------------------------------
-
-//#define DEBUG	// Define this for debug output
+//	#define DEBUG	// Define this for debug output
 
 // ---------------------------------------------------------------------------
 	int
@@ -52,6 +51,13 @@ pcreat (					// Build path and creat() a file
 		{
 		if (((fd = _creat(pFileSpec, perm)) >= 0) || finished++)
 			break;			// File successfully opened
+
+		// Check and reset possible FW_HIDDEN attribute because
+		// _creat() apparently fails for hidden existing file
+
+		int attr = fgetattr(pFileSpec);
+		if ((attr >= 0)  &&  (attr & FW_HIDDEN))
+			fsetattr(pFileSpec, (attr &= ~_A_HIDDEN));
 
 #ifdef DEBUG
 printf("\npcreat retry: \"%s\"\n", pFileSpec);

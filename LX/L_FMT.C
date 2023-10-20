@@ -11,6 +11,7 @@
 |								   22-Mar-98  QuoteFlag added
 |								   25-Sep-01  Support for huge directories
 |								   27-Sep-07  Support for 64 bit file sizes
+|								    6-Oct-23  Support for major revisions
 |
 \* ----------------------------------------------------------------------- */
 
@@ -20,12 +21,14 @@
 #include  "stdlib.h"
 #include  "string.h"
 #include  "time.h"
-#include  "fwild.h"
+#include  "fWild.h"
 #include  "ptypes.h"
 
 /* ----------------------------------------------------------------------- *\
 |  Private definitions
 \* ----------------------------------------------------------------------- */
+
+#define  DEPTH	// Temporary extension for testing depth data
 
 #define	 LINEMAX	(1025)				/* The size of the line buffer */
 #define	 LFSIZE		   (7)				/* The length field default size */
@@ -45,17 +48,20 @@
 
 extern	void   *hp;						/* Pointer to the wild name data block */
 
-extern	int		h_flag;					/* List in hexadecimal flag */
+extern	int		b_flag;					/* List length in hexadecimal flag */
 extern	int		l_flag;					/* Lower case flag */
 extern	int		m_flag;					/* List in "more" mode flag */
 extern	int		p_flag;					/* List parameters flag */
 extern	int		u_flag;					/* Upper case flag */
 extern	int		w_flag;					/* Wide listing mode flag */
 extern	int		QuoteFlag;				/* Quote filenames with spaces */
+extern	int		rawTimeFlag;			/* Show time/date as raw time */
 
 extern	int		namesize;				/* The name field length */
 extern	int		colsize;				/* The number of display columns */
 extern	int		rowsize;				/* The number of display rows */
+
+extern	int		verbose;				/* Show verbose output */
 
 /* ----------------------------------------------------------------------- *\
 |  Private variables
@@ -78,13 +84,17 @@ static	char	line [LINEMAX];			/* The line buffer */
 static	char	lineformat [FMTMAX + 1] =  /* The P-on line format array */
 					{ SHOW_PATH, SHOW_SIZE, SHOW_TIME, SHOW_ATTR, 0 };
 
-static	char	nameformat [2] =		   /* The P-off line format array */
+static	char	nameformat [2] =		/* The P-off line format array */
 					{ SHOW_PATH, 0 };
+
+static	char   *pPath = NULL;			/* Pointer to the filespec */
 
 /* ----------------------------------------------------------------------- *\
 |  Private and external function prototypes
 \* ----------------------------------------------------------------------- */
 
+extern	void	fdpr_init		(void);
+extern	void	fdpr			(void);
 static	void	fdpr_normal		(char *fnp, int attr, UINT64 size);
 static	void	fdpr_wide		(char *fnp, int attr);
 
@@ -100,7 +110,7 @@ extern	void	delay			(void);
 |  Initialize to print the directory
 \* ----------------------------------------------------------------------- */
 	void
-fdpr_init ()			/* Initialize for printing file/directory lines */
+fdpr_init (void)		/* Initialize for printing file/directory lines */
 
 	{
 	spaces	 = 0;
@@ -112,7 +122,7 @@ fdpr_init ()			/* Initialize for printing file/directory lines */
 
 	if (lineformat[0] == SHOW_SIZE)		/* Set the length field size */
 		{
-		if (h_flag)
+		if (b_flag)
 			lmin_size = 8;
 		else
 			lmin_size = 11;
@@ -123,12 +133,15 @@ fdpr_init ()			/* Initialize for printing file/directory lines */
 |  Print one file/directory name
 \* ----------------------------------------------------------------------- */
 	void
-fdpr (
-	char   *fnp,		/* Pointer to the filename */
-	int		attr,		/* File attributes */
-	UINT64	size)		/* Size of the file */
-
+fdpr (void)
+	
 	{
+	char   *fnp  = fwLastFound(hp);	/* Pointer to the filename */
+	int		attr = fwtype(hp);		/* File attributes */
+	UINT64	size = fwsize(hp);		/* Size of the file */
+
+	pPath = fnp;
+	
 	if (l_flag)
 		strlwr(fnp);			/* Convert path/filename to lower case */
 	else if (u_flag)
@@ -155,7 +168,7 @@ fdpr (
 |  Complete the directory listing (used mostly for wide mode)
 \* ----------------------------------------------------------------------- */
 	void
-fdpr_complete ()		/* Complete printing file/directory lines */
+fdpr_complete (void)	/* Complete printing file/directory lines */
 
 	{
 	if (lineopen)
@@ -248,6 +261,14 @@ fdpr_normal (			/* Print a file/directory name in normal mode */
 		pline = ptrim;
 		}
 
+#ifdef DEPTH
+	if (verbose > 0)
+		{
+		sprintf(pline, "  [%d]", fwdepth(hp));
+		pline += strlen(pline);
+		}
+#endif
+
 	*(pline++) = '\n';					/* Terminate and output the line */
 	*pline	   = '\0';
 	fputs(line, stdout);
@@ -288,7 +309,7 @@ put_name (				/* Print a file/directory name in normal mode */
 	pline += length;
 	if (Quotes)
 		*(pline++) = '\"';
-	available = (namesize - (length + Quotes));
+	available = namesize - (length + Quotes);
 	delta	  = max(0, available);
 	}
 
@@ -305,10 +326,10 @@ put_size (				/* Print a file/directory size in normal mode */
 	char   buffer [33];
 
 
-	if (attr & ATT_SUBD)
+	if (attr & ATT_DIR)
 		p = "<DIR> ";
 
-	else if (h_flag)
+	else if (b_flag)
 		sprintf(p = buffer, "%I64X", size);
 
 	else /* Decimal mode */
@@ -327,8 +348,18 @@ put_size (				/* Print a file/directory size in normal mode */
 put_time (void)			/* Print a file/directory date/time in normal mode */
 
 	{
-	sprintf(pline, "%9s  %6s", fwdate(hp), fwtime(hp));
-	pline += 17;
+	if (rawTimeFlag)
+		{
+		time_t time = 0;
+
+		time = fwgetfdt(hp);
+		sprintf(pline, "%010llX ", time);
+		}
+	else
+		{
+		sprintf(pline, "%9s  %6s", fwdate(hp), fwtime(hp));
+		}
+	pline += strlen(pline);
 	available = 0;
 	}
 
@@ -356,7 +387,7 @@ interleave (
 	char  *pf2)			/* Pointer to the right-justified field */
 
 	{
-	int		pad;		/* Number of pad spaces needed */
+	int	   pad;			/* Number of pad spaces needed */
 
 
 	pad = lmin_size - (int)(strlen(pf2));	/* Determine the length discrepancy */
@@ -397,9 +428,9 @@ fdpr_wide (				/* Print a file/directory name in wide mode */
 	int	   attr)		/* File attributes */
 
 	{
-	int		length;		/* Length of the current filename */
-	int		extra;		/* Allowance for a subdirectory */
-	int		Quotes = 0;	/* Allowance required for quoted filename */
+	int	 length;		/* Length of the current filename */
+	int	 extra;			/* Allowance for a subdirectory */
+	int	 Quotes = 0;	/* Allowance required for quoted filename */
 
 
 	if (nameonly)				/* Strip the path, if requested */
@@ -419,9 +450,9 @@ fdpr_wide (				/* Print a file/directory name in wide mode */
 			}
 		}
 
-	extra	= (attr & ATT_SUBD) ? (2) : (0);
+	extra	= (attr & ATT_DIR) ? (2) : (0);
 	length	= (int)(strlen(fnp)) + extra + Quotes;
-	column += (spaces + length);
+	column += spaces + length;
 
 	if (column >= collimit)		/* Prevent oversize lines */
 		{

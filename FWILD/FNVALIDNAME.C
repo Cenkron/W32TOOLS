@@ -11,7 +11,7 @@
 #include  <stdio.h>
 #include  <ctype.h>
 
-#include  "fwild.h"
+#include  "fWild.h"
 
 /* ----------------------------------------------------------------------- */
 
@@ -24,13 +24,13 @@
 /* ----------------------------------------------------------------------- *\
 |  fnValidName () - Scan and validate a path as a potential filename
 \* ----------------------------------------------------------------------- */
-	int					// Return TRUE for success, FALSE for failure
+	int						// Return TRUE for success, FALSE for failure
 fnValidName(
-	char* pathname)		// Pointer to the test pathname
+	const char *pathname)	// Pointer to the test pathname
 
 	{
-	char* p;						// Pointer into the string
-	char	ch;						// The current character
+	const char *p;				// Pointer into the string
+	char		ch;				// The current character
 	int		state = S_NONE;		// Initialize the FSM state to the last recognized type
 
 	// Scan and detect any prefix
@@ -38,16 +38,16 @@ fnValidName(
 	if ((p = QueryUNCPrefix(pathname)) != NULL)	// Check for UNC prefix
 		{
 		// Require initial element
-		state = S_SEPARATOR;		// Because UNC is inherently rooted		
+		state = S_SEPARATOR;	// Because UNC is inherently rooted		
 		}
-	else if ((p = QueryDrivePrefix(pathname, TRUE)) != NULL)	// Check for Drive prefix
+	else if ((p = QueryDrivePrefix(pathname)) != NULL)	// Check for Drive prefix
 		{
-		state = S_NONE;		// Permit either root separator, or element
+		state = S_NONE;			// Permit either root separator, or element
 		}
 	else	// No prefix found (or perhaps ill formed)
 		{
-		p = pathname;		// No prefix, just point the string
-		state = S_NONE;		// Permit either root separator, or element
+		p = pathname;			// No prefix, just point the string
+		state = S_NONE;			// Permit either root separator, or element
 		}
 
 	// Scan through the remaining string, performing the pattern match algorithm

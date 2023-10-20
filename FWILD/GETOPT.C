@@ -51,7 +51,7 @@
 #include  <string.h>
 
 #include  "ascii.h"
-#include  "fwild.h"
+#include  "fWild.h"
 
 /* ----------------------------------------------------------------------- */
 

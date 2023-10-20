@@ -11,7 +11,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
-#include <fwild.h>
+#include <fWild.h>
 
 /*------------------------------------------------------------------*/
 
@@ -60,7 +60,7 @@ usagedoc[] = {
 //		*p++ = '\\';		// Make it "UNC\"
 		*p = '\0';			// Terminate the string
 		}
-	else if ((p = QueryDrivePrefix(s, TRUE)) != NULL)	// Single mode
+	else if ((p = QueryDrivePrefix(s)) != NULL)
 		{
 		unc = FALSE;		// Remember this
 		*p++ = '\\';		// Make it "X;\"
@@ -119,24 +119,6 @@ main (
 			}
 		}
 
-#if 0 // Old version
-			if ( ! fnchkunc(argv[optind]))
-				{
-				sprintf(PathName, "%c:\\", (char)(toupper(*argv[optind])));
-				unc = FALSE;
-				}
-			else
-				{
-				strcpy(PathName, argv[optind]);
-				strcat(PathName, "\\");
-				if (fnreduce(PathName) < 0)
-					{
-					printf("fnreduce error\n");
-					return (-1);
-					}
-				unc = TRUE;
-				}
-#endif
 	return (0);
 	}
 
@@ -166,7 +148,7 @@ process (void)
 				(PULARGE_INTEGER)(&dummy),
 				(PULARGE_INTEGER)(&dummy)))
 			{
-			fprintf(stderr, "\007DF: Disk free space test failed (%lu) for \"%s\"\n", GetLastError(), PathName);
+			fprintf(stderr, "DF: Disk free space test failed (%lu) for \"%s\"\n", GetLastError(), PathName);
 			return (1);
 			}
 		printf("%s  Total bytes\n", km_bytes(userfreespace));
@@ -174,11 +156,10 @@ process (void)
 		}
 
 
-
 	char *pszAbsolutePath = fnabspth(PathName);
 	if (pszAbsolutePath != NULL)
 		{
-		pszVolumeName = vol_name(pszAbsolutePath);
+		pszVolumeName = volName(pszAbsolutePath);
 		if (pszVolumeName == NULL)
 			pszVolumeName = "(unknown)";
 		free(pszAbsolutePath);
@@ -196,7 +177,7 @@ process (void)
 			&fileSystem[0],
 			sizeof(fileSystem)))
 		{
-		fprintf(stderr, "\007DF: Error getting file system type info\n");
+		fprintf(stderr, "DF: Error getting file system type info\n");
 		return (1);
 		}
 
@@ -211,7 +192,7 @@ process (void)
 				&FreeClusters,
 				&Clusters))
 			{
-			fprintf(stderr, "\007DF: Error getting file system info\n");
+			fprintf(stderr, "DF: Error getting file system info\n");
 			return (1);
 			}
 
@@ -230,7 +211,7 @@ process (void)
 				(PULARGE_INTEGER)(&usermaxspace),
 				(PULARGE_INTEGER)(&dummy2)))
 			{
-			fprintf(stderr, "\007DF: Error getting file system info\n");
+			fprintf(stderr, "DF: Error getting file system info\n");
 			return (1);
 			}
 		}
@@ -388,7 +369,7 @@ static char buffer [80];
 		{
 		if (drivechar == '\0')
 			{
-			fprintf(stderr, "\007DF: Drive not specified\n");
+			fprintf(stderr, "\DF: Drive not specified\n");
 			return (1);
 			}
 
@@ -398,7 +379,7 @@ static char buffer [80];
 				OPEN_ACCESS_READWRITE|OPEN_SHARE_DENYREADWRITE|OPEN_FLAGS_DASD, 
 				0L)) != 0)
 			{
-			fprintf(stderr, "\007DF: Error %d getting drive handle\n", rc);
+			fprintf(stderr, "\DF: Error %d getting drive handle\n", rc);
 			return (1);
 			}
 
@@ -408,7 +389,7 @@ static char buffer [80];
 		DosClose(handle);
 		if (rc != 0)
 			{
-			fprintf(stderr, "\007DF: Error %d getting drive info\n", rc);
+			fprintf(stderr, "\DF: Error %d getting drive info\n", rc);
 			return (1);
 			}
 

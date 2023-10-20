@@ -25,14 +25,14 @@
 #include  <string.h>
 #include  <direct.h>
 
-#include  "fwild.h"
+#include  "fWild.h"
 #include  "mvd.h"
 
 #ifndef MATCH
 #define MATCH	  0
 #endif
 
-#define  MODE	(FW_FILE | FW_HIDDEN | FW_SYSTEM | FW_SUBD)
+#define  MODE	(FW_FILE | FW_HIDDEN | FW_SYSTEM | FW_DIR)
 
 extern	void	mvdir_copy (char *p1, char *p2, int l_flag);
 
@@ -86,6 +86,9 @@ mvdir_copy (			/* Move a directory and its contents */
 	char  *fnp = NULL;		/* Input file name pointer */
 
 
+	if ((hp = fwOpen()) == NULL)
+		exit(1);
+
 	if ( ! fnchkdir(p2))	/* Create the destination directory */
 		{
 		if (l_flag)
@@ -94,9 +97,9 @@ mvdir_copy (			/* Move a directory and its contents */
 			fatalerr("Unable to move directory");
 		}
 
-	if ((hp = fwinit(p1, MODE)) == NULL)	/* Move all of the files and directories */
-		fwinitError(p1);
-	while (fnp = fwild(hp))
+	if (fwInit(hp, p1, MODE) != FWERR_NONE)	/* Move all of the files and directories */
+		fwInitError(p1);
+	while (fnp = fWild(hp))
 		{
 		if ((stricmp(fnp, p1) != MATCH)
 		&&  ( ! fndot(fnp)))
@@ -104,7 +107,7 @@ mvdir_copy (			/* Move a directory and its contents */
 			if ((p = fncatpth(p2, fntail(fnp))) < 0)
 				fatalerr("dst filespec error");
 			
-			if (fwtype(hp) & ATT_SUBD)
+			if (fwtype(hp) & ATT_DIR)
 				mvdir_copy(fnp, p, l_flag);
 			else
 				{
@@ -116,9 +119,9 @@ mvdir_copy (			/* Move a directory and its contents */
 			free(p);
 			}
 		}
-	hp = NULL;
 
 	rmdir(p1);			/* Remove the source directory */
+	hp = fwClose(hp);
 	}
 
 /* ----------------------------------------------------------------------- */

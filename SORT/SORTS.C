@@ -23,7 +23,7 @@
 #include  <sys\stat.h>
 #include  <io.h>
 
-#include  "fwild.h"
+#include  "fWild.h"
 #include  "sort.h"
 
 // #define  TESTMODE
@@ -887,7 +887,7 @@ fflush(stdout);
 		&length);
 
 	if (result != 0)
-		goto exxit;
+		goto exit;
 
 	if (length > 127)
 		length = 127;
@@ -909,7 +909,7 @@ fflush(stdout);
 			&length);
 
 		if (result != 0)
-			goto exxit;
+			goto exit;
 
 		if (length > 127)
 			length = 127;
@@ -928,7 +928,7 @@ printf("String: \"%s\"\n", buffer);
 fflush(stdout);
 #endif
 
-	if ((pim->u.value = sgettd(buffer)) == -1)
+	if ((pim->u.value = sgettd(buffer)) == 0)
 		{
 		exitmsg(FWEXIT_MINOR_ERROR,
 			"Date field syntax error (%s): \"%s\"",
@@ -937,7 +937,7 @@ fflush(stdout);
 		result = SORT_ERR_DATE_SYNTAX;
 		}
 
-exxit:
+exit:
 	return (result);
 	}
 
@@ -1016,7 +1016,7 @@ find_field (		/* Find field M, column N of the pointed string */
 		exitmsg(FWEXIT_MINOR_ERROR,
 			"Field %d not found: \"%s\"", rfield, pstr);
 		result = SORT_ERR_FIELD_NOT_FOUND;
-		goto exxit;
+		goto exit;
 		}
 
 
@@ -1061,7 +1061,7 @@ find_field (		/* Find field M, column N of the pointed string */
 			"Field %d column %d not found: \"%s\"",
 			rfield, rcolumn, pstr);
 			result = SORT_ERR_COLUMN_NOT_FOUND;
-			goto exxit;
+			goto exit;
 			}
 		}
 
@@ -1091,7 +1091,7 @@ find_field (		/* Find field M, column N of the pointed string */
 	else
 		result = 0;
 
-exxit:
+exit:
 	*pret = (result == 0) ? (p) : (NULL);
 	*nret = length;
 	return (result);
@@ -1141,7 +1141,7 @@ find_column (		/* Find column N of the pointed string */
 		exitmsg(FWEXIT_MINOR_ERROR,
 			"Absolute column %d not found: \"%s\"", rcolumn, pstr);
 		result = SORT_ERR_COLUMN_NOT_FOUND;
-		goto exxit;
+		goto exit;
 		}
 
 	length = (int)(strlen(p));
@@ -1156,7 +1156,7 @@ find_column (		/* Find column N of the pointed string */
 #endif
 		result = 0;
 
-exxit:
+exit:
 	*pret = (result == 0) ? (p) : (NULL);
 	*nret = length;
 	return (result);

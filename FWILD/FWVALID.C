@@ -1,6 +1,6 @@
 /* ----------------------------------------------------------------------- *\
 |
-|	fwvalid () - Syntactically validate a file path string
+|	fwValid () - Syntactically validate a file path string
 |
 |	Copyright (c) 1991, all rights reserved, Brian W Johnson
 |
@@ -14,7 +14,7 @@
 #include  <stdio.h>
 #include  <ctype.h>
 
-#include  "fwild.h"
+#include  "fWild.h"
 
 #ifdef  DIAGNOSTICS
 #define  diagprintf(a,b)	printf(a,b)
@@ -34,22 +34,20 @@
 
 static	int	  sepcount = 0;			// Separator count
 static	int	  state    = S_INIT;	// Current FSM state
-static	char *s        = NULL;		// Pointer into the pathname
-
-		int	fwerrno  = FWERR_NONE;	// fwvalid() error result
+static	const char  *s = NULL;		// Pointer into the pathname
 
 static	int	parse (void);
 static	int	pathname (void);
 
 /* ----------------------------------------------------------------------- *\
-|  fwvalid () - Scan and validate an entire path
+|  fwValid () - Scan and validate an entire path
 \* ----------------------------------------------------------------------- */
 	int					// Return 0 for success, FWERR_??? for failure
-fwvalid (
-	char *pathname)		// Pointer to the pathname
+fwValid (
+	const char  *pathname)		// Pointer to the pathname
 
 	{
-	s        = pathname;		// Install the pathname pointer
+	s		 = pathname;		// Install the pathname pointer
 	state    = S_INIT;			// Initialize the FSM state
 	fwerrno  = FWERR_NONE;		// Assume success
 	sepcount = 0;				// Clear the slash count
@@ -62,7 +60,7 @@ fwvalid (
 
 	if (*s == '\0')
 		{
-// fwinit() now handles this case internally
+// fwInit() now handles this case internally
 		fwerrno = FWERR_NONE;		// Assume success
 //		fwerrno = FWERR_EMPTY;	// Empty pathname passed
 		goto exit;
@@ -171,7 +169,7 @@ parse (void)
 	}
 
 /* ----------------------------------------------------------------------- *\
-|  pathname () - Scan a valid path element name, 8.3 type
+|  pathname () - Scan a valid path element name
 \* ----------------------------------------------------------------------- */
 	static int			// Return 0 for success, FWERR_??? for failure
 pathname ()
@@ -194,45 +192,5 @@ pathname ()
 
     return (fwerrno);
     }
-
-#if 0	// Old DOS version
-	{
-	char  ch;			// The current character
-	int   count;		// The character counter
-	int   field;		// The field counter
-
-    for (field = 0; field <= 1; ++field)
-		{
-		for (count = 0; ; ++count)
-			{
-			ch = *s;
-			if (( ! isprint(ch))  ||  (ch == '.')
-			||  (ch == '\\')      ||  (ch == '/'))
-				break;
-			++s;
-			}
-
-		if (field == 0)
-			{
-			if ((count < 1)  ||  (count > MAXNAME))
-				{
-			fwerrno = FWERR_SIZE;
-			break;
-			}
-		if (ch != '.')
-			break;
-		++s;
-		}
-	else  // (field == 1)
-		{
-		if (count > MAXEXT)
-			fwerrno = FWERR_SIZE;
-		break;
-		}
-	}
-
-	return (fwerrno);
-	}
-#endif
 
 /* ----------------------------------------------------------------------- */

@@ -12,8 +12,9 @@
 
 #include  "stdio.h"
 #include  "ctype.h"
-#include  "fwild.h"
+#include  "fWild.h"
 #include  "string.h"
+#include  "stdlib.h"
 
 /* ----------------------------------------------------------------------- */
 
@@ -60,6 +61,9 @@ main (
 	char  *fnp = NULL;		/* Input file name pointer */
 	FILE  *fp  = NULL;		/* Input file descriptor */
 
+
+	if ((hp = fwOpen()) == NULL)
+		exit(1);
 
 	setbuf(stdout, fmalloc(BUFSIZ));
 
@@ -109,11 +113,10 @@ main (
 		while (optind < argc)
 			{
 			ap = argv[optind++];
-			if ((hp = fwinit(ap, smode)) == NULL)	/* Process the input list */
-				fwinitError(ap);
-			if ((fnp = fwild(hp)) == NULL)
+			if (fwInit(hp, ap, smode) != FWERR_NONE)	/* Process the input list */
+				fwInitError(ap);
+			if ((fnp = fWild(hp)) == NULL)
 				{
-				hp = NULL;
 				cantopen(ap);
 				}
 			else
@@ -126,11 +129,11 @@ main (
 						}
 					else
 						cantopen(fnp);
-					} while ((fnp = fwild(hp)));
-				hp = NULL;
+					} while ((fnp = fWild(hp)));
 				}
 			}
 		}
+	hp = fwClose(hp);
 	}
 
 /* ----------------------------------------------------------------------- */

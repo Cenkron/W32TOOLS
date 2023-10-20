@@ -17,7 +17,7 @@
 #include  <ctype.h>
 #include  <limits.h>
 
-#include  "fwild.h"
+#include  "fWild.h"
 
 #define  ESC		"\033"
 #define  BACKSPACE	'\010'
@@ -356,7 +356,7 @@ main (
 			{
 			ap = argv[optind++];
 			hp = finit(ap, smode);		// Process the input list
-			if ((fnp = fwild(hp)) == NULL)
+			if ((fnp = fWild(hp)) == NULL)
 				cantopen(ap);
 			else
 				{
@@ -368,7 +368,7 @@ main (
 						}
 					else
 						cantopen(fnp);
-					} while ((fnp = fwild(hp)));
+					} while ((fnp = fWild(hp)));
 				}
 			}
 		}
@@ -700,7 +700,7 @@ copyinit (void)
 	FILE  *fp;
 
 
-	if ((ifnp = fwfirst(ifilename)) == NULL)
+	if ((ifnp = fwFirst(ifilename)) == NULL)
 		{
 		printf("Unable to find initialization file: %s\n", ifilename);
 		usage();

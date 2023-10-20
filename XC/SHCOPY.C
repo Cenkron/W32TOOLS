@@ -15,7 +15,7 @@ Copyright (c) 2007-2010 by Brian Johnson, TX - All Rights Reserved
 #include <stdlib.h>
 #include <string.h>
 #include <dtypes.h>
-#include <fwild.h>
+#include <fWild.h>
 
 #include "xcopy.h"
 
@@ -23,8 +23,8 @@ Copyright (c) 2007-2010 by Brian Johnson, TX - All Rights Reserved
 #define VERSION "940602.092146"
 /**********************************************************************/
 
-#define EXIST(x)        (x!=(-1L))
-#define MISSING(x)      (x==(-1L))
+#define EXIST(x)        (x!=(0))
+#define MISSING(x)      (x==(0))
 #define NEWERDT(x)      (x>=y_time)
 #define OLDERDT(x)      (x<=o_time)
 
@@ -48,18 +48,24 @@ should_copy (
 	time_t      src_dt;
 	UINT64      dst_size;
 	UINT64      src_size;
-	char       *abssrc;
+//	char       *abssrc;
 
 
-	if ((abssrc = fnabspth(src)) == NULL)
-		fatal("src filespec error");
-
-	if (stricmp(abssrc, dst) == 0)
+	if (v_flag >= 2)
 		{
-		free(abssrc);
-		fatal("Cannot copy file to self");
+printf("SHcopy src: \"%s\"\n", src);
+printf("SHcopy dst: \"%s\"\n", dst);
 		}
-	free(abssrc);
+	
+//BWJ - replaced by pnOverlap()
+//	if ((abssrc = fnabspth(src)) == NULL)
+//		fatal("src filespec error");
+//	if (stricmp(abssrc, dst) == 0)
+//		{
+//		free(src);
+//		fatal("Cannot copy file to self");
+//		}
+//	free(abssrc);
 
 	if (azFlags.o || azFlags.y)
 		azFlags.e = FALSE;
@@ -70,15 +76,24 @@ should_copy (
 		goto exit;
 		}
 
-
 	if (azFlags.u)
-		attrib = fwtype(hp);
+		attrib	= fwtype(hp);
+	src_dt		= fwgetfdt(hp);
+	src_size	= fwsize(hp);
 
-	src_dt   = fgetfdt(src);
-	dst_dt   = fgetfdt(dst);
-	fgetsize(src, &src_size);
-	fgetsize(dst, &dst_size);
+	if (fgetfdt(dst, &dst_dt) != 0)
+		dst_dt = 0;
+	if (fgetsize(dst, &dst_size) != 0)
+		dst_size = 0;
 //	printf("%%lld %lld %lld %lld\n", src_dt, dst_dt, src_size, dst_size);
+
+	if (v_flag >= 3)
+		{
+printf("SHcopy srcFdt:  %010llX\n", src_dt);
+printf("SHcopy dstFdt:  %010llX\n", dst_dt);
+printf("SHcopy srcSize: %lld\n",    src_size);
+printf("SHcopy dstSize: %lld\n",    dst_size);
+		}
 
 	if ((azFlags.m  && MISSING(dst_dt) )
 	||  (azFlags.e  && EXIST(dst_dt) )
@@ -94,6 +109,10 @@ should_copy (
 		}
 
 exit:
+	if (v_flag >= 2)
+		{
+printf("SHcopy %s:\n", (copy_flag ? "TRUE" : "FALSE"));
+		}
 
 	return (copy_flag);
 	}

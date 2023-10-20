@@ -10,15 +10,15 @@
 
 #include  <stdio.h>
 
-#include  "fwild.h"
+#include  "fWild.h"
 
 /* ----------------------------------------------------------------------- */
 	void
 cantopen (
-	char *fnp)			/* Input file name */
+	const char *fnp)	/* Input file name */
 
 	{
-	printf("Unable to open input file: %s\n", fnp);
+	fprintf(stderr, "Unable to open input file: %s\n", fnp);
 	}
 
 /* ----------------------------------------------------------------------- */

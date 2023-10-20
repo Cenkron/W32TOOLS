@@ -11,14 +11,14 @@
 
 #include  <string.h>
 
-#include  "fwild.h"
+#include  "fWild.h"
 
 /* ----------------------------------------------------------------------- *\
 |  Test a pathname for wildness
 \* ----------------------------------------------------------------------- */
 	int
-iswild (
-	char *s)
+isWild (
+	const char  *s)
 
 	{
 	int result = FALSE;

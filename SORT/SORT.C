@@ -22,7 +22,7 @@
 #include  <fcntl.h>
 #include  <limits.h>
 
-#include  "fwild.h"
+#include  "fWild.h"
 #include  "sort.h"
 
 /* ----------------------------------------------------------------------- *\
@@ -114,20 +114,23 @@ char	extra_buffer [INBUFSIZ];	/* Buffer for detabbing */
 
 char	output_buffer [BUFSIZ];		/* Buffer for stdout */
 
+PHP		hp = NULL;				// FWILD instance pointer
+PEX		xp = NULL;				// FEX instance pointer
+
 /* ----------------------------------------------------------------------- *\
 |  Private function prototypes
 \* ----------------------------------------------------------------------- */
 
-static	int	collationfield	(char *optionstring);
-static	int	datefield	(char *optionstring);
-static	int	numericfield	(char *optionstring);
+static	int		collationfield	(char *optionstring);
+static	int		datefield		(char *optionstring);
+static	int		numericfield	(char *optionstring);
 static	void	process_input	(FILE *fp, char *fnp);
 static	void	process_output	(void);
 static	void	initial_verbosity (void);
 static	void	final_verbosity (void);
-static	void	detab		(void);
+static	void	detab			(void);
 
-extern	void	exitmsg		(int code, char *fmt, ... );
+extern	void	exitmsg			(int code, char *fmt, ... );
 
 /* ----------------------------------------------------------------------- *\
 |  main () - The program main
@@ -141,13 +144,17 @@ main (
 	int	   smode = FW_FILE;		/* File search mode attributes */
 	int	   option;			/* Option character */
 	long   ltemp;			/* Used for optvalue() */
-	void  *hp  = NULL;			/* Pointer to wild file data block */
 	char  *ap  = NULL;			/* Argument pointer */
 	char  *fnp = NULL;			/* Input file name pointer */
 	FILE  *fp  = NULL;			/* Input file descriptor */
 
 static	char   *optstring = "?bBcCd:D:eEf:F:iIlLn:N:oOqQrRsSt:T:vVwWy:Y:zZ";
 
+
+	if ((hp = fwOpen()) == NULL)
+		exit(1);
+	if ((xp = fExcludeOpen()) == NULL)
+		exit(1);
 
 	fperr  = stderr;			// Init the stderr output fp
 	swch   = egetswch();
@@ -207,17 +214,16 @@ static	char   *optstring = "?bBcCd:D:eEf:F:iIlLn:N:oOqQrRsSt:T:vVwWy:Y:zZ";
 		{
 		do  {
 			ap = argv[optind++];
-			if ((hp = fwinit(ap, smode)) == NULL)		/* Process the input list */
-				fwinitError(ap);
-			fwExclEnable(hp, TRUE);		/* Enable file exclusion */
-			if ((fnp = fwild(hp)) == NULL)
+			if (fwInit(hp, ap, smode) != FWERR_NONE)	// Process the input list
+				fwInitError(ap);
+			fExcludeConnect(xp, hp);					// Connect the exclusion instance
+			if ((fnp = fWild(hp)) == NULL)
 				{
-				hp = NULL;
 				cantopen(ap);
 				}
 			else
 				{
-				do  {				/* Process one filespec */
+				do  {									// Process one filespec
 					if (fp = fopen(fnp, "r"))
 						{
 						process_input(fp, fnp);
@@ -225,17 +231,17 @@ static	char   *optstring = "?bBcCd:D:eEf:F:iIlLn:N:oOqQrRsSt:T:vVwWy:Y:zZ";
 						}
 					else
 						cantopen(fnp);
-					} while ((fnp = fwild(hp)));
-				hp = NULL;
+					} while ((fnp = fWild(hp)));
 				}
 			} while (optind < argc);
 		}
 
-	hp = NULL;
 	process_output();
 
 	final_verbosity();
 
+	xp = fExcludeClose(xp);				// Close the Exclusion instance
+	hp = fwClose(hp);					// Close the fWild instance
 	exitmsg(-1, NULL);
 	}
 
@@ -244,7 +250,7 @@ static	char   *optstring = "?bBcCd:D:eEf:F:iIlLn:N:oOqQrRsSt:T:vVwWy:Y:zZ";
 \* ----------------------------------------------------------------------- */
 	void
 cantopen (			/* Fatal error, print a message and die */
-	char  *fnp)			/* Pointer to the error message */
+	const char  *fnp)			/* Pointer to the error message */
 
 	{
 	exitmsg(FWEXIT_FILE_NOT_FOUND, "Unable to find/open file: \"%s\"", fnp);
@@ -286,8 +292,8 @@ exitmsg (			/* Print a message and conditionally die */
 |  docprint () - Print the program documentation (low level)
 \* ----------------------------------------------------------------------- */
 	void
-docprint (			/* Print documentation text */
-	char  **dp)			/* Document array pointer */
+docprint (				/* Print documentation text */
+	const char  **dp)	/* Document array pointer */
 
 	{
 	while (*dp)
@@ -441,7 +447,7 @@ datefield (
 		{
 		field1 = 3;
 		field2 = 4;
-		goto exxit;
+		goto exit;
 	}
 
 	if ((p = strtoken(s, NULL, NULL)) == NULL)
@@ -460,7 +466,7 @@ datefield (
 	else
 		field2 = 0;
 
-exxit:
+exit:
 	result = sort_date(field1, field2, rflag);
 	rflag  = 0;
 	return (result);

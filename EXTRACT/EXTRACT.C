@@ -19,7 +19,7 @@
 #include  <errno.h>
 #include  <limits.h>
 
-#include  "fwild.h"
+#include  "fWild.h"
 
 #ifndef TRUE
 #define FALSE	  0
@@ -102,8 +102,8 @@ main (
 	{
 	int    option;		/* Option character */
 	int    nargs;		/* Number of arguments */
-	char  *fnpin;		/* Input file name pointer */
-	char  *fnpout;		/* Output file name pointer */
+	char  *fnpIn;		/* Input file name pointer */
+	char  *fnpOut;		/* Output file name pointer */
 
 static	char   *optstring = "?e:E:d:D:s:S:v";
 
@@ -158,14 +158,26 @@ static	char   *optstring = "?e:E:d:D:s:S:v";
 	if ((nargs <= 0)  ||  (nargs > 2))
 		usage();
 
-	fnpin = fwfirst(argv[optind++]);
+	fnpIn = argv[optind++];
+	if (fnchkdir(fnpIn))
+		{
+		sprintf(" \"%s\" is a directory\n", fnpIn);
+		exit(1);
+		}		
+
+	if (! fnchkfil(fnpIn))
+		{
+		sprintf(" \"%s\" not found\n", fnpIn);
+		exit(1);
+		}		
+
 
 	if (nargs == 2)
-		fnpout = argv[optind];
+		fnpOut = argv[optind];
 	else
-		fnpout = "extract.out";
+		fnpOut = "extract.out";
 
-	process(fnpin, fnpout);
+	process(fnpIn, fnpOut);
 
 	exit(0);
 	}
@@ -278,8 +290,8 @@ parameters (void)		/* Determine the copy parameters */
 /* ----------------------------------------------------------------------- */
 	static void
 process (			/* Process the input / output file */
-	char  *fnpin,		/* Input file name */ 
-	char  *fnpout)		/* Output file name */ 
+	char  *fnpIn,		/* Input file name */ 
+	char  *fnpOut)		/* Output file name */ 
 
 	{
 	int     fdin;		/* The input file handle */
@@ -289,33 +301,33 @@ process (			/* Process the input / output file */
 static char  buffer [BUFFERSIZE];
 
 
-	if ((fdin = open(fnpin, READMODE)) < 0)
+	if ((fdin = open(fnpIn, READMODE)) < 0)
 		{
-		printf("Unable to open the input file \"%s\"\n", fnpin);
+		printf("Unable to open the input file \"%s\"\n", fnpIn);
 		usage();
 		}
 
-	if (fgetsize(fnpin, &in_size) != 0)
+	if (fgetsize(fnpIn, &in_size) != 0)
 		{
-		printf("Cannot size the input file: \"%s\"\n", fnpin);
+		printf("Cannot size the input file: \"%s\"\n", fnpIn);
 		usage();
 		}
 
 	parameters();
 	out_size = end_offset - start_offset;
 
-	if ((fdout = open(fnpout, WRITEMODE, WRITEPERM)) < 0)
+	if ((fdout = open(fnpOut, WRITEMODE, WRITEPERM)) < 0)
 		{
-		printf("Unable to open the output file \"%s\"\n", fnpout);
+		printf("Unable to open the output file \"%s\"\n", fnpOut);
 		usage();
 		}
 
 	if (v_flag)
 		{
 		printf("Input  file size: %8I64u (0x%02I64X); \"%s\"\n",
-			in_size, in_size, fnpin);
+			in_size, in_size, fnpIn);
 		printf("Output file size: %8I64u (0x%02I64X); \"%s\"\n",
-			out_size, out_size, fnpout);
+			out_size, out_size, fnpOut);
 		printf("Starting offset:  %8I64u (0x%02I64X)\n",
 			start_offset, start_offset);
 		printf("Ending   offset:  %8I64u (0x%02I64X)\n",

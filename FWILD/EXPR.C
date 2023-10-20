@@ -50,7 +50,7 @@
 #include  <ctype.h>
 // #include  <string.h>
 
-#include  "fwild.h"
+#include  "fWild.h"
 
 /* ----------------------------------------------------------------------- *\
 |  Private definitions

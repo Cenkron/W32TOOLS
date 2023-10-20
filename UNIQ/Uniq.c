@@ -14,7 +14,7 @@
 #include  <string.h>
 #include  <ctype.h>
 
-#include  "fwild.h"
+#include  "fWild.h"
 
 #ifndef TRUE
 #define FALSE	  0
@@ -37,14 +37,11 @@ int	i_flag = TRUE;			/* Ignore case flag */
 int	l_flag = FALSE;			/* List file names flag */
 int	u_flag = FALSE;			/* Unique flag */
 
-int	w_cnt  = 0;			/* Word skip count */
-int	c_cnt  = 0;			/* Character skip count */
+int	w_cnt  = 0;				/* Word skip count */
+int	c_cnt  = 0;				/* Character skip count */
 
 char	swch = '-';			/* The switch character */
 
-static void cantopen (char *);
-void usage (void);
-void help (void);
 void dprint (char **);
 static void process (FILE *, char *);
 
@@ -56,12 +53,15 @@ main (
 
 	{
 	int    smode = FW_FILE;		/* File search mode attributes */
-	char   sw;				/* Parser temporary */
-	char  *s;				/* Parser temporary */
+	char   sw;					/* Parser temporary */
+	char  *s;					/* Parser temporary */
 	void  *hp  = NULL;			/* Pointer to wild file data block */
 	char  *fnp = NULL;			/* Input file name pointer */
 	FILE  *fp  = NULL;			/* Input file descriptor */
 
+
+	if ((hp = fwOpen()) == NULL)
+		exit(1);
 
 	setbuf(stdout, buffer);
 	swch = egetswch();
@@ -143,11 +143,10 @@ main (
 	else
 		{
 		do  {
-			if ((hp = fwinit(*argv, smode)) == NULL)	/* Process the input list */
-				fwinitError(*argv);
-			if ((fnp = fwild(hp)) == NULL)
+			if (fwInit(hp, *argv, smode) != FWERR_NONE)	/* Process the input list */
+				fwInitError(*argv);
+			if ((fnp = fWild(hp)) == NULL)
 				{
-				hp = NULL;
 				cantopen(*argv);
 				}
 			else
@@ -160,20 +159,12 @@ main (
 						}
 					else
 						cantopen(fnp);
-					} while ((fnp = fwild(hp)));
-				hp = NULL;
+					} while ((fnp = fWild(hp)));
 				}
 			} while (*++argv);
 		}
-	}
 
-/* ----------------------------------------------------------------------- */
-	static void
-cantopen (				/* Inform user of input failure */
-	char  *fnp)			/* Input file name */
-
-	{
-	fprintf(stderr, "\7Unable to open input file: %s\n", fnp);
+	hp = fwClose(hp);
 	}
 
 /* ----------------------------------------------------------------------- */

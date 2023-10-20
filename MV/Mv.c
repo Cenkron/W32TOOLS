@@ -15,12 +15,11 @@
 #include <process.h>
 
 #include "dtypes.h"
-#include "fwild.h"
+#include "fWild.h"
 #include "getoptns.h"
 
 /**********************************************************************/
 #define VERSION "980906.043000"
-//#define DEBUG
 /**********************************************************************/
 
 #define COPYRIGHT "Version 5.5 Copyright (c) 2018 J & M Software, Dallas TX - All Rights Reserved"
@@ -33,7 +32,7 @@
 /**********************************************************************/
     static char
 optstring [] =
-    "cCfFhHlLnNoOqQrRsSx:X:zZ?";
+    "cCeEfFhHlLnNoOqQrRsSx:X:zZ?";
 
     char
 helpline [] =
@@ -46,6 +45,7 @@ usagedoc [] = {
     "Move the files in the file_list to the subdirectory new_path",
     "",
     "    -c    use x/c/ to copy & delete the files if to different drive",
+    "    -e    do not print /e/rror messages",
     "    -f    do not expand directory tree on destination (/f/lat)",
     "    -h    include /h/idden files",
     "    -l    no /l/ist: do not display progress",
@@ -77,7 +77,6 @@ void	filepair     (char *s1, char *s2);
 void	move         (char *src, char *dst);
 void	notfound     (char *fn);
 int		query        (char *src, char *dst);
-int     SameDisk     (char *src, char *dst);
 void	MVprocess    (char *src, char *dst, char *path);
 void	XCprocess    (char *src, char *dst);
 
@@ -93,15 +92,18 @@ char		path_char;
 int         cols        = 40;
 int			attrib		= FW_FILE;
 
+PHP		hp = NULL;				// FWILD instance pointer
+PEX		xp = NULL;				// FEX instance pointer
+
 /* ----------------------------------------------------------------------- */
-//#define DEBUG
+//	#define DEBUG
+
 #ifdef DEBUG
 #define debug(x) printf x
 #else
 #define debug
 #endif
-/* ----------------------------------------------------------------------- */
-
+
 /* ----------------------------------------------------------------------- */
 	int
 special_options (
@@ -111,18 +113,22 @@ special_options (
 	{
 	switch (c)
 		{
+		case 'e':
+			optdata.flags.e = !optdata.flags.e;	// Don't show error messages:
+			break;
+
 		case 'x':
 			optdata.flags.x = !optdata.flags.x;	// Lower case:
 			break;
 
 		case 'X':
 			if      (optarg[0] == '-')			// (Upper case)
-				fexcludeDefEnable(FALSE);		/* Disable default file exclusion(s) */
+				fExcludeDefEnable(xp, FALSE);	// Disable default file exclusion(s)
 			else if (optarg[0] == '+')
-				fexcludeShowConf(TRUE);			/* Enable stdout of exclusion(s) */
+				fExcludeShowConf(xp, TRUE);		// Enable stdout of exclusion(s)
 			else if (optarg[0] == '=')
-				fexcludeShowExcl(TRUE);			/* Enable stdout of excluded path(s) */
-			else if (fexclude(optarg))
+				fExcludeShowExcl(xp, TRUE);		// Enable stdout of excluded path(s)
+			else if (fExclude(xp, optarg))
 				{
 				fprintf(stderr, "Error excluding '%s'\n", arg);
 				exit(1);
@@ -148,7 +154,13 @@ main (
 	int		lastarg;
 	int		c;
 	char   *dst;
-	char	src [1024];
+static char	src [MAX_PATH];
+
+
+	if ((hp = fwOpen()) == NULL)
+		exit(1);
+	if ((xp = fExcludeOpen()) == NULL)
+		exit(1);
 
 	optdata.pProc[GETOPT_X] = special_options;
 
@@ -176,22 +188,28 @@ main (
 			lastarg = argc-1;
 			}
 
-		if (fwvalid(dst) != FWERR_NONE)
+		if (! isPhysical(dst))
+			fatal(dst, "Invalid destination file/pathspec");
+	
+		if (fwValid(dst) != FWERR_NONE)
 			fatal(dst, "Invalid destination path specification");
 		else if (fnchkfil(dst))
 //		else if ( ! fnchkdir(dst))
 			fatal(dst, "Destination is not a directory");
-		else if (iswild(dst))
+		else if (isWild(dst))
 			fatal(dst, "Cannot have wildcards in the destination");
 
-		if ((dst = fnabspth(dst)) == NULL)
+		if ((_fnabspth(dst, dst)) != 0)
 			fatal(dst, "src filespec error");
 
 		while (optind < lastarg)
 			{
 			strcpy(src, argv[optind]);
 
-			if (fwvalid(src) != FWERR_NONE)
+			if (! isPhysical(src))
+				fatal(src, "Invalid source file/pathspec");
+
+			if (fwValid(src) != FWERR_NONE)
 				fatal(src, "Invalid source file specification");
 			else if ((fnchkdir(src))					// if src is a directory,    assume *
 				 ||  (strcmp(fntail(src), "**") == 0))	// if src is recurse wild,   assume *
@@ -199,15 +217,13 @@ main (
 
 //debug(("before filepair('%s', '%s')\n", src, dst));
 
-			if (SameDisk(src, dst))
+			if (isSameDevice(src, dst))
 				filepair(src, dst);
 			else
 				XCprocess(src, dst);
 
 			++optind;
 			}
-		if (dst)
-			free(dst);
 		}
 
 	else if (optind == (argc-1))
@@ -216,13 +232,15 @@ main (
 	else
 		usage();
 
+	xp = fExcludeClose(xp);				// Close the Exclusion instance
+	hp = fwClose(hp);					// Close the fWild instance
 	return(0);
 	}
 
 /* ----------------------------------------------------------------------- */
 	void
 filepair (					/* Process the pathnames */
-	char  *s1,				/* Pointer to the pathname1 string */
+	char  *srcpath,			/* Pointer to the pathname1 string */
 	char  *dstpath)			/* Pointer to the pathname2 string */
 
 	{
@@ -230,24 +248,30 @@ filepair (					/* Process the pathnames */
 	int    TermIndex;		/* Termination index of the path (not used here) */
 	char  *srcname;			/* Pointer to the path1 pathname */
 	char  *dstname;			/* Pointer to the path2 pathname */
-	void  *hp;				/* The fwild data structure */
 
 
-	if (fnParse(s1, &CatIndex, &TermIndex) < 0)	/* Set pointer to construct path2 */
-		fatal(s1, "dst filespec error");
+#ifdef DEBUG
+printf("src: \"%s\"\n", srcpath);
+printf("dst: \"%s\"\n", dstpath);
+#endif
 
-	if ((hp = fwinit(s1, attrib)) == NULL)	/* Find the first path1 file */
-		fwinitError(s1);	
-	fwExclEnable(hp, TRUE);					/* Enable file exclusion */
-	if ((srcname = fwild(hp)) == NULL)
+	if (fnParse(srcpath, &CatIndex, &TermIndex) < 0)	/* Set pointer to construct path2 */
+		fatal(srcpath, "dst filespec error");
+
+	if (fwInit(hp, srcpath, attrib) != FWERR_NONE)	// Process the pattern
+		fwInitError(srcpath);	
+	fExcludeConnect(xp, hp);						// Connect the exclusion instance
+	if ((srcname = fWild(hp)) == NULL)
 		{
-		hp = NULL;
-		notfound(s1);
+		notfound(srcpath);
 		}
 
 	else do
 		{				/* Process all path1 files */
+
 #ifdef DEBUG
+printf("mv: src:     \"%s\"\n", srcname);
+printf("mv: srctail: \"%s\"\n", fntail(srcname));
 printf("mv: process all files\n");
 #endif
 		if (optdata.flags.f)
@@ -257,7 +281,7 @@ printf("mv: process all files\n");
 #ifdef DEBUG
 printf("mv:\"%s\"    \"%s\"", dstpath, fntail(srcname));
 #endif
-				fatal(s1, "fncatpth error 1");
+				fatal(srcpath, "fncatpth error 1");
 				}
 			}
 		else
@@ -272,23 +296,33 @@ printf("mv: dstname \"%s\"", dstname);
 				}
 			}
 
-//debug(("before process('%s', '%s', '%s')\n", srcname, dstname, dstpath));
+#ifdef DEBUG
+printf("before process('%s', '%s', '%s')\n", srcname, dstname, dstpath);
+fflush(stdout);
+#endif
 
 		MVprocess(srcname, dstname, dstpath);
 
 		if (dstname)
 			free(dstname);
-		}  while ((srcname = fwild(hp)) != NULL);
-	hp = NULL;
+
+#ifdef DEBUG
+printf("mv: process done\n");
+#endif
+		}  while ((srcname = fWild(hp)) != NULL);
+#ifdef DEBUG
+printf("mv: file loop done\n");
+#endif
+
 	}
 
 /* ----------------------------------------------------------------------- *\
 |  Quote a path
 \* ----------------------------------------------------------------------- */
 	static void
-quote_path (		// Print a file/directory name in normal mode
+quote_path (			// Print a file/directory name in normal mode
 	char  *unquoted,	// Pointer to the unquoted path string
-	char  *quoted)	// Pointer to the quoted path string
+	char  *quoted)		// Pointer to the quoted path string
 
 	{
 	int  quotes = 0;	// Number of quotes to be added
@@ -324,14 +358,9 @@ MVprocess (
 	char *	path)	/* destination path name */
 
 	{
-	if (fnreduce(src) < 0)
-		fatal(src, "src fnreduce error");
-
-	if (fnreduce(dst) < 0)
-		fatal(dst, "dst fnreduce error");
-
-	if (fnreduce(path) < 0)
-		fatal(path, "fnreduce error");
+	fnreduce(src);
+	fnreduce(dst);
+	fnreduce(path);
 
 //debug(("inside process(): src ='%s'\n", src));
 //debug(("inside process(): dst ='%s'\n", dst));
@@ -356,12 +385,8 @@ XCprocess (
 		char  qsrc [1027];
 		char  qdst [1027];
 
-		if (fnreduce(src) < 0)
-		fatal(src, "src fnreduce error");
-
-		if (fnreduce(dst) < 0)
-		fatal(dst, "dst fnreduce error");
-
+		fnreduce(src);
+		fnreduce(dst);
 
 		quote_path(src, qsrc);
 		quote_path(dst, qdst);
@@ -383,46 +408,13 @@ XCprocess (
 		fatal(src, "cannot move to a different drive:  use -c");
     }
 
-/* ----------------------------------------------------------------------- *\
-|  Determine whether the requested move is same disk or not
-\* ----------------------------------------------------------------------- */
-	int			// Returns TRUE if a same disk move is requested
-SameDisk (
-	char *	src,	/* source file name */
-	char *	dst)	/* desination path name */
-
-	{
-	char *xsrc;
-	int   result = 0;	// Assume not same disk
-
-	if (fnreduce(src) < 0)
-		fatal(src, "src fnreduce error");
-	
-	else if ((xsrc = fnabspth(src)) == NULL)
-		fatal(dst, "dst fnabspth error");
-
-	// Note: also returns FALSE if UNC paths are specified
-
-	else
-		{
-		result = (tolower(xsrc[0]) == tolower(dst[0])
-			&& (xsrc[1] == ':')
-			&& (dst[1] == ':'));
-
-		if (xsrc)
-			free(xsrc);
-		}
-
-	return result;
-	}
-
 /* ----------------------------------------------------------------------- */
 
 /* ----------------------------------------------------------------------- */
 	void
 move (char *src, char *dst)
 	{
-	    //debug(("inside move('%s', '%s')\n", src, dst));
+//debug(("inside move('%s', '%s')\n", src, dst));
     
 	if (!optdata.flags.l && !optdata.flags.q)
 		{
@@ -431,9 +423,10 @@ move (char *src, char *dst)
 		printf("  to  %s", dst /*path*/);
 		}
 
-	const time_t dstdate = fgetfdt(dst);
+	time_t dstdate;
 
-	if (dstdate != -1L)
+	if ((fgetfdt(dst, &dstdate) == 0)
+	&&  (dstdate != 0))
 		{
 		if (!optdata.flags.o)
 			{
@@ -482,16 +475,18 @@ catpth (
 	{
 	char * p;
 
-	if ((p = fncatpth(s,t)) == NULL)
+	if ((p = fncatpth(s,t)) != NULL)
+		{
+		strcpy(s, p);
+		free(p);
+		}
+	else
 		{
 #ifdef DEBUG
 printf("mv: \"%s\"    \"%s\"", s, t);
 #endif
 		fatal(s, "fncatpth error 3");
 		}
-	
-	strcpy(s,p);
-	free(p);
 	}
 
 /*--------------------------------------------------------------------*/
@@ -562,8 +557,11 @@ clr_readonly (
 		{
 		if (fsetattr(filename, attrib & ~ATT_RONLY) < 0)
 			{
-			if (!optdata.flags.z)
-				printf("\n\aUnable to change attributes: %s\n",filename);
+			if (!optdata.flags.e)
+				fprintf(stderr, "\nUnable to change attributes: %s\n",filename);
+
+			if (optdata.flags.x)
+				exit(optdata.flags.z ? 0 : 1);
 			}
 		}
 	return (0);
@@ -581,8 +579,11 @@ set_readonly (
 		{
 		if (fsetattr(filename, attrib | ATT_RONLY) < 0)
 			{
-			if (!optdata.flags.z)
-				printf("\n\aUnable to change attributes: %s\n",filename);
+			if (!optdata.flags.e)
+				fprintf(stderr, "\nUnable to change attributes: %s\n",filename);
+
+			if (optdata.flags.x)
+				exit(optdata.flags.z ? 0 : 1);
 			}
 		}
 	return (0);
@@ -594,16 +595,10 @@ notfound (
 	char *fn)
     
 	{
-	if (!optdata.flags.z)
-		printf("\n\aFile not found: %s\n",fn);
+	if (optdata.flags.e)
+		fprintf(stderr, "\nFile not found: %s\n",fn);
 
-	if (optdata.flags.x)
-		{
-		if (optdata.flags.z)
-			exit(0);
-		else
-			exit(1);
-		}
+	exit(optdata.flags.z ? 0 : 1);		// Always fatal
     }
 
 /*--------------------------------------------------------------------*/
@@ -613,8 +608,8 @@ error (
 	char *message)
 
 	{
-	if (!optdata.flags.z)
-		printf("\n\aFile error: %s - %s\n", filename, message);
+	if (!optdata.flags.e)
+		fprintf(stderr, "\nFile error: %s - %s\n", filename, message);
 
 	if (optdata.flags.x)
 		exit(optdata.flags.z ? 0 : 1);
@@ -627,13 +622,10 @@ fatal (
 	char *text)
 
 	{
-	if (optdata.flags.z)
-		exit(0);
-	else
-		{
-		printf("\n\aFatal error: ('%s') %s\n", file, text);
-		exit(1);
-		}
+	if (optdata.flags.e)
+		fprintf(stderr, "\nFatal error: ('%s') %s\n", file, text);
+
+	exit(optdata.flags.z ? 0 : 1);		// Always fatal
 	}
 
 /*--------------------------------------------------------------------*/

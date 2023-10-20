@@ -1,9 +1,10 @@
 /* ----------------------------------------------------------------------- *\
 |
-|	C-callable functions to convert file attributes under WIN32
-|
-|			    Brian W Johnson
-|			       16-Aug-97
+|		C-callable functions to convert file attributes under WIN32
+|S
+|				    Brian W Johnson
+|						16-Aug-97
+|						21-Oct-23
 |
 \* ----------------------------------------------------------------------- */
 
@@ -11,7 +12,7 @@
 
 #define  FWILD_INTERNAL
 
-#include  "fwild.h"
+#include  "fWild.h"
 
 /* ----------------------------------------------------------------------- *\
 |  AttrFromWin32 () - Convert from WIN32 file attributes
@@ -31,7 +32,7 @@ AttrFromWin32 (
 	if (Win32Attr & FILE_ATTRIBUTE_SYSTEM)
 		NewAttr |= ATT_SYSTEM;
 	if (Win32Attr & FILE_ATTRIBUTE_DIRECTORY)
-		NewAttr |= ATT_SUBD;
+		NewAttr |= ATT_DIR;
 	if (Win32Attr & FILE_ATTRIBUTE_ARCHIVE)
 		NewAttr |= ATT_ARCH;
 	return (NewAttr);
@@ -54,7 +55,7 @@ AttrToWin32 (
 		NewAttr |= FILE_ATTRIBUTE_HIDDEN;
 	if (FwildAttr & ATT_SYSTEM)
 		NewAttr |= FILE_ATTRIBUTE_SYSTEM;
-	if (FwildAttr & ATT_SUBD)
+	if (FwildAttr & ATT_DIR)
 		NewAttr |= FILE_ATTRIBUTE_DIRECTORY;
 	if (FwildAttr & ATT_ARCH)
 		NewAttr |= FILE_ATTRIBUTE_ARCHIVE;

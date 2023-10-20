@@ -29,7 +29,7 @@
 #include  <direct.h>
 #include  <ctype.h>
 
-#include  "fwild.h"
+#include  "fWild.h"
 
 // ---------------------------------------------------------------------------
 	FILE *

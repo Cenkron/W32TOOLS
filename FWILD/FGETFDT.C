@@ -1,62 +1,123 @@
 /* ----------------------------------------------------------------------- *\
 |
-|		C-callable function to get the UNIX file time/date under either
-|		MS-DOS or OS/2.
+|								fgetfdt
 |
 |							Brian W Johnson
 |								26-May-90
 |								 3-Apr-00 NTFS vs FAT timestamp resolution fix
 |								21-Dec-08 FAT timestamp correction
+|								24-Oct-23 Change to FileInfo method
 |
-|		Calling sequence:
+|		int					Returns 0 for success, or nonzero for failure
+|	fgetfdt (				Get the timedate (write time) of the file
+|		const char  *pName, Pointer to the path/filename
+|		time_t		*pFdt	Pointer to the returned FDT, or NULL
 |
-|		return = fgetfdt (char *fnp)	Pointer to the path/filename
+|	For historical reasons, the fWild system uses the unix time format
+|	internally, even though it has much lower resolution than the native
+|	Windows timestamp.  The write timestamp is used because it is the time
+|	that is visibly used by Windows, and because it best represents the
+|	origin date of the data contained in the file.
 |
-|	    time_t  return;					The returned File TimeDate
+|	The conversion from Windows time to UNIX time is done by FileInfo.
 |
 \* ----------------------------------------------------------------------- */
 
 #include  <windows.h>
-
 #include  <sys\types.h>
-#include  <sys\stat.h>
+#include  <sys\utime.h>
 #include  <stdio.h>
 #include  <string.h>
 #include  <time.h>
 
-#include  "fwild.h"
+#include  "fWild.h"
 
-/* ----------------------------------------------------------------------- *\
-|  fgetfdt ()  -  Get the file time/date (via filename)
-\* ----------------------------------------------------------------------- */
-	time_t								/* Returns the file date/time, or -1 */
+// ---------------------------------------------------------------------------
+//	#define TEST		// Define to build a test program
+//	#define DEBUG		// Define to include debug output
+
+#if defined(TEST)		// There is currently no test program
+#define DEBUG
+#endif
+
+#if defined(DEBUG)
+#include <stdio.h>
+#endif
+
+#if 1
+// ---------------------------------------------------------------------------
+//	fgetfdt ()  -  Get the file time/date (via filename)
+// ---------------------------------------------------------------------------
+	int						// Returns 0 for success, or nonzero for failure
 fgetfdt (
-	char  *fnp)							/* Pointer to the path/filename */
+	const char  *pName, 	// Pointer to the path/filename
+	time_t		*pFdt)		// Pointer to the returned FDT, or NULL
 
 	{
-	time_t				fdt;			/* The returned date/time value */
-	struct _stat32i64	s;				/* The stat structure */
-	TIME_ZONE_INFORMATION  TZinfo;		/* Retrieved TZ info (unused) */
+	PFI		pFi;
+	time_t	fdt    = 0;		// The returned FDT, assume failure
+	int		result = (-1);	// The returned result, assume failure
+	
+	if (pName)
+		pFi = FileInfoOpen(FW_ALL, pName);
+
+	if (pFi)
+		{
+		fdt = FileInfoFDT(pFi);
+		FileInfoClose(pFi);
+		result = 0;
+#ifdef DEBUG
+printf("fgetfdt suceeded [%lld] \"%s\"\n", fdt, pName);		// if (pSize)
+#endif
+		}
+
+#ifdef DEBUG
+	else
+		{
+printf("fgetfdt failed \"%s\"\n", pName);
+		}
+#endif
+
+	if (pFdt && (result == 0))
+		*pFdt = fdt;
+	return (result);
+	}
+
+#else
+// ---------------------------------------------------------------------------
+//	fgetfdt ()  -  Get the file time/date (via filename)
+//	This is the old method used mostly in the DOS days, saved for posterity
+// ---------------------------------------------------------------------------
+	int						// Returns 0 for success, or nonzero for failure
+fgetfdt (
+	const char  *pName, 	// Pointer to the path/filename
+	time_t		*pFdt)		// Pointer to the returned FDT, or NULL
+
+	{
+	time_t				fdt;			// The returned date/time value
+	struct _stat64		stat;			// The stat structure
+	TIME_ZONE_INFORMATION  TZinfo;		// Retrieved TZ info (unused)
+	int   result = 0;					// Returned result, assume success
 
 
-	int statresult = _stat32i64(fnp, &s);
+	int statresult = _stat64(pName, &stat);
 	if (statresult != 0)
-		return (-1L);					/* Failed */
+		return (-1);					// Failed
 
-	fdt = ((s.st_mtime + 1) & ~1);	/* FAT vs NTFS resolution */
+	fdt = ((stat.st_mtime + 1) & ~1);	// FAT vs NTFS resolution
 
-	if (xporlater  &&  (GetTimeZoneInformation(&TZinfo) == TIME_ZONE_ID_DAYLIGHT))
+	if (GetTimeZoneInformation(&TZinfo) == TIME_ZONE_ID_DAYLIGHT)
 		{
 		char  *pBuffer;					// Path pointer
 		char    FileSystem [32];		// Filesystem name
 		char    Buffer     [1024];		// Path prefix
 
-		strcpy(Buffer, fnp);
+		strcpy(Buffer, pName);
 		if ((pBuffer = QueryUNCPrefix(Buffer)) != NULL)
 			{
             *pBuffer = '\0';
 			}
-		else if ((pBuffer = QueryDrivePrefix(Buffer, TRUE)) != NULL)	// Single mode
+		else if ((pBuffer = QueryDrivePrefix(Buffer)) != NULL)	// Single mode
 			{
             *pBuffer++ = '\\';
             *pBuffer   = '\0';
@@ -77,7 +138,7 @@ fgetfdt (
 				&FileSystem[0],
 				sizeof(FileSystem)))
 			{
-			fprintf(stderr, "\007fgetfdt: Error getting file system type info\n");
+			fprintf(stderr, "fgetfdt: Error getting file system type info\n");
 			}
 		else if (_strnicmp(FileSystem, "FAT", 3) == 0)
 			{
@@ -85,7 +146,11 @@ fgetfdt (
 			}
 		}
 
-	return (fdt);
+	if (pFdt && (result == 0))
+		*pFdt = fdt;
+	return (result);
 	}
 
-/* ----------------------------------------------------------------------- */
+#endif
+// ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------

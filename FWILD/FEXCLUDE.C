@@ -13,6 +13,8 @@
 //
 //		For now, only local files are considered for exclusion
 //
+//		This file is deprecated and is removed from the build
+// 
 // -----------------------------------------------------------------------
 //
 //	Each exclusion spec can specify the following:
@@ -32,7 +34,7 @@
 
 #define  FWILD_INTERNAL		/* Enable FWILD internal definitions */
 
-#include  "fwild.h"
+#include  "fWild.h"
 #include  "fexclude.h"
 
 // -----------------------------------------------------------------------
@@ -162,26 +164,29 @@ copy_segments (					// Copy up to 2 segments into the Segments structure
 	*pSeg[0] = '\0';			// Init both segments to empty
 	*pSeg[1] = '\0';
 
-	for (;;)					// Copy the segments (up to MAX_EXCL_SEGMENT)
+	if (q)
 		{
-		if (*p == '\0')			// If end of pattern reached, done
+		for (;;)					// Copy the segments (up to MAX_EXCL_SEGMENT)
 			{
-			*q = '\0';			// Terminate the current segment
-			break;				// Finished, successful
-			}
+			if (*p == '\0')			// If end of pattern reached, done
+				{
+				*q = '\0';			// Terminate the current segment
+				break;				// Finished, successful
+				}
 
-		else if (isPathChar(*p))
-			{
-			*q = '\0';			// Terminate the current segment
-			if (++seg >= MAX_EXCL_SEGMENT)	// Move to next segment
-				break;			// Error, too many segments
-			++p;				// Skip over the found path character		
-			q = pSeg[seg];		// Init ptr q for the next segment
-			}
+			else if (isPathChar(*p))
+				{
+				*q = '\0';			// Terminate the current segment
+				if (++seg >= MAX_EXCL_SEGMENT)	// Move to next segment
+					break;			// Error, too many segments
+				++p;				// Skip over the found path character		
+				q = pSeg[seg];		// Init ptr q for the next segment
+				}
 
-		else
-			*q++ = *p++;
-        }
+			else
+				*q++ = *p++;
+			}
+		}
 
 	// Returns the segment copy depth, or (-1) if too many segments to copy
 	return ((seg < MAX_EXCL_SEGMENT) ? (seg + 1): (-1));
@@ -284,9 +289,7 @@ GetInitPath (void)				// Get the pathname of the default exclusion file
 
 	{
     DWORD	length;
-	char  *pDest;
 static char Dest [MAX_PATH];
-
 	if ((length = GetModuleFileName(NULL, Dest, sizeof(Dest))) == 0)
 		return (NULL);	// No filespec
 
@@ -294,10 +297,8 @@ static char Dest [MAX_PATH];
 		return (NULL);	// Invalid filespec
 
 	Dest[strlen(Dest) - strlen(fntail(Dest))] = '\0';
-	if ((pDest = fncatpth(Dest, "exclude.ini")) == NULL)
-		return (NULL);
-
-	return ((strlen(pDest)  > 0) ? pDest : NULL);
+	strcat(Dest, "exclude.ini");
+	return ((strlen(Dest)  > 0) ? Dest : NULL);
 	}
 
 // -----------------------------------------------------------------------
@@ -471,7 +472,7 @@ exclusionTest (				// Test this candidate for exclusion
 	int result = TRUE;
 	for (int seg = 0; (seg < pExc->depth); ++seg)
 		{
-		if ((pExc->path[seg][0] != '\0') && (fnmatch(pExc->path[seg], targetProps.path[seg], FALSE) == FALSE))
+		if ((pExc->path[seg][0] != '\0') && (fnMatch(pExc->path[seg], targetProps.path[seg]) == FALSE))
 			{
 			result = FALSE;
 			break;
@@ -588,17 +589,17 @@ fexcludeCheck (					// Check if a file/path is in the exclusion list
 // Create an exclusion record for a provided pattern, or file of patterns
 // -----------------------------------------------------------------------
 	int							// Return non-zero if an error
-fexclude (						// Exclude a path or path file from the fwild search
+fexclude (						// Exclude a path or path file from the fWild search
 	char  *pattern)				// Pointer to the pattern string
 
 	{
-	int patoffset = (int)(strlen(pattern) - 1);	// Trim '\n' from lines
-	if (pattern[patoffset] == '\n')
-		pattern[patoffset] = '\0';
-
 //printf("fexclude called \"%s\"\n", pattern);
 	if (pattern == NULL)		// Ignore NULL string pointers
 		return (0);
+
+	int patoffset = (int)(strlen(pattern) - 1);	// Trim '\n' from lines
+	if (pattern[patoffset] == '\n')
+		pattern[patoffset] = '\0';
 
 	else if (pattern[0] == '@')	// '@' denotes pattern is the name of an exclusion file
 		{
@@ -666,7 +667,7 @@ fexcludeClean (void)
 // -----------------------------------------------------------------------
 	int							// Return non-zero if an error
 fexcludeInit (
-	int  *xmode)				// Pointer to the fwild.xmode variable
+	int  *xmode)				// Pointer to the fWild.xmode variable
 
 	{
 	if (++InstanceCount == 1)	// Suppress nested instances
@@ -681,6 +682,7 @@ fexcludeInit (
 			fflush(stdout);
 			}
 
+//printf("fexcludeInit 2\n");
 		if (enbExcl)
 
 			// If default exclusions are enabled,
@@ -688,11 +690,13 @@ fexcludeInit (
 			// but fail over to using the internal defaults
 
 			{
+//printf("fexcludeInit 3\n");
 			if (fexcludeFromFile(GetInitPath()) != 0)
 
 				// The default file failed, so use the internal defaults instead
 
 				{
+//printf("fexcludeInit 4\n");
 				for (char **p = &DefExcludeFiles[0]; (*p != NULL); ++p)
 					fexclude(*p);
 				}

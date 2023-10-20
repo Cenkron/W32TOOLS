@@ -8,7 +8,7 @@
 #include  <string.h>
 #include  <ctype.h>
 
-#include  "fwild.h"
+#include  "fWild.h"
 #include  "sr_exter.h"
 #include  "greplib.h"
 

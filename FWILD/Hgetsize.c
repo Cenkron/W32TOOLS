@@ -19,7 +19,7 @@
 
 #include  <windows.h>
 #include  <io.h>
-#include  "fwild.h"
+#include  "fWild.h"
 
 /* ----------------------------------------------------------------------- *\
 |  hgetsize ()  -  Get the file size (via open file handle)

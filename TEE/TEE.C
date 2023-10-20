@@ -12,7 +12,7 @@
 #include  <stdlib.h>
 #include  <ctype.h>
 
-#include  "fwild.h"
+#include  "fWild.h"
 
 char	copyright [] =
 "Copyright (c) 1985 by J & M Software, Dallas TX - All Rights Reserved";
@@ -21,9 +21,6 @@ char	 buffer [BUFSIZ];	/* Buffer for stdout */
 
 char	swch = '-';		/* The switch character */
 
-static void cantopen (char *);
-void usage (void);
-void help (void	);
 void dprint (char **);
 
 /* ----------------------------------------------------------------------- */
@@ -68,15 +65,6 @@ main (
 		fputs(record, stdout);
 		fflush(stdout);
 		}
-	}
-
-/* ----------------------------------------------------------------------- */
-	static void
-cantopen (			/* Inform user of input failure */
-	char  *fnp)			/* Input file name */
-
-	{
-	fprintf(stderr, "\7Unable to open input file: %s\n", fnp);
 	}
 
 /* ----------------------------------------------------------------------- */

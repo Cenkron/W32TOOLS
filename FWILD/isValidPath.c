@@ -22,7 +22,7 @@
 #include  <ctype.h>
 #include  <string.h>
 #include  <stdlib.h>
-#include  "fwild.h"
+#include  "fWild.h"
 
 // ------------------------------------------------------------------------------------------------
 // Validate path characters (includes '?' and '*' as valid for the Pattern Compiler)

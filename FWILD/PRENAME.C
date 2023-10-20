@@ -31,11 +31,10 @@
 #include  <io.h>
 #include  <direct.h>
 
-#include  "fwild.h"
+#include  "fWild.h"
 
 // ---------------------------------------------------------------------------
-
-//#define DEBUG	// Define this for debug output
+//	#define DEBUG	// Define this for debug output
 
 /* ----------------------------------------------------------------------- */
 	int

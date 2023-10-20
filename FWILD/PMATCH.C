@@ -28,11 +28,14 @@
 #include  <stdlib.h>
 #include  <io.h>
 
-#include  "fwild.h"
+#include  "fWild.h"
 
 
 static	int	m_mode;			/* Semi-global match mode */
 static	int	_pmatch (char *, char *);
+
+/* ----------------------------------------------------------------------- */
+//	#define DEBUG
 
 /* ----------------------------------------------------------------------- */
 	int					// Returns TRUE if the paths match, else FALSE
@@ -57,11 +60,7 @@ pmatch (				/* Test two filenames for filename match */
 	r = fmalloc(MAX_PATH);
 	strcpy(r, p);
 	strsetp(r, (char)('/'));
-	if (fnreduce(r) <0)
-		{
-		free(r);
-		return (FALSE);
-		}
+	fnreduce(r);
 
     /* Handle a reduced "." directory by replacing it with "*" */
 
@@ -74,12 +73,7 @@ pmatch (				/* Test two filenames for filename match */
 	s = fmalloc(MAX_PATH);
 	strcpy(s, q);
 	strsetp(s, (char)('/'));
-	if (fnreduce(s) < 0)
-		{
-		free(r);
-		free(s);
-		return (FALSE);
-		}
+	fnreduce(s);
 
 	if (((*r == '/') && (*s == '/'))	/* Ensure root match */
 	||  ((*r != '/') && (*s != '/')))
@@ -149,7 +143,7 @@ printf("q = %s\n", q);
 			*ps = '\0';
 		if (qs)
 			*qs = '\0';
-		if (fnmatch(p, q, FALSE))
+		if (fnmatch2(p, q))
 			result = _pmatch(pc, qc);
 		if (ps)
 			*ps = '/';
@@ -158,7 +152,7 @@ printf("q = %s\n", q);
 		}
 
 	else
-		result = fnmatch(p, q, m_mode);	/* Both strings are terminal */
+		result = fnmatch2(p, q);	/* Both strings are terminal */
 
 	return  (result);
 	}

@@ -22,7 +22,7 @@
 #include  <ctype.h>
 #include  <limits.h>
 
-#include  "fwild.h"
+#include  "fWild.h"
 
 #include  "GMLineprint.h"
 #include  "LPRC.h"
@@ -105,6 +105,9 @@ main (
 	char  *fnp = NULL;			// Input file name pointer
 	FILE  *fp  = NULL;			// Input file descriptor
 
+
+	if ((hp = fwOpen()) == NULL)
+		exit(1);
 
 	optenv = getenv("PR");
 
@@ -215,8 +218,9 @@ main (
 		while (optind < argc)
 			{
 			ap = argv[optind++];
-			hp = finit(ap, smode);		// Process the input list
-			if ((fnp = fwild(hp)) == NULL)
+			if (fwInit(hp, ap, smode) != FWERR_NONE)	// Process the input list
+				fwInitError(ap);
+			if ((fnp = fWild(hp)) == NULL)
 				cantopen(ap);
 			else
 				{
@@ -228,10 +232,11 @@ main (
 						}
 					else
 						cantopen(fnp);
-					} while ((fnp = fwild(hp)));
+					} while ((fnp = fWild(hp)));
 				}
 			}
 		}
+	hp = fwClose(hp);
 	}
 
 /* ----------------------------------------------------------------------- *\

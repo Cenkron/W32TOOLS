@@ -12,8 +12,8 @@
 |				   27-Sep-07
 |
 |	    UINT64		Return the (64 bit) file size
-|	size = fwsize(	Get the size of the current fwild filename
-|	    void  *hp)	Pointer to the fwild header
+|	size = fwsize(	Get the size of the current fWild filename
+|	    void  *hp)	Pointer to the fWild header
 |
 \* ----------------------------------------------------------------------- */
 
@@ -21,15 +21,15 @@
 
 #define  FWILD_INTERNAL
 
-#include  "fwild.h"
+#include  "fWild.h"
 
 /* ------------------------------------------------------------------------ */
 	UINT64				/* Return the file size longword */
 fwsize (				/* Get the size of the current filename */
-    DTA_HDR  *hp)		/* Pointer to the DTA header */
+    FW_HDR  *hp)		/* Pointer to the DTA header */
 
 	{
-	return  hp->f_size;
+	return  (fwActive(hp) ? (hp->file_size) : (0));
 	}
 
 /* ------------------------------------------------------------------------ */

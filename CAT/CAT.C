@@ -18,7 +18,7 @@
 #include  <fcntl.h>
 #include  <io.h>
 
-#include  "fwild.h"
+#include  "fWild.h"
 
 #ifndef TRUE
 #define FALSE	  0
@@ -52,11 +52,8 @@ int	runlength  = 1;		/* The maximum space run length */
 
 int	mask   = 0xFF;		/* WordStar mask */
 
-static	void	help ();
-static	void	cantopen (char *);
 static	void	dprint (char **);
 static	void	process (FILE *, char *);
-static	void	usage ();
 
 /* ----------------------------------------------------------------------- */
 	void
@@ -73,6 +70,9 @@ main (argc, argv)
 	char  *fnp = NULL;			/* Input file name pointer */
 	FILE  *fp  = NULL;			/* Input file descriptor */
 
+
+	if ((hp = fwOpen()) == NULL)
+		exit(1);
 
 	setbuf(stdout, buffer);
 	swch = egetswch();
@@ -199,11 +199,10 @@ main (argc, argv)
 			else
 				{
 				do  {
-					if ((hp = fwinit(*argv, smode)) == NULL)	/* Process the input list */
-						fwinitError(*argv);						/* Inform user of input failure */
-					if  ((fnp = fwild(hp)) == NULL)
+					if (fwInit(hp, *argv, smode) != FWERR_NONE)	// Process the pattern
+						fwInitError(*argv);						/* Inform user of input failure */
+					if  ((fnp = fWild(hp)) == NULL)
 						{
-						hp = NULL;
 						cantopen(*argv);
 						}
 					else
@@ -216,22 +215,14 @@ main (argc, argv)
 								}
 							else
 								cantopen(fnp);
-							} while ((fnp = fwild(hp)));
-						hp = NULL;
+							} while ((fnp = fWild(hp)));
 						}
 					} while (*++argv);
 				}
 			}
 		}
-	}
 
-/* ----------------------------------------------------------------------- */
-	static void
-cantopen (fnp)			/* Inform user of input failure */
-	char  *fnp;			/* Input file name */
-
-	{
-	fprintf(stderr, "\7Unable to open input file: %s\n", fnp);
+	hp = fwClose(hp);
 	}
 
 /* ----------------------------------------------------------------------- */

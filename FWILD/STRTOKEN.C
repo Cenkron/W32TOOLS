@@ -17,7 +17,7 @@
 #include <windows.h>
 #include <string.h>
 
-#include "fwild.h"
+#include "fWild.h"
 
 /* ----------------------------------------------------------------------- *\
 |  Private definitions

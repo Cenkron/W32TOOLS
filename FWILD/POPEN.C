@@ -33,11 +33,10 @@
 #include  <direct.h>
 #include  <io.h>
 
-#include  "fwild.h"
+#include  "fWild.h"
 
 // ---------------------------------------------------------------------------
-
-//#define DEBUG	// Define this for debug output
+//	#define DEBUG	// Define this for debug output
 
 // ---------------------------------------------------------------------------
 	int						// Return file descriptor if successful, else (-1)

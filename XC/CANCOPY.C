@@ -17,7 +17,7 @@ Copyright (c) 2007 by Brian Johnson, TX - All Rights Reserved
 #include <fcntl.h>
 #include <errno.h>
 
-#include <fwild.h>
+#include <fWild.h>
 
 #include "dtypes.h"
 #include "xcopy.h"
@@ -39,6 +39,15 @@ can_copy (
 	int 	retval = TRUE;
 	int		srcfh;
 	UINT64	dstSize;
+	UINT64	spaceAvailable = dfree(path);
+	
+
+	if (v_flag >= 2)
+		{
+printf("CANcopy src: \"%s\"\n", src);
+printf("CANcopy dst: \"%s\"\n", dst);
+printf("CANcopy pth: \"%s\"\n", path);
+		}
 
 	if (AZ_Flags.p)
 		{
@@ -70,7 +79,13 @@ can_copy (
 		{
 		fgetsize(dst, &dstSize);
 
-	while ( (filesize - (INT64)(dstSize)) > dfree(path) )
+
+//printf("dstSize %lldd\n", dstSize);
+
+	if (! azFlags.p)
+		spaceAvailable += dstSize;	
+
+	while ( filesize > spaceAvailable )
 		{
 		error(dst, "destination disk full");
 		if ( !azFlags.c || !ch_disk() )

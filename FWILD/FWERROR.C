@@ -8,7 +8,9 @@
 |
 \* ----------------------------------------------------------------------- */
 
-#include  "fwild.h"
+#include  "fWild.h"
+
+	int	fwerrno = FWERR_NONE;
 
 /* ----------------------------------------------------------------------- *\
 |  fwerror () - Return the fwerrno description string
@@ -52,6 +54,22 @@ fwerror (void)
 
 		case FWERR_TRAIL:
 			p = "Illegal trailing separator";
+			break;
+
+  		case FWERR_INVALID:
+			p = "Invalid pattern";
+			break;
+
+  		case FWERR_INSTANCE:
+			p = "Invalid instance pointer";
+			break;
+
+  		case FWERR_PHYSICAL:
+			p = "Non-physical device";
+			break;
+
+  		case FWERR_NOMEM:
+			p = "Not enough memory";
 			break;
 
 		default:

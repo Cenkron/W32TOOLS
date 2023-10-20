@@ -30,7 +30,7 @@ verify (
 	int			dstfh		=   -1;
 	int			errorflg	= FALSE;
 	int			srcfh;
-	__int64		lsize		= filesize;
+	UINT64		lsize		= filesize;
 
 	if (!azFlags.v)
 		return(0);

@@ -21,7 +21,7 @@
 #include  <signal.h>
 
 #include  <cdiff.h>
-#include  "fwild.h"
+#include  "fWild.h"
 
 // #define  BUFFEREDOUT		// Define this to buffer stdout
 
@@ -281,7 +281,7 @@ filepair (
 	void  *fp = NULL;		// Pointer to the FP structure
 
 
-	ListFiles = (iswild(fnp1)  ||  ( ! fnchkfil(fnp1)));
+	ListFiles = (isWild(fnp1)  ||  ( ! fnchkfil(fnp1)));
 	if ((retval = fp_init(&fp, TRUE, fnp1, fnp2)) == 0)
 		{
 		while (fp_pair(fp, &fnpA, &fnpB) == 0)
@@ -313,7 +313,7 @@ filepair (
 			case FPR_P2WILD:	f_err("Path 2 cannot be wild");   break;
 			case FPR_P2FILE:	f_err("Path 2 cannot be a file"); break;
 			case FPR_MEMORY:	f_err("Insufficient memory");     break;
-			case FPR_FWERROR:	f_err("fwild() error");           break;
+			case FPR_FWERROR:	f_err("fWild() error");           break;
 			default:			f_err("Unknown error");           break;
 			}
 		}

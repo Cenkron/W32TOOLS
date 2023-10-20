@@ -15,7 +15,7 @@
 
 #define  FWILD_INTERNAL
 
-#include  "fwild.h"
+#include  "fWild.h"
 #include  "ptypes.h"
 
 #define  LINLEN		(16)

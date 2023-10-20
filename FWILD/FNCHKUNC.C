@@ -1,14 +1,16 @@
 /* ----------------------------------------------------------------------- *\
 |
-|				   FNCHKUNC
+|					   FNCHKUNC
 |
-|		    Copyright (c) 1985, 1990, all rights reserved
-|				Brian W Johnson
-|				   25-Sep-97 New for UNC
+|			    Copyright (c) 1985, 1990, all rights reserved
+|					Brian W Johnson
+|					   25-Sep-97 New for UNC
 |
-|	    int			Returns TRUE if the string "s" is the
-|	bool = fnchkunc (s);	name of a potential UNC volume name
-|	    char  *s;		Pointer to the string
+|		int					Returns TRUE if the string "s" is the
+|	fnchkunc (				  name of a potential UNC volume name
+|	    char  *s)			Pointer to the string
+|
+|	This file is deprecated, and has been removeed from the build.
 |
 \* ----------------------------------------------------------------------- */
 
@@ -20,12 +22,12 @@
 
 #define  FWILD_INTERNAL
 
-#include  "fwild.h"
+#include  "fWild.h"
 
 /* ----------------------------------------------------------------------- */
     int						/* Return TRUE if the directory exists */
 fnchkunc (					/* Verify the existence of a directory */
-	char  *s)				/* Pointer to the filename string */
+	const char  *s)			/* Pointer to the filename string */
 
 	{
 	int      result;			/* The returned result */
@@ -43,7 +45,7 @@ fnchkunc (					/* Verify the existence of a directory */
 	else if (strncmp(pbuff1, "\\\\", 2) != 0)
 		result = FALSE;
 
-	else if (_fnchkdir(pbuff1))
+	else if (fnchkdir(pbuff1))
 		result = FALSE;
 
 	else if ((pbuff2 = malloc(MAX_PATH)) == NULL)
@@ -52,7 +54,7 @@ fnchkunc (					/* Verify the existence of a directory */
 	else
 		{
 		char  Dummy[1024];
-		strcpy(pbuff2, pbuff1);
+		pathCopy(pbuff2, pbuff1, MAX_COPY);
 		strcat(pbuff2, "\\");		// Append the dummy root directory
 		result = (GetVolumeInformation(
 			pbuff2,

@@ -19,12 +19,12 @@
 
 #define  FWILD_INTERNAL
 
-#include  "fwild.h"
+#include  "fWild.h"
 
 /* ----------------------------------------------------------------------- */
 	int
 fp_init (					/* Initialize the FP system */
-	FP   **fpp,				/* Pointer to the returned FP pointer */
+	PFP  *fpp,				/* Pointer to the returned FP pointer */
 	int    PermitFile,		/* TRUE to permit s2 to be a file name */
 	char  *s1,				/* Pointer to the pathname1 string */
 	char  *s2)				/* Pointer to the pathname2 string */
@@ -39,7 +39,7 @@ fp_init (					/* Initialize the FP system */
 
 	result = FPR_SUCCESS;		/* Assume success */
 	fp     = *fpp;				/* Init the FP pointer */
-	if (iswild(s2))				/* Ensure non-wild path2 */
+	if (isWild(s2))				/* Ensure non-wild path2 */
 		{
 		result = FPR_P2WILD;
 		goto exit;
@@ -62,11 +62,7 @@ fp_init (					/* Initialize the FP system */
 	else if (fnchkfil(s2))
 		{
 		dflag = FALSE;			/* Using s2 as a filename */
-		if (fnreduce(s2) < 0)
-			{
-			result = FPR_P2FILE;
-			goto exit;
-			}
+		fnreduce(s2);
 		}
 	else
 		{
@@ -80,8 +76,16 @@ fp_init (					/* Initialize the FP system */
 		goto exit;
 		}
 
-	if ((fp->hp = fwinit(s1, FW_FILE)) == NULL)	/* Init the wild subsystem */
+	if ((fp->hp = fwOpen()) == NULL)
 		{
+		result = FPR_MEMORY;
+		goto exit;
+		}
+
+	if (fwInit(fp->hp, s1, FW_FILE) != FWERR_NONE)	/* Init the wild subsystem */
+		{
+		fwInitError(s1);
+		fwClose(fp->hp);
 		fp->sentinel = 0;
 		free(fp);
 		result = FPR_FWERROR;
@@ -105,7 +109,7 @@ exit:
 /* ----------------------------------------------------------------------- */
 	int
 fp_pair (				/* Return file pair filenames */
-	FP     *fp,			/* Pointer to the FP structure */
+	PFP     fp,			/* Pointer to the FP structure */
 	char  **s1,			/* Pointer to the pathname1 string */
 	char  **s2)			/* Pointer to the pathname2 string */
 
@@ -126,8 +130,9 @@ fp_pair (				/* Return file pair filenames */
 		fp->fnp2 = NULL;
 		}
 
-	if ((fp->fnp1 = fwild(fp->hp)) == NULL)
+	if ((fp->fnp1 = fWild(fp->hp)) == NULL)
 		{
+		fwClose(fp->hp);
 		fp->sentinel = 0;
 		free(fp);
 		result = FPR_NOFILE;
@@ -147,6 +152,7 @@ fp_pair (				/* Return file pair filenames */
 		}
 
 exit:
+
 	return (result);
 	}
 

@@ -16,7 +16,7 @@
 #include  <string.h>
 #include  <ptypes.h>
 
-#include  <fwild.h>
+#include  <fWild.h>
 
 #ifndef TRUE
 #define FALSE	  0
@@ -80,6 +80,9 @@ main (
     char  *fnp = NULL;		// Input file name pointer
     int    fd  = 0;		// Input file descriptor
 
+
+	if ((hp = fwOpen()) == NULL)
+		exit(1);
 
 //  setbuf(stdout, fmalloc(BUFSIZ));
 //  swch = egetswch();
@@ -147,10 +150,10 @@ main (
 			time_t fdt;
 
 			ap = argv[optind++];
-			hp = finit(ap, smode);		// Process the input list
-			if ((fnp = fwild(hp)) == NULL)
+			if (fwInit(hp, ap, smode) != FWERR_NONE)	// Process the input list
+				fwInitError(ap);
+			if ((fnp = fWild(hp)) == NULL)
 				{
-				hp = NULL;
 				cantopen(ap);
 				}
 			else
@@ -177,11 +180,12 @@ main (
 						fsetfdt (fnp, fdt);
 						fsetattr(fnp, attr);
 						}
-					} while ((fnp = fwild(hp)));
-				hp = NULL;
+					} while ((fnp = fWild(hp)));
 				}
 			}
 		}
+
+	hp = fwClose(hp);
 	}
 
 /* ----------------------------------------------------------------------- */

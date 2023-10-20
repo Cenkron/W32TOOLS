@@ -19,12 +19,12 @@
 #include  <sys\types.h>
 #include  <sys\stat.h>
 
-#include  "fwild.h"
+#include  "fWild.h"
 
 /* ----------------------------------------------------------------------- *\
 |  hgetfdt ()  -  Get the file time/date (via open file handle)
 \* ----------------------------------------------------------------------- */
-	time_t
+	time_t					// returns fdt of file, or 0 if error
 hgetfdt (
 	int  fh)				/* The open file handle */
 
@@ -36,7 +36,7 @@ hgetfdt (
 	if (fstat(fh, &s) == 0)
 		result = ((s.st_mtime + 1) & ~1);  /* FAT vs NTFS resolution */
 	else
-		result = -1L;
+		result = 0;
 
 	return (result);
 	}

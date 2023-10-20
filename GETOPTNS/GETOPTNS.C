@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <ctype.h>
 
-#include <fwild.h>
+#include <fWild.h>
 #include <dtypes.h>
 #include <getoptns.h>
 

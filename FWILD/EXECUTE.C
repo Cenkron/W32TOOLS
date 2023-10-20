@@ -15,7 +15,7 @@
 #include  <string.h>
 #include  <process.h>
 
-#include  "fwild.h"
+#include  "fWild.h"
 
 #define	LINESIZE	1024
 

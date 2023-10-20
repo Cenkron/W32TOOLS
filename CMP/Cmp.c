@@ -16,7 +16,7 @@
 |				   26-Mar-01 Quiet option
 |				    4-Nov-03 /p and /m options (for NTFS problems)
 |				   29-Sep-07 for 64 bit file sizes
-|				   10-Sep-23 New fnreduce()
+|				   10-Sep-23 New fnreduce(), fnabspth, pathCopy, etc.
 |
 \* ----------------------------------------------------------------------- */
 
@@ -30,17 +30,18 @@
 #include  <io.h>
 #include  "time.h"	
 
-#include  "fwild.h"
+#include  "fWild.h"
 #include  "ptypes.h"
+
+/* ----------------------------------------------------------------------- */
+//	#define DEBUG
 
 #ifndef TRUE
 #define FALSE	0
 #define TRUE	1
 #endif
 
-/* ----------------------------------------------------------------------- */
-
-//#define DEBUG
+#define	PATHCH	('\\')
 
 /* ----------------------------------------------------------------------- */
 
@@ -62,24 +63,30 @@ char  *usagedoc [] =
 "(\"**\"), path2 filenames will correspond.  Path2 may not contain",
 "any wildcards.  If path2 is not specified, it will default to \".\".",
 "",
-"    %ca      alarm beeps on error",
+"    %ca      Reports attribute mismatch (not archive)",
+"    %cA      Reports attribute mismatch (also archive)",
 "    %cb      checks files bidirectionally (implies %ce)",
+"    %cB      checks files only in the backward direction",
 "    %cd      reports different data in the file pairs",
+"    %cD      also tests directories, including file/dir mismatch",
 "    %ce      reports non-existence of the path2 file    (default)",
 "    %ch      also checks hidden and system files",
 "    %cl      lists all file names as they are compared",
-"    %cL      lists the path2 names as they are compared",
+"    %cL      also lists the path2 names",
 "    %cn      lists all file names, but does not compare them",
+"    %cN      in error reports list Only the file/dir name",
 "    %co <td> compares only files older than <td>",
 "    %cO      reports only \"older\" files",
-"    %cq      quiet mode (default off)",
+"    %cq      suppress error basic message (not file mismatches) (default off)",
 "    %cQ      quotes file names with imbedded spaces (default on)",
 "    %cr      lists only file names of successful compares",
+"    %cR      reports raw times of unsuccessful compares",
 "    %cs      reports different sizes of the file pairs  (default)",
 "    %ct      reports different ages of the file pairs   (default)",
 "    %cT nnn  Offset timestamp 1 by (+/-)nnn hours       (default 0)",
-"    %cu      use UNIX mode (text file translation, also uses -d)",
+"    %cu      chack files in text mode (slower), else binary (faster))",
 "    %cv      lists verbose information",
+"    %cw      warning beeps on error",
 "    %cX <pathspec> e/X/cludes (possibly wild) files matching pathspec",
 "    %cX @<xfile>   e/X/clude files that match pathspec(s) in xfile",
 "    %cX-       Disable default file exclusion(s)",
@@ -95,28 +102,35 @@ NULL
 
 /* ----------------------------------------------------------------------- */
 
-int	defflg			= TRUE;			/* Use defaults flag */
-int	a_flag			= FALSE;		/* Beep on error flag */
-int	bidi_flag		= FALSE;		/* bidirectional flag */
-int	bad_flag		= TRUE;			/* List bad file names flag */
-int	c_flag			= TRUE;			/* Compare flag */
-int	d_flag			= FALSE;		/* Data flag */
-int	e_flag			= FALSE;		/* Exist flag */
-int	good_flag		= FALSE;		/* List good file names flag */
+int	defflg			= TRUE;			/* Report attribute mismatch flag */
+int	a_flag			= FALSE;		/* Report attribute mismatch (excluding archive) */
+int	A_flag			= FALSE;		/* Report attribute mismatch (including archive) */
+int	c_flag			= TRUE;			/* Compare flag (master flag) */
+int	d_flag			= FALSE;		/* Report data mismatch */
+int	e_flag			= FALSE;		/* Report existence mismatch */
+int l_flag			= FALSE;		/* List all files */
 int	L_flag			= FALSE;		/* Use Long form when listing files */
+int	N_flag			= FALSE;		/* List only the fault filename(s) */
 int	o_flag			= FALSE;		/* Compare only if older than <td> */
-int	Older_flag		= FALSE;		/* Report only older flags */
 int	q_flag			= FALSE;		/* quiet flag */
 int	Q_flag			= TRUE;			/* quote names with spaces flag */
-int	s_flag			= FALSE;		/* Size flag */
-int	t_flag			= FALSE;		/* Timedate flag */
+int	R_flag			= FALSE;		/* show raw times of unsuccessful compares */
+int	s_flag			= FALSE;		/* Report size mismatch */
+int	t_flag			= FALSE;		/* Report Timedate mismatch */
 int	u_flag			= FALSE;		/* UNIX mode (text translation) */
-int	v_flag			= 0;			/* Verbose information flag */
+int	v_count			= 0;			/* Verbose information flag */
+int	w_flag			= FALSE;		/* Beep on error flag */
 int	y_flag			= FALSE;		/* Compare only if younger than <td> */
-int	Younger_flag	= FALSE;		/* Report only younger flags */
 int	z_flag			= FALSE;		/* Return zero even if error flag */
 
-int	ex_code	= 0;				/* Exit code */
+int	good_flag		= FALSE;		/* List good file names flag */
+int	bad_flag		= TRUE;			/* List bad file names flag */
+int	fwd_enable		= TRUE;			/* Compare in the forward direction */
+int	rev_enable		= FALSE;		/* Compare only in the backward direction */
+int	Older_flag		= FALSE;		/* Report only older flag */
+int	Younger_flag	= FALSE;		/* Report only younger flag */
+
+int	exit_code	= 0;				/* Exit code */
 
 int	filetypes = FW_FILE;		/* File types checked */
 
@@ -128,32 +142,44 @@ char	swch = '-';				/* The switch character */
 char   *buff1;					/* Disk data buffer pointers */
 char   *buff2;
 
-char	buffer [BUFSIZ];		/* Buffer for stdout */
+PHP		hp = NULL;				// FWILD instance pointer
+PEX		xp = NULL;				// FEX instance pointer
+
+//char	buffer [BUFSIZ];		/* Buffer for stdout */
 
 #define	DATASIZE	1000000		/* Size of the disk data buffers */
 
-#define	OPENMODE	((u_flag) ? (O_RDONLY) : (O_RDONLY | O_RAW))
+#define	OPENMODE	((u_flag) ? (_O_RDONLY | _O_TEXT) : (_O_RDONLY | _O_BINARY))
 
-#define	DC_EQUAL	 (0)		/* datacomp() bitmap values */
-#define	DC_DIFFERENT (1)
-#define	DC_SMALLER	 (2)
-#define	DC_LARGER	 (4)
+#define	DC_EQUAL	 (0)		/* dataComp() bitmap values */
+#define	DC_MISMATCH  (1)		// file 1, 2 content is different
+#define	DC_SMALLER   (2)		// File 1 is shorter than file 2
+#define	DC_LARGER    (4)		// File 1 is smaller than file 2
 
 
-void	filepair1	(char *, char *);
-void	filepair2	(char *, char *);
+void	filepair1	(void);
+void	filepair2	(void);
 void	process		(char *, char *);
-void	cantfind	(char *);
 void	file1error	(char *);
 void	file2error	(char *);
-void	f_err		(char *);
+void	fat_err		(char *);
 int		putdiff		(int, char *);
-int		datacomp	(int fd1, int fd2);
-int		unixcomp	(int fd1, int fd2);
+int		dataComp	(int fd1, int fd2);
+int		sizeComp	(int fd1, int fd2);
+
 char   *qname		(char *);
 
 time_t	oldertime   = 0L;			/* The older-than time */
 time_t	youngertime = 0L;			/* The younger-than time */
+
+int		CopyIndex1;				// Copy index of path 1
+int 	TermIndex1;				// Termination index of path1
+int		CopyIndex2;				// Copy index of path 2
+
+char	pPath1   [MAX_PATH];	// Primary Search path buffer
+char	pPath2   [MAX_PATH];	// Secondary search path buffer
+char	pSearch  [MAX_PATH];	// Search filespec
+char	pCompare [MAX_PATH];	// Compare filespec
 
 /* ----------------------------------------------------------------------- */
 	static int
@@ -162,13 +188,13 @@ timebound (
 	char *fnp)
 
 	{
-		time_t  t;
+	time_t  t;
 
 	if (o_flag || y_flag)
 		{
 		t = fwgetfdt(hp);
 
-		if (v_flag >= 2)
+		if (v_count >= 2)
 			{
 			printf("\n");
 			printf("Datetime: %s", asctime(localtime(&t)));
@@ -180,10 +206,9 @@ timebound (
 			if (oldertime != 0L)
 				printf("Older:    %s", asctime(localtime(&oldertime)));
 //			printf("\n");
-//			fflush(stdout);
 			}
 
-		if (v_flag >= 1)
+		if (v_count >= 1)
 			{
 //			printf("\n");
 			if ((y_flag)  &&  (t >= youngertime))
@@ -193,7 +218,6 @@ timebound (
 				printf("Older:  %s", fnp);
 
 			printf("\n");
-			fflush(stdout);
 			}
 		}
 
@@ -210,35 +234,56 @@ main (
 	{
 	int    option;			/* Option character */
 	int    nargs;			/* Number of path arguments */
-	char  *fnp1 = NULL;		/* Input file name pointer */
-	char  *fnp2 = NULL;		/* Input file name pointer */
 
-static	char   *optstring = "?aAbBdDeEhHlLnNo:OqQrRsStT:uUvVX:y:YzZ";
+static	char   *optstring = "?aAbBdDeEhHlLnNo:OqQrRsStT:uUvVwWX:y:YzZ";
 
 
-	setbuf(stdout, buffer);
+	if ((hp = fwOpen()) == NULL)
+		exit(1);
+	if ((xp = fExcludeOpen()) == NULL)
+		exit(1);
+
+//	setbuf(stdout, buffer);
 	swch   = egetswch();
 	optenv = getenv("CMP");
 
 	while ((option = getopt(argc, argv, optstring)) != EOF)
 		{
+//printf("Switching\n");
 		switch (tolower(option))
 			{
 			case 'a':
-				a_flag = !a_flag;
-				break;
-
-			case 'b':
-				bidi_flag = !bidi_flag;
-				break;
-
-			case 'd':
-				d_flag = !d_flag;
+				if (option == 'A')	// Alarm
+					A_flag = TRUE;
+				a_flag = TRUE;
 				defflg = FALSE;
 				break;
 
+			case 'b':
+				if (option == 'B')	// Backward only
+					{
+					fwd_enable = FALSE;
+					rev_enable = TRUE;
+					}
+				else // bidirectional
+					{
+					fwd_enable = TRUE;
+					rev_enable = TRUE;
+					}
+				break;
+
+			case 'd':
+				if (option == 'D')
+					filetypes |= FW_DIR;	// Also check directories
+				else
+					{
+					d_flag = !d_flag;
+					defflg = FALSE;
+					}
+				break;
+
 			case 'e':
-				e_flag = !e_flag;
+				e_flag = TRUE;
 				defflg = FALSE;
 				break;
 
@@ -247,20 +292,21 @@ static	char   *optstring = "?aAbBdDeEhHlLnNo:OqQrRsStT:uUvVX:y:YzZ";
 				break;
 
 			case 'l':
-				if (option == 'l')
-					{
-					++bad_flag;
-					++good_flag;
-					}
-				else // (option == 'L')
-					L_flag = !L_flag;
+				if (option == 'L')
+					++L_flag;	// Use the long form when listing files
+				else // (option == 'l')
+					++l_flag;	// List all files
 				break;
 
 			case 'n':
-				++bad_flag;
-				++good_flag;
-				c_flag = FALSE;
-				defflg = FALSE;
+				if (option == 'n')
+					{
+					l_flag = TRUE;
+					c_flag = FALSE;
+					defflg = FALSE;
+					}
+				else // (option == 'N')		// List only the faulted filename
+					++N_flag;
 				break;
 
 			case 'o':
@@ -271,7 +317,7 @@ static	char   *optstring = "?aAbBdDeEhHlLnNo:OqQrRsStT:uUvVX:y:YzZ";
 					}
 				else // (option == 'o')
 					{
-					if ((oldertime = fwsgettd(optarg)) < 0L)
+					if ((oldertime = fwsgettd(optarg)) == 0)
 						{
 						printf("Older time - %s\n", fwserrtd());
 						usage();
@@ -281,18 +327,26 @@ static	char   *optstring = "?aAbBdDeEhHlLnNo:OqQrRsStT:uUvVX:y:YzZ";
 				break;
 
 			case 'q':
-				if (option == 'q')
-					q_flag = !q_flag;
+				if (option == 'Q')
+					Q_flag = TRUE;
 				else // (option == 'Q')
-					Q_flag = !Q_flag;
+					q_flag = TRUE;
 				break;
 
 			case 'Q':
 				break;
 
 			case 'r':
-				bad_flag = FALSE;
-				++good_flag;
+				if (option == 'R')
+					{
+					R_flag = TRUE;
+					}
+				else // (option == 'r')
+					{
+					l_flag    = FALSE;
+					bad_flag  = FALSE;
+					good_flag = TRUE;
+					}
 				break;
 
 			case 's':
@@ -315,21 +369,24 @@ static	char   *optstring = "?aAbBdDeEhHlLnNo:OqQrRsStT:uUvVX:y:YzZ";
 
 			case 'u':
 				++u_flag;
-				++d_flag;
 				break;
 
 			case 'v':
-				++v_flag;
+				++v_count;
+				break;
+
+			case 'w':
+				w_flag = TRUE;
 				break;
 
 			case 'x':	// (Includes 'X')
 				if      (optarg[0] == '-')
-					fexcludeDefEnable(FALSE);		/* Disable default file exclusion(s) */
+					fExcludeDefEnable(xp, FALSE);	/* Disable default file exclusion(s) */
 				else if (optarg[0] == '+')
-					fexcludeShowConf(TRUE);			/* Enable stdout of exclusion(s) */
+					fExcludeShowConf(xp, TRUE);		/* Enable stdout of exclusion(s) */
 				else if (optarg[0] == '=')
-					fexcludeShowExcl(TRUE);			/* Enable stdout of excluded path(s) */
-				else if (fexclude(optarg))
+					fExcludeShowExcl(xp, TRUE);		/* Enable stdout of excluded path(s) */
+				else if (fExclude(xp, optarg))
 					{
 					printf("\7Exclusion string fault: \"%s\"\n", optarg);
 					usage();
@@ -344,7 +401,7 @@ static	char   *optstring = "?aAbBdDeEhHlLnNo:OqQrRsStT:uUvVX:y:YzZ";
 					}
 				else // (option == 'y')
 					{
-					if ((youngertime = fwsgettd(optarg)) < 0L)
+					if ((youngertime = fwsgettd(optarg)) == 0)
 						{
 						printf("Younger time - %s\n", fwserrtd());
 						usage();
@@ -367,239 +424,334 @@ static	char   *optstring = "?aAbBdDeEhHlLnNo:OqQrRsStT:uUvVX:y:YzZ";
 
 	if (defflg)
 		{
-		++e_flag;
-		++s_flag;
-		++t_flag;
+		bad_flag = TRUE;
+//		a_flag = TRUE;
+//		A_flag = TRUE;
+		e_flag = TRUE;
+		s_flag = TRUE;
+		t_flag = TRUE;
 		}
 
-	if (d_flag)
+	if (d_flag || u_flag)
 		{
 		buff1 = fmalloc(DATASIZE);	/* Get data buffers */
 		buff2 = fmalloc(DATASIZE);
 		}
 
+	if (v_count >= 1)
+		printf("v_count = %d\n", v_count);
+
+	// Copy the path argument(s) to the internal buffers
+	
 	nargs = argc - optind;
 	if (nargs < 1)
-		f_err("At least one pathname is required");
+		fat_err("At least one pathname is required");
 
 	if (nargs > 2)
-		f_err("Only two pathnames are allowed");
+		fat_err("Only two pathnames are allowed");
 
-	if (v_flag >= 1)
+	pathCopy(pPath1, argv[optind++], MAX_COPY);	// Load the filename buffers
+	if (nargs == 2)
+		pathCopy(pPath2, argv[optind], MAX_COPY);
+	else // (nargs == 1)	
+		strcpy(pPath2, ".");
+
+	// Standardize the path characters in the buffers
+
+	strsetp(pPath1, PATHCH);
+	strsetp(pPath2, PATHCH);
+	
+	if (isWild(pPath2))					// Ensure non-wild path2
+		fat_err("Path2 cannot be wild");
+
+	// Validate the path devices
+
+	if (! isPhysical(pPath1))			// Protect against NAS down
+		fat_err("Pathspec 1 unavailable");
+	if (! isPhysical(pPath2))
+		fat_err("Pathspec 2 unavailable");
+	
+	// Report the analysis plan
+
+	if (v_count >= 1)
 		{
-		printf("v_flag = %d\n", v_flag);
-		fflush(stdout);
+		printf("Comparing \"%s\" and \"%s\"", pPath1, pPath2);
+		if (! fwd_enable)		// (! fwd_enable && rev_enable)
+			printf(" (in reverse only)\n");
+		else if (rev_enable)	// (fwd_enable  && rev_enable)
+			printf(" (bidirectionally)\n");
+		else 				// (fwd_enable && ! rev_enable)
+			printf("\n");
 		}
 
-	fnp1 = argv[optind++];
+	fnreduce(pPath1);
+	fnreduce(pPath2);
 
-	if ((nargs != 2)  ||  ((fnp2 = argv[optind]) == NULL))
-		fnp2 = ".";
+	// Check and handle the two files comparison case
 
-	if (v_flag >= 1)
+//BWJ this fails the mismatched type test
+
+	if (fnchkfil(pPath2))				// If two files specified,
 		{
-		printf("Comparing \"%s\" and \"%s\"%s\n",
-			fnp1, fnp2, (bidi_flag ? " (bidirectionally)" : ""));
-		fflush(stdout);
-		}
-
-	if (fnchkfil(fnp2))		// If two files specified,
-		{
-		if (fnchkfil(fnp1))
-			process(fnp1, fnp2);	// Compare the two files.
+		if (fnchkfil(pPath1))
+			process(pPath1, pPath2);	// Compare the two files.
 		else
-			f_err("If pathname2 is a file, pathname1 must also be a file");
+			fat_err("If pathname2 is a file, pathname1 must also be a file");
 		}
-	else // fnp2 is not a file; it is either a directory or is wild
+
+	else // pPath2 is not a file; it is likely a directory
 		{
-		if (fnchkfil(fnp1))
-			bidi_flag = FALSE;		// No need to compare single file both ways
+		if (fwd_enable)
+			filepair1();
 
-		filepair1(fnp1, fnp2);
-
-		if (bidi_flag)
-			filepair2(fnp1, fnp2);
+		if (rev_enable)
+			filepair2();
 		}
 
-	exit(ex_code);
+	xp = fExcludeClose(xp);					// Close the Exclusion instance
+	hp = fwClose(hp);
+	exit(exit_code);
 	}
 
-/* ----------------------------------------------------------------------- */
-	void
-filepair1 (					/* Process the pathnames forward */
-	char  *s1,				/* Pointer to the pathname1 string (Search) */
-	char  *s2)				/* Pointer to the pathname2 string (Target) */
+// ---------------------------------------------------------------------------
+//	Build forward search path
+// ---------------------------------------------------------------------------
+		void inline
+	BuildForwardPaths (void)
 
 	{
-	int    CatIndex1;		/* Concatenation index of the path */
-	int    TermIndex1;		/* Termination index of the path (before concatenating) */
-	void  *hp;				/* Pointer to wild file data block */
-	char  *fnp1;			/* Pointer to the path1 pathname */
-	char  *fnp2;			/* Pointer to the path2 pathname */
-	char s2save[1024];
-	strcpy(s2save, s2);
+//BWJ how about if directories are included in the compare
 
+	pathCopy(pSearch,  pPath1, MAX_COPY);
+	pathCopy(pCompare, pPath2, MAX_COPY);
 
-#if 0
-	if (v_flag >= 3)
-		{
-		printf("filepair1: Pat F1 ('%s')  F2 ('%s')\n", s1, s2);
-		fflush(stdout);
-		}
-#endif
-	if (iswild(s2))			/* Ensure non-wild path2 */
-		f_err("Path2 cannot be wild");
+// BWJ
+//	if (fnchkdir(pSearch))		// Make a directory spec wild
+//		pathCat(pSearch, "*", MAX_COPY);
 
-	if (fnParse(s1, &CatIndex1, &TermIndex1) < 0)
-		file1error(s1);
-#if 0
-	if (v_flag >= 3)
-		{
-		printf("Pat F1 ('%s')  F2 ('%s')\n", s1, s2);
-		fflush(stdout);
-		}
-#endif
-	if (fnreduce(s2) < 0)
-		file2error(s2);
+	fnreduce(pSearch);
 
-	if (v_flag >= 3)
-		{
-		printf("Pat F1 ('%s')  F2 ('%s')\n", s1, s2);
-		fflush(stdout);
-		}
-#ifdef DEBUG
-printf("1 pattern: \"%s\"\n", s1);
-printf("1 s2save:  \"%s\"\n", s2save);
-printf("1 s2:      \"%s\"\n", s2);
-printf("1 CatIndex: %d\n",    CatIndex1);
-#endif
-	if ((hp = fwinit(s1, filetypes)) == NULL)	/* Find the first path1 file */
-		fwinitError(s1);
+	fnParse(pSearch, &CopyIndex1, &TermIndex1);
+
+	if (v_count >= 3)
+		printf("F Search Pat F1 ('%s')  F2 ('%s')\n", pSearch, pPath2);
+	}
+
+// ---------------------------------------------------------------------------
+//	Build forward compare path
+// ---------------------------------------------------------------------------
+		void inline
+	BuildForwardCompareTarget (
+		char *fnp)		// filespec to compare to
+
+	{
+	_fncatpth(pCompare, pPath2, (fnp + CopyIndex1));
+	
+//	fnreduce(pCompare);
+
+	if (v_count >= 3)
+		printf("F Compare Pat F1 ('%s')  F2 ('%s')\n", fnp, pCompare);
+	}
+
+// ---------------------------------------------------------------------------
+//	Perform the forward direction compare
+// ---------------------------------------------------------------------------
+	void
+filepair1 (void)		// Process the pathnames forward
+
+	{
+	char  *fnp;			// Pointer to the found path1 pathname
+
+	BuildForwardPaths();
+
+	if (v_count >= 1)
+		printf("F Comparing Pat ('%s')\n", pPath2);
+
+	if (fwInit(hp, pSearch, filetypes) != FWERR_NONE)	// Find the first path1 file
+		fwInitError(pSearch);
 	else
 		{ // hp is valid
-		fwExclEnable(hp, TRUE);			/* Enable file exclusion */
-		if ((fnp1 = fwild(hp)) == NULL)
+		fExcludeConnect(xp, hp);		// Connect the exclusion instance
+		if ((fnp = fWild(hp)) == NULL)
 			{
-			if (!bidi_flag)	// Don't require forward reports if also checking reverse reports
+			if (! rev_enable)	// Don't require forward reports if also checking reverse reports
 				{
-				hp = NULL;
-				cantfind(s1);
+				cantfind(pPath1);
 				}
 			}
 		else do							/* Process all path1 files */
 			{
-			if (timebound(hp, fnp1))
+			if (timebound(hp, fnp))
 				{		
-				if ((fnp2 = fncatpth(s2, (fnp1 + CatIndex1))) == NULL)
-					file2error(s2);
-				else
-					{
-#ifdef DEBUG
-printf("  fnp1:    \"%s\n", fnp1);
-printf("  fnp2:    \"%s\n", fnp2);
-fflush(stdout);
-#endif
-					if (v_flag >= 4)
-						{
-						printf("FNP F1 ('%s')  F2 ('%s')\n", fnp1, fnp2);
-						fflush(stdout);
-						}
+				BuildForwardCompareTarget(fnp);
 
-					process(fnp1, fnp2);
-					free(fnp2);
-					}
-				}// End if timebound
-			} while ((fnp1 = fwild(hp)));
-		} // End hp valid
-	hp = NULL;
+				if (v_count >= 2)
+					printf("F Comparing F/D ('%s')  target ('%s')\n", fnp, pCompare);
+
+				process(fnp, pCompare);
+				} // End if (timebound)
+			} while (fnp = fWild(hp));
+		}
+	}
+
+// ---------------------------------------------------------------------------
+//	Build reverse search paths
+// ---------------------------------------------------------------------------
+		void inline
+	BuildReversePaths (void)
+
+	{
+	fnParse(pPath1, &CopyIndex1, &TermIndex1);
+	fnParse(pPath2, &CopyIndex2, NULL);
+
+	// Copy the wild part of path1 to path2, then terminate path1
+	
+	_fncatpth(pSearch, pPath2, (pPath1 + CopyIndex1));
+	pathCopy(pCompare, pPath1, MAX_PATH);
+	*(pPath1 + TermIndex1) = '\0';
+
+	if (v_count >= 3)
+		printf("R Search Pat F1 ('%s')  F2 ('%s')\n", pSearch, pPath1);
+	}
+
+// ---------------------------------------------------------------------------
+//	Build reverse compare path
+// ---------------------------------------------------------------------------
+		void inline
+	BuildReverseCompareTarget (
+		char *fnp)		// filespec to compare to
+
+	{
+	_fncatpth(pCompare, pPath1, (fnp + CopyIndex2));
+	
+//	fnreduce(pCompare);
+
+	if (v_count >= 3)
+		printf("R Compare Pat F1 ('%s')  F2 ('%s')\n", fnp, pCompare);
+	}
+
+// ---------------------------------------------------------------------------
+//	Perform the reverse direction compare
+// ---------------------------------------------------------------------------
+	void
+filepair2 (void)		// Process the pathnames backward
+
+	{
+	char  *fnp;			// Pointer to the found path1 pathname
+
+
+	BuildReversePaths();
+
+	if (v_count >= 1)
+		printf("R Compare Pat ('%s')  target ('%s')\n", pSearch, pPath1);
+
+	if (fwd_enable)	// Don't test these thing going both ways
+		{
+//BWJ  -h issue
+//		e_flag  = TRUE;			/* Do    check the existence */
+		a_flag  = FALSE;		/* Don't check the attributes */
+		A_flag  = FALSE;		/* Don't check the attributes */
+		d_flag  = FALSE;		/* Don't check the data */
+		s_flag  = FALSE;		/* Don't check the size */
+		u_flag  = FALSE;		/* Don't check the size */
+		t_flag  = FALSE;		/* Don't check the timedate */
+		}
+
+	if (fwInit(hp, pSearch, filetypes) != FWERR_NONE)	// Find the first path1 file
+		fwInitError(pSearch);
+	else
+		{ // hp is valid
+		fExcludeConnect(xp, hp);		// Connect the exclusion instance
+		while ((fnp = fWild(hp)) != NULL)
+			{
+			if (timebound(hp, fnp))
+				{		
+				BuildReverseCompareTarget(fnp);
+
+				if (v_count >= 2)
+					printf("R Comparing F/D ('%s')  target ('%s')\n", fnp, pCompare);
+
+				process(pCompare, fnp);	// Filespecs switched for reverse direction
+				} // End if (timebound)
+			} while (fnp = fWild(hp));
+		}
 	}
 
 /* ----------------------------------------------------------------------- */
-	void
-filepair2 (					/* Process the pathnames backward */
-	char  *s1,				/* Pointer to the pathname1 string (target) */
-	char  *s2)				/* Pointer to the pathname2 string (search) */
+//	Report differences between the two files (or directories, or ???)
+/* ----------------------------------------------------------------------- */
+
+static char DiffList [128] = {0};		// Buffer used to report errors
+static int  diffCount;					// Treated as Boolean
+
+#define ATT_TYPE	(ATT_FILE | ATT_DIR)
+#define ATT_PROPS	(ATT_ARCH | ATT_RONLY | ATT_HIDDEN | ATT_SYSTEM)
+#define ATT_ARMASK	(~(A_flag ? 0 : ATT_ARCH))
+
+/* ----------------------------------------------------------------------- */
+	static void
+ListFiles (			// List files without the trailing newline
+	char *fnp1,
+	char *fnp2)
 
 	{
-	int    CatIndex1;		/* Concatenation index of path 1 */
-	int    TermIndex1;		/* Termination index of path 1 (before concatenating) */
-	int    CatIndex2;		/* Concatenation index of path 2 */
-	int    TermIndex2;		/* Termination index of path 2 (before concatenating) */
-	void  *hp;				/* Pointer to wild file data block */
-	char  *fnp1;			/* Pointer to the path1 pathname */
-	char  *fnp2;			/* Pointer to the path2 pathname */
-	char  *fnppat2;			/* Pointer to the path2 pattern */
-
-
-	if (iswild(s2))			/* Ensure non-wild path2 */
-		f_err("Path2 cannot be wild");
-
-	if (v_flag >= 3)
-		{
-		printf("Pat F1 ('%s')  F2 ('%s')\n", s1, s2);
-		fflush(stdout);
-		}
-
-	e_flag  = TRUE;			/* Do    check the existence */
-	d_flag  = FALSE;		/* Don't check the data */
-	s_flag  = FALSE;		/* Don't check the size */
-	t_flag  = FALSE;		/* Don't check the timedate */
-
-	if (fnParse(s1, &CatIndex1, &TermIndex1) < 0)	/* Determine the path1 offsets */
-		file1error(s1);
-
-	if ((fnParse(s2, &CatIndex2, &TermIndex2) < 0)	/* Determine the path2 offsets */
-	||  ((fnppat2 = fncatpth(s2, (s1 + CatIndex1))) == NULL))	/* Build the search pattern */
-		file2error(s2);
-
-	*(s1 + TermIndex1) = '\0';		// (does not delete a possible root separator)
-
-// printf("2 s1:      \"%s\"\n", s1);
-// printf("2 Index 1:  %d\n",    CatIndex1);
-// printf("2 Term  1:  %d\n",    TermIndex1);
-// printf("2 s2:      \"%s\"\n", s2);
-// printf("2 Index 2:  %d\n",    CatIndex2);
-// printf("2 Term  2:  %d\n",    TermIndex1);
-// printf("2 Pattern: \"%s\"\n", fnppat2);
-//   fflush(stdout);
-
-	if ((fnppat2)
-	&&  (strlen(fnppat2) == 0))		// Handle cat -b .. . case
-		strcat(fnppat2, ".");
-
-	if ((hp = fwinit(fnppat2, filetypes)) == NULL)	/* Find the first path1 file */
-		fwinitError(fnppat2);
+	if (L_flag)
+		printf("%-22s  and  %-22s", qname(fnp1), qname(fnp2));
 	else
-		{ // hp is valid
-		fwExclEnable(hp, TRUE);			/* Enable file exclusion */
-		while ((fnp2 = fwild(hp)) != NULL)
-			{
-			if (timebound(hp, fnp2))
-				{		
-				if ((fnp1 = fncatpth(s1, (fnp2 + CatIndex2))) == NULL)
-					file1error(s1);
-				else
-					{
+		printf("%-40s", qname(fnp1));
+	}
 
-// printf("3 Pattern: \"%s\"\n", fnppat2);
-// printf("3 File B:    \"%s\"\n", fnp2);
-// printf("3 File A:    \"%s\"\n", fnp1);
-// fflush(stdout);
+/* ----------------------------------------------------------------------- */
+	static void
+putFile1 (void)			// Place the "File 1 is" prefix for the message
+	{
+	if (DiffList[0] == '\0')
+		strcpy(DiffList, "File 1 is ");
+	}
+	
+/* ----------------------------------------------------------------------- */
+	static void
+putDifference (				// Place the message body
+	int   commaEnb,
+	char *pMsg)
+	
+	{
+	if (commaEnb && diffCount++)
+		strcat(DiffList, ", ");
+	strcat(DiffList, pMsg);
+	}
+	
+/* ----------------------------------------------------------------------- */
+	static void
+putType (
+	int  n,
+	int	 type)
 
-					if (v_flag >= 4)
-						{
-						printf("FNP F1 ('%s')  F2 ('%s')\n", fnp1, fnp2);
-						fflush(stdout);
-						}
+	{
+	char buffer [20];
 
-					process(fnp1, fnp2);
-					free(fnp1);
-					}
-				} // End if timebound
-			} // End while ((fnp2 = fwild(hp)) != NULL)
-		} // End if hp =
-	hp = NULL;
-	free(fnppat2);
+	sprintf(buffer, "File %d is %s  ",
+		n,
+		((type & ATT_FILE) ? "FILE" : ((type & ATT_DIR) ? "DIR" : "UNKNOWN")));
+	putDifference(0, buffer);
+	}
+
+/* ----------------------------------------------------------------------- */
+	static void
+putAttr (
+	int  n,
+	int	 attr)
+
+	{
+	char buffer [20];
+
+	sprintf(buffer, "File %d: %c%c%c%c   ",
+		n,
+		(attr & ATT_ARCH)	? ('a') : ('-'),
+		(attr & ATT_RONLY)	? ('r') : ('-'),
+		(attr & ATT_HIDDEN) ? ('h') : ('-'),
+		(attr & ATT_SYSTEM) ? ('s') : ('-'));
+	putDifference(0, buffer);
 	}
 
 /* ----------------------------------------------------------------------- */
@@ -609,151 +761,301 @@ process (				/* Compare one pair one of input files */
 	char  *fnp2)		/* Input file name 2 */ 
 
 	{
-	int		exist1    = FALSE;	/* TRUE if file 1 exists */
-	int		exist2    = FALSE;	/* TRUE if file 2 exists */
-	int		younger   = FALSE;	/* TRUE if file 1 is younger than file 2 */
-	int		older     = FALSE;	/* TRUE if file 1 is older than file 2 */
-	int		larger    = FALSE;	/* TRUE if file 1 is larger than file 2 */
-	int		smaller   = FALSE;	/* TRUE if file 1 is smaller than file 2 */
-	int		different = FALSE;	/* TRUE if a data difference */
-	int		dc;					/* The result from datacomp() */
-	int		diff;				/* OR of the above flags */
-	int		error;				/* OR of the above flags */
-	int		cflag     = FALSE;	/* TRUE if comma needed in message */
-	int		fd1       = -1;		/* Input file descriptor 1 */
-	int		fd2       = -1;		/* Input file descriptor 2 */
-	int		dir1;				/* TRUE if file 1 is a directory */
-	int		dir2;				/* TRUE if file 2 is a directory */
-	time_t	td1;				/* File 1 time/date */
-	time_t	td2;				/* File 2 time/date */
-	UINT64	size1;				/* File 1 size */
-	UINT64	size2;				/* File 2 size */
+	int		exist1		= FALSE;		/* TRUE if file 1 exists */
+	int		exist2		= FALSE;		/* TRUE if file 2 exists */
 
+	int		typeDiff	= FALSE;		/* TRUE if file 1 type mismatches file 2 type */
+	int		attrDiff	= FALSE;		/* TRUE if type 1 attr mismatches type 2 attr */
+	int		existDiff	= FALSE;		/* TRUE if one of the two files is missing */
+	int		youngerDiff	= FALSE;		/* TRUE if file 1 is younger than file 2 */
+	int		olderDiff	= FALSE;		/* TRUE if file 1 is older than file 2 */
+	int		largerDiff	= FALSE;		/* TRUE if file 1 is larger than file 2 */
+	int		smallerDiff	= FALSE;		/* TRUE if file 1 is smaller than file 2 */
+	int		contentDiff	= FALSE;		/* TRUE if file content is different */
+	int		different	= FALSE;		// Gated OR of the above 8 *Diff flags
+
+	int		dc			= DC_EQUAL;		/* The result from dataComp() and sizeComp() */
+	int		fd1			= -1;			/* Input file descriptor 1 */
+	int		fd2			= -1;			/* Input file descriptor 2 */
+	int		attr1		= 0;			/* Path1 type */
+	int		attr2		= 0;			/* Path2 type */
+	int		type1		= 0;			/* Path1 type */
+	int		type2		= 0;			/* Path2 type */
+	time_t	fdt1		= 0;			/* File 1 time/date */
+	time_t	fdt2		= 0;			/* File 2 time/date */
+	time_t	mfdt1		= 0;			/* File 1 Microsoft time/date */
+	time_t	mfdt2		= 0;			/* File 2 Microsoft time/date */
+	UINT64	size1		= 0;			/* File 1 size */
+	UINT64	size2		= 0;			/* File 2 size */
+	
+	diffCount	= 0;					// Keeps track of difference message comma necessity
+	DiffList[0] = '\0';					// Clear the difference list
+
+	// If requested, determine all differences
+		
+	if (l_flag && ! N_flag)		// Listing all files, not only those that are different
+		ListFiles(fnp1, fnp2);
 
 	if (c_flag)
 		{
-		int  retval;
+		PFI pFi;
 
-	if ((dir1 = fnchkdir(fnp1)) == FALSE)
-		{
-		td1    = fgetfdt(fnp1);
-		retval = fgetsize(fnp1, &size1);
-		exist1 = ((td1 != -1)  ||  (retval == 0));
-		}
-	else	// Treat a directory as non-existent (mismatches a file)
-		{
-		td1    = -1;
-		size1  = 0;
-		exist1 = FALSE;
-		}
-
-	if ((dir2 = fnchkdir(fnp2)) == FALSE)
-		{
-		td2    = fgetfdt(fnp2);
-		retval = fgetsize(fnp2, &size2);
-		exist2 = ((td2 != -1)  ||  (retval == 0));
-		}
-	else	// Treat a directory as non-existent (mismatches a file)
-		{
-		td2    = -1;
-		size2  = 0;
-		exist2 = FALSE;
-		}
-
-	if (exist1  &&  exist2)
-		{
-		td1 += timedelta;
-		if ((t_flag  ||  Younger_flag)  &&  (td1 > td2))
-			++younger;
-
-		if ((t_flag  ||  Older_flag)  &&  (td1 < td2))
-			++older;
-
-		if (     ( ! u_flag)  &&  s_flag  &&  (size1 > size2))
-			++larger;
-		else if (( ! u_flag)  &&  s_flag  &&  (size1 < size2))
-			++smaller;
-		else if (d_flag)
+		if ((! fExcludePathCheck (xp, fnp1))
+		&&  ((pFi = FileInfoOpen(filetypes, fnp1)) != NULL))
 			{
-			if (((fd1 = open(fnp1, OPENMODE)) >= 0)
-			&&  ((fd2 = open(fnp2, OPENMODE)) >= 0))
-				{
-				if (u_flag)
-					dc = unixcomp(fd1, fd2);
-				else
-					dc = datacomp(fd1, fd2);
-				if (dc & DC_DIFFERENT)
-					++different;
-				if (s_flag  &&  (dc & DC_SMALLER))
-					++smaller;
-				if (s_flag  &&  (dc & DC_LARGER))
-					++larger;
-				}
-			if (fd1 >= 0)
-				close(fd1);
-			if (fd2 >= 0)
-				close(fd2);
+			exist1	= TRUE;
+			type1	= FileInfoAttr(pFi) & ATT_TYPE;
+			attr1	= FileInfoAttr(pFi) & ATT_PROPS;
+			size1	= FileInfoSize(pFi);
+			fdt1	= FileInfoFDT(pFi);
+			mfdt1	= FileInfoMtime(pFi);
 			}
+		if (pFi)
+			FileInfoClose(pFi);
+
+		if ((! fExcludePathCheck (xp, fnp2))
+		&&  ((pFi = FileInfoOpen(filetypes, fnp2)) != NULL))
+			{
+			exist2	= TRUE;
+			type2	= FileInfoAttr(pFi) & ATT_TYPE;
+			attr2	= FileInfoAttr(pFi) & ATT_PROPS;
+			size2	= FileInfoSize(pFi);
+			fdt2	= FileInfoFDT(pFi);
+			mfdt2	= FileInfoMtime(pFi);
+			}
+		if (pFi)
+			FileInfoClose(pFi);
+
+		// Determine existential status (NOT gated by c_flag)
+		// exist1 should never be FALSE, because fWild succeeded)
+
+		existDiff = (! (exist1 && exist2));
+		if (! existDiff)
+			typeDiff  = (type1  != type2);
+
+		// If both files exist, and are the same type, compare them
+
+		if ((! existDiff) && (! typeDiff))
+			{
+			if (c_flag)
+				{
+				if ((a_flag) && ((attr1 ^ attr2) & ATT_ARMASK))
+					++attrDiff;
+
+				if (type1 == ATT_FILE) // (includes type2)
+					{
+					fdt1 += timedelta;
+					if ((t_flag  ||  Younger_flag)  &&  (fdt1 > fdt2))
+						++youngerDiff;
+
+					if ((t_flag  ||  Older_flag)  &&  (fdt1 < fdt2))
+						++olderDiff;
+
+					if (d_flag || (s_flag && u_flag))
+						{
+						if ((fd1 = _open(fnp1, OPENMODE)) < 0)
+							file1error(fnp1);
+						if ((fd2 = _open(fnp2, OPENMODE)) < 0)
+							file2error(fnp2);
+						}
+
+					if (s_flag && ! d_flag)
+						{
+						if (u_flag)
+							{
+							switch (sizeComp(fd1, fd2))
+								{
+								case DC_LARGER:  ++largerDiff;   break;
+								case DC_SMALLER: ++smallerDiff;  break;
+								default:  break;
+								}
+							}
+						else // (! u_flag)
+							{
+							if 		(size1 > size2)
+								++largerDiff;
+							else if	(size1 < size2)
+								++smallerDiff;
+							}
+						}
+
+					if (d_flag)
+						{
+						dc = dataComp(fd1, fd2);
+
+						if (dc & DC_MISMATCH)
+							++contentDiff;
+						if (s_flag  &&  (dc & DC_SMALLER))
+							++smallerDiff;
+						if (s_flag  &&  (dc & DC_LARGER))
+							++largerDiff;
+						}
+
+					if (d_flag || (s_flag && u_flag))
+						{
+						if (fd1 >= 0)
+							close(fd1);
+						if (fd2 >= 0)
+							close(fd2);
+						}
+					} // end if (type == ATT_FILE)
+				} // end if (c_flag)
+			} // end if existDiff)
+
+		// Report requested differences
+		
+		if (e_flag)		// Report existence and type mismatch
+			{
+			if (existDiff)
+				{
+				if (! exist1)
+					putDifference(1, "File 1 is missing");
+
+				if (! exist2)
+					putDifference(1, "File 2 is missing");
+				different = TRUE;
+				}
+
+			else if (typeDiff)
+				{
+				putType(1, type1);
+				putType(2, type2);
+				different = TRUE;
+				}
+			}
+
+		if (a_flag)		// Report type attributes mismatch
+			{
+			if (attrDiff)
+				{
+				putAttr(1, attr1);
+				putAttr(2, attr2);
+				different = TRUE;
+				}
+			}
+
+		if (t_flag)		// Report timestamp mismatch
+			{
+			if (youngerDiff  &&  ! Older_flag)
+				{
+				putFile1();
+				putDifference(1, "younger");
+				different = TRUE;
+				}
+			else if (olderDiff &&  ! Younger_flag)
+				{
+				putFile1();
+				putDifference(1, "older");
+				different = TRUE;
+				}
+			}
+
+		if (s_flag)		// Report size mismatch
+			{
+			if (largerDiff)
+				{
+				putFile1();
+				putDifference(1, "larger");
+				different = TRUE;
+				}
+			else if (smallerDiff)
+				{
+				putFile1();
+				putDifference(1, "smaller");
+				different = TRUE;
+				}
+			}
+
+		if (d_flag)		// Report data content mismatch
+			{
+			if (contentDiff)
+				{
+				putFile1();
+				putDifference(1, "content");
+				different = TRUE;
+				}
+			}
+		}
+
+	if (different  &&  (! z_flag))		// Set the exit code
+		exit_code = 1;
+
+	// Report as directed
+
+	if ((bad_flag && different)  ||  (good_flag && (! different)))
+		{
+		if ((! l_flag) && (! N_flag))	// Already listed earlier
+			ListFiles(fnp1, fnp2);
+
+		if (different  &&  w_flag  &&  ! N_flag)
+			putchar('\7');
+
+		if (N_flag)
+			printf("\"%s\"\n", fnp1);	// List file 1 for pipeline use
+		else if (DiffList[0] != '\0')
+			printf("    %s\n", DiffList);
+		}
+	else if (l_flag && ! N_flag)
+		printf("\n");	// Terminate up front no diff listing
+
+	// If requested, also report the raw timestamp data for the two files
+
+	if ((! N_flag) && R_flag && different && ((youngerDiff  &&  ! Older_flag) || (olderDiff &&  ! Younger_flag)))
+		{
+		printf("File1: %010llX\n", fdt1);
+		printf("File2: %010llX\n", fdt2);
 		}
 	}
 
-	diff  =  younger  ||  older  ||  larger  ||  smaller  ||  different;
-	error =  diff     ||  (e_flag  &&  ((!exist1)  ||  (!exist2)));
+/* ----------------------------------------------------------------------- */
+	int					// Returns DC_* to report UNIX size differences
+sizeComp (				// Compare the data length of two open files
+	int  fd1,
+	int  fd2)
 
-	if ((bad_flag  &&  error)  ||  (good_flag  &&  ! error))
+	{
+	int  result = DC_EQUAL;
+	int  len1;
+	int  len2;
+	int  size1 = 0;		/* Total size of data read file 1 */
+	int  size2 = 0;		/* Total size of data read file 2 */
+
+//printf("Comparing data length\n");
+	while ((len1 = read(fd1, buff1, DATASIZE)) > 0)
+		size1 += len1;
+		
+	while ((len2 = read(fd2, buff2, DATASIZE)) > 0)
+		size2 += len2;
+
+	if		(size1 > size2)
+		result = DC_LARGER;
+	else if	(size1 < size2)
+		result = DC_SMALLER;
+
+	return (result);
+	}
+
+/* ----------------------------------------------------------------------- */
+	int					/* Return TRUE if they are different */
+dataComp (				/* Compare the data of two open files */
+	int  fd1,
+	int  fd2)
+
+	{
+	int  len1;			/* Length of data read 1 */
+	int  len2;			/* Length of data read 2 */
+
+//("Comparing data content\n");
+	while ((len1 = read(fd1, buff1, DATASIZE)) > 0)
 		{
-		if (error  &&  a_flag)
-			putchar('\7');
-
-		if (L_flag)
-			printf("%-22s  and  %-22s", qname(fnp1), qname(fnp2));
-		else
-			printf("%-40s", qname(fnp1));
-
-		if (! exist1)
-			{
-			if (e_flag)
-				{
-				if (dir1)
-					fputs("  File 1 is a directory", stdout);
-				else
-					{
-					fputs("  File 1 is missing", stdout);
-//					printf("\nFile1 \"%s\"\n", fnp1);
-//					printf("File2 \"%s\"\n", fnp2);
-					}
-				}
-			}
-		else if (! exist2)
-			{
-			if (e_flag)
-				{
-				if (dir2)
-					fputs("  File 2 is a directory", stdout);
-				else
-					fputs("  File 2 is missing", stdout);
-				}
-			}
-		else if (diff)
-			{
-			fputs("  File 1 is", stdout);
-			if (younger)
-				cflag = putdiff(cflag, "younger");
-			else if (older)
-				cflag = putdiff(cflag, "older");
-			if (larger)
-				cflag = putdiff(cflag, "larger");
-			else if (smaller)
-				cflag = putdiff(cflag, "smaller");
-			if (different)
-				cflag = putdiff(cflag, "different");
-			}
-		putchar('\n');
-		fflush(stdout);
+		if (((len2 = read(fd2, buff2, DATASIZE)) != len1)
+			|| (memcmp(buff1, buff2, len1)))
+			return (DC_MISMATCH
+				| ((len1 > len2) ? DC_LARGER : 0)
+				| ((len1 < len2) ? DC_SMALLER : 0));
 		}
 
-	if (error  &&  (z_flag == FALSE))
-		ex_code = 1;
+	return (DC_EQUAL);
 	}
 
 /* ----------------------------------------------------------------------- */
@@ -776,132 +1078,36 @@ static char NameOut [1024];
 	}
 
 /* ----------------------------------------------------------------------- */
-	int
-putdiff (
-	int    flag,		/* The comma flag */
-	char  *msg)			/* The message string */
-
-	{
-	if (flag)
-	putchar(',');
-	putchar(' ');
-	flag = TRUE;
-	fputs(msg, stdout);
-
-	return (flag);
-	}
-
-/* ----------------------------------------------------------------------- */
-	int					/* Return TRUE if they are different */
-unixcomp (				/* Compare the data of two open files */
-	int  fd1,
-	int  fd2)
-
-	{
-	FILE  *fp1;			/* FILE ptr 1 */
-	FILE  *fp2;			/* FILE ptr 2 */
-	int    len1;		/* Length of data read 1 */
-	int    len2;		/* Length of data read 2 */
-	int    result = DC_EQUAL;	/* The returned result */
-
-	fp1 = fdopen(fd1, "rt");
-	fp2 = fdopen(fd2, "rt");
-
-	for (;;)
-		{
-		len1 = (int)(fread(buff1, sizeof(char), DATASIZE, fp1));
-		len2 = (int)(fread(buff2, sizeof(char), DATASIZE, fp2));
-		if (v_flag >= 2)
-			printf("len1: %d  len2: %d\n", len1, len2);
-
-		if (len1 > len2)			/* (len1 > len2), done */
-			{
-			if (v_flag >= 2)
-				printf("larger\n");
-			result |= DC_LARGER;
-			if ((len2 > 0)  &&  memcmp(buff1, buff2, len2))
-				{
-				if (v_flag >= 2)
-					printf("different (l)\n");
-				result |= DC_DIFFERENT;
-				}
-			break;
-			}
-
-		if (len1 < len2)			/* (len1 < len2), done */
-			{
-			if (v_flag >= 2)
-				printf("smaller\n");
-			result |= DC_SMALLER;
-			if ((len1 > 0)  &&  memcmp(buff1, buff2, len1))
-				{
-				if (v_flag >= 2)
-					printf("different (s)\n");
-				result |= DC_DIFFERENT;
-				}
-			break;
-			}
-
-		if (len1 == 0)				/* (len1 == len2 == 0), done */
-			{
-			if (v_flag >= 2)
-				printf("zero\n");
-			break;
-			}
-
-		if (memcmp(buff1, buff2, len1))		/* (len1 == len2 != 0), cont */
-			{
-			if (v_flag >= 2)
-				printf("different ()\n");
-			result |= DC_DIFFERENT;
-			}
-
-		if (v_flag >= 2)
-			printf("equal\n");
-		}
-
-	fclose(fp1);
-	fclose(fp2);
-	return (result);
-	}
-
-/* ----------------------------------------------------------------------- */
-	int					/* Return TRUE if they are different */
-datacomp (				/* Compare the data of two open files */
-	int  fd1,
-	int  fd2)
-
-	{
-	int  len1;			/* Length of data read 1 */
-	int  len2;			/* Length of data read 2 */
-
-
-	while ((len1 = read(fd1, buff1, DATASIZE)) > 0)
-		{
-		if (((len2 = read(fd2, buff2, DATASIZE)) != len1)
-		||  (memcmp(buff1, buff2, len1)))
-			return (DC_DIFFERENT);
-		}
-	return (DC_EQUAL);
-	}
+//	int
+//putdiff (
+//	int    flag,		/* The comma flag */
+//	char  *msg)			/* The message string */
+//
+//	{
+//	if (flag)
+//	putchar(',');
+//	putchar(' ');
+//	flag = TRUE;
+//	fputs(msg, stdout);
+//
+//	return (flag);
+//	}
 
 /* ----------------------------------------------------------------------- */
 	void
 cantfind (				/* Inform user of input failure */
-	char  *fnp)			/* Input file name */
+	const char  *fnp)	/* Input file name */
     
 	{
 	if (!q_flag)
 		fprintf(stderr, "Unable to find file: %s\n", fnp);
 	if (z_flag)
 		exit(1);
-	else if (!q_flag)
-		usage();
 	}
 
 /* ----------------------------------------------------------------------- */
 	void
-file1error (				/* Inform user of input failure */
+file1error (			/* Inform user of input failure */
 	char  *fnp)			/* Input file name */
     
 	{
@@ -915,7 +1121,7 @@ file1error (				/* Inform user of input failure */
 
 /* ----------------------------------------------------------------------- */
 	void
-file2error (				/* Inform user of input failure */
+file2error (			/* Inform user of input failure */
 	char  *fnp)			/* Input file name */
     
 	{
@@ -929,7 +1135,7 @@ file2error (				/* Inform user of input failure */
 
 /* ----------------------------------------------------------------------- */
 	void
-f_err (					/* Report a fatal error */
+fat_err (					/* Report a fatal error */
 	char  *s)			/* Pointer to the message string */
 
 	{

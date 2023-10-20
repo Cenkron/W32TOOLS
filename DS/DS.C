@@ -12,7 +12,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <fwild.h>
+#include <fWild.h>
 
 /*------------------------------------------------------------------*/
 
@@ -79,6 +79,9 @@ UINT64          TotalData       = 0;
 
 char            szLegend [1024] = {0};
 
+PHP		hp = NULL;				// FWILD instance pointer
+PEX		xp = NULL;				// FEX instance pointer
+
 /*------------------------------------------------------------------*/
 
 #define         K       ((UINT64)(1000))
@@ -126,6 +129,12 @@ main (
 	UINT64      i;
 	int         c;
 
+
+	if ((hp = fwOpen()) == NULL)
+		exit(1);
+	if ((xp = fExcludeOpen()) == NULL)
+		exit(1);
+
 	optenv = getenv("DS");
 
 	while ((c=getopt(argc, argv, "?bBd:D:fFhHqQsSvVX:")) != EOF)
@@ -137,10 +146,12 @@ main (
 					usage();
 
 				if      (optarg[0] == '-')
-					fexcludeDefEnable(FALSE);		/* Disable default file exclusion(s) */
+					fExcludeDefEnable(xp, FALSE);	// Disable default file exclusion(s)
 				else if (optarg[0] == '+')
-					fexcludeShowConf(TRUE);			/* Enable stdout of exclusion(s) */
-				else if (fexclude(optarg))
+					fExcludeShowConf(xp, TRUE);		// Enable stdout of exclusion(s)
+				else if (optarg[0] == '=')
+					fExcludeShowExcl(xp, TRUE);		// Enable stdout of excluded path(s)
+				else if (fExclude(xp, optarg))
 					{
 					fprintf(stderr, "Error excluding '%s'\n", optarg);
 					usage();
@@ -254,6 +265,8 @@ main (
 		}
 #endif
 
+	xp = fExcludeClose(xp);				// Close the Exclusion instance
+	hp = fwClose(hp);					// Close the fWild instance
 	return (retval);
 	}
 
@@ -265,25 +278,23 @@ process (
 
 	{
 	int    attrib = FW_FILE;
-	char  *dta;
 
 	if (bHflag)	attrib |= FW_HIDDEN;
 	if (bSflag)	attrib |= FW_SYSTEM;
 
-	if ((dta = fwinit(fw, attrib)) == NULL)
-		fwinitError(fw);
-	fwExclEnable(dta, TRUE);				/* Enable file exclusion */
-	while (fwild(dta) != NULL)
-		proc_file(dta);
-	dta = NULL;
+	if (fwInit(hp, fw, attrib) != FWERR_NONE)	// Process the pattern
+		fwInitError(fw);
+	fExcludeConnect(xp, hp);					// Connect the exclusion instance
+	while (fWild(hp) != NULL)
+		proc_file(hp);
 	}
 
 /**********************************************************************/
 /**********************************************************************/
     void
-proc_file (char *dta)
+proc_file (char *hp)
 	{
-	const UINT64      size = fwsize(dta);
+	const UINT64      size = fwsize(hp);
 
 	TotalData +=  size;
 
@@ -329,7 +340,7 @@ get_drive_info (
 			&FreeClusters,
 			&Clusters))
 		{
-		fprintf(stderr, "\007DS: Error getting file system info\n");
+		fprintf(stderr, "DS: Error getting file system info\n");
 		return (1);
 		}
 

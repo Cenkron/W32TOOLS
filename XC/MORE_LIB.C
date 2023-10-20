@@ -13,7 +13,7 @@
 #include <stdlib.h>
 #include <stdarg.h>
 
-#include <fwild.h>
+#include <fWild.h>
 #include "more_lib.h"
 
 ////////////////////////////////////////////////////////////////////////////

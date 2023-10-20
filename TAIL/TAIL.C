@@ -16,7 +16,7 @@
 #include  <ctype.h>
 #include  <limits.h>
 
-#include  "fwild.h"
+#include  "fWild.h"
 
 /* ----------------------------------------------------------------------- *\
 |  Definitions
@@ -70,9 +70,6 @@ char  **pttail  = &table[0];	/* Tail of table */
 |  Private function prototypes
 \* ----------------------------------------------------------------------- */
 
-void cantopen (char *);
-void usage (void);
-void help (void);
 void dprint (char **);
 void process (FILE *, char *);
 void procin (FILE *);
@@ -93,6 +90,10 @@ main (
 	void  *hp  = NULL;			/* Pointer to wild file data block */
 	char  *fnp = NULL;			/* Input file name pointer */
 	FILE  *fp  = NULL;			/* Input file descriptor */
+
+
+	if ((hp = fwOpen()) == NULL)
+		exit(1);
 
 	setbuf(stdout, obuffer);
 	swch = egetswch();
@@ -157,11 +158,10 @@ main (
 	else
 		{
 		do  {
-			if ((hp = fwinit(*argv, smode)) == NULL)	/* Process the input list */
-				fwinitError(*argv);
-			if ((fnp = fwild(hp)) == NULL)
+			if (fwInit(hp, *argv, smode) != FWERR_NONE)	/* Process the input list */
+				fwInitError(*argv);
+			if ((fnp = fWild(hp)) == NULL)
 				{
-				hp = NULL;
 				cantopen(*argv);
 				}
 			else
@@ -174,11 +174,12 @@ main (
 						}
 					else
 						cantopen(fnp);
-					} while ((fnp = fwild(hp)));
-				hp = NULL;
+					} while ((fnp = fWild(hp)));
 				}
 			} while (*++argv);
 		}
+
+	hp = fwClose(hp);
 	}
 
 /* ----------------------------------------------------------------------- *\
@@ -189,7 +190,7 @@ cantopen (fnp)			/* Inform user of input failure */
 	char  *fnp;			/* Input file name */
 
 	{
-	printf("Unable to open input file: %s\n", fnp);
+	fprintf(stderr, "Unable to open input file: %s\n", fnp);
 	}
 
 /* ----------------------------------------------------------------------- *\

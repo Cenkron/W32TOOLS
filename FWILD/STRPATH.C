@@ -6,9 +6,9 @@
 |				Brian W Johnson
 |				   26-May-90
 |
-|	    char		Return the appropriate path character for
-|	ch = strpath (s);	parsing the string "s"
-|	    char  *s;		Pointer to the pathname
+|		char			Return the appropriate path character for
+|	strpath (			  parsing the string "s"
+|		char  *s)		Pointer to the pathname
 |
 |	If the string contains any path characters, the first one is
 |	returned, else the current environment switch character is checked,
@@ -16,12 +16,12 @@
 |
 \* ----------------------------------------------------------------------- */
 
-#include  "fwild.h"
+#include  "fWild.h"
 
 /* ----------------------------------------------------------------------- */
 	char				/* Return the path character */
 strpath (				/* Determine the correct path character */
-	char  *s)			/* Pointer to the tested string */
+	const char  *s)		/* Pointer to the tested string */
 
 	{
 	char  ch;

@@ -31,11 +31,8 @@
 |
 \* ----------------------------------------------------------------------- */
 
-#ifdef _WIN32
 #include  <windows.h>
 #include  <wincon.h>
-#endif
-
 #include  <stdio.h>
 #include  <stdlib.h>
 #include  <string.h>
@@ -43,7 +40,7 @@
 #include  <signal.h>
 #include  <io.h>
 
-#include  "fwild.h"
+#include  "fWild.h"
 #include  "case.h"
 
 #define  OK	 0
@@ -70,11 +67,7 @@ char  *usagedoc [] =
 "                                                   (toggles, default off)",
 "    %cn      Precede each line by its line number   (toggles, default off)",
 "    %cr      Print only NON-matching lines          (toggles, default off)",
-#ifdef _WIN32
 "    %cs NNN  Set the matched field text color       (default yellow)",
-#else
-"    %cs NNN  Set the matched field text attribute   (default bold)",
-#endif
 "    %ct N    Set the tab width increment            (default 8)",
 "    %cvvv    Print verbose internal information     (cumulative)",
 "    %cw NNN  Limit output to NNN columns            (default no limit)",
@@ -182,6 +175,9 @@ extern	void	SetHighlightColor (int Color);  /* Set highlighted field text */
 char	swch = '-';		/* The switch character */
 
 char	buffer [BUFSIZ];	/* Buffer for stdout */
+	
+	PHP		hp = NULL;		// FWILD instance pointer
+	PEX		xp = NULL;		// FEX instance pointer
 
 	void     procwild	(char *pp);
 	void	 compile	(char *);
@@ -263,13 +259,16 @@ main (argc, argv)
 static	char   *optstring = "?cCeEfFhHiIlLnNrRs:S:t:T:vVw:W:x:X:";
 
 
+	if ((hp = fwOpen()) == NULL)
+		exit(1);
+	if ((xp = fExcludeOpen()) == NULL)
+		exit(1);
+
     swch     = egetswch();
     optenv   = getenv("GREP");
     tty_flag = isatty(fileno(stdout));
-#ifdef _WIN32
     if ( ! tty_flag)
-#endif
-	setbuf(stdout, buffer);
+		setbuf(stdout, buffer);
 
     while ((option = getopt(argc, argv, optstring)) != EOF)
 	{
@@ -310,11 +309,7 @@ static	char   *optstring = "?cCeEfFhHiIlLnNrRs:S:t:T:vVw:W:x:X:";
 		rflag = !rflag;
 		break;
 	    case 's':
-#ifdef _WIN32
 		if (optvalue(optarg, &ltemp, 1, 255))
-#else
-		if (optvalue(optarg, &ltemp, 1, 47))
-#endif
 		    {
 		    printf("Color error - %s\n", optvalerror());
 		    usage();
@@ -345,7 +340,7 @@ static	char   *optstring = "?cCeEfFhHiIlLnNrRs:S:t:T:vVw:W:x:X:";
 		break;
 
 	    case 'x':
-		if (fexclude(optarg))
+		if (fExclude(xp, optarg))
 		    {
 		    printf("Exclusion string fault: \"%s\"\n", optarg);
 		    usage();
@@ -399,7 +394,7 @@ static	char   *optstring = "?cCeEfFhHiIlLnNrRs:S:t:T:vVw:W:x:X:";
 	    ap = argv[optind++];
 	    if (iflag)
 		{
-		if (iswild(ap))
+		if (isWild(ap))
 		    printf("Indirect file can't be wild: %s\n", ap);
 		else if (ifp = fopen(ap, "r"))
 		    {
@@ -415,11 +410,11 @@ static	char   *optstring = "?cCeEfFhHiIlLnNrRs:S:t:T:vVw:W:x:X:";
 	    }
 	}
 
-#ifdef _WIN32
     if (tty_flag)
-	SetHighlight(FALSE);
-#endif
+		SetHighlight(FALSE);
 
+	xp = fExcludeClose(xp);		// Close the Exclusion instance
+	hp = fwClose(hp);			// Close the fWild instance
     exit(0);
     }
 
@@ -430,18 +425,16 @@ static	char   *optstring = "?cCeEfFhHiIlLnNrRs:S:t:T:vVw:W:x:X:";
 procwild (char *pp)		/* Pointer to pathname specifier */
 
 	{
-	void  *hp;				/* Pointer to wild file data block */
 	FILE  *fp;				/* Input file descriptor */
 	char  *fnp;				/* The translated file name */
 	int    smode = FW_FILE;	/* File search mode attributes */
 
 
-    if ((hp = fwinit(pp, smode)) == NULL)	/* Process the input list */
-		fwinitError(pp);
-	fwExclEnable(pp, TRUE);		/* Enable file exclusion */
-    if ((fnp = fwild(hp)) == NULL)
+	if (fwInit(hp, pp, smode) != FWERR_NONE)	// Process the input list
+		fwInitError(pp);
+	fExcludeConnect(xp, hp);					// Connect the exclusion instance
+    if ((fnp = fWild(hp)) == NULL)
 		{
-		hp = NULL;
 		cantopen(pp);
 		}
     else
@@ -454,8 +447,7 @@ procwild (char *pp)		/* Pointer to pathname specifier */
 			}
 	    else
 			cantopen(fnp);
-		    } while ((fnp = fwild(hp)));
-		hp = NULL;
+		    } while ((fnp = fWild(hp)));
 		}
     }
 
@@ -476,9 +468,7 @@ compile (source)		/* Compile the pattern into global pbuf[] */
     if (debug)
 	{
 	printf("Pattern = \"%s\"\n", s);
-#ifndef _WIN32
 	fflush(stdout);
-#endif
 	}
 
     pp = pbuf;
@@ -592,9 +582,7 @@ compile (source)		/* Compile the pattern into global pbuf[] */
 		printf("%c ", c);
 	    }
 	printf("\n");
-#ifndef _WIN32
 	fflush(stdout);
-#endif
 	}
     }
 
@@ -785,9 +773,6 @@ process (fp, fnp)		/* Scan the file for the pattern in pbuf[] */
 			    putchar('\n');
 			    }
 			}
-#ifndef _WIN32
-		    fflush(stdout);
-#endif
 		    }
 		}
 	    }
@@ -798,9 +783,6 @@ process (fp, fnp)		/* Scan the file for the pattern in pbuf[] */
 	if (fflag && fnp)
 	    file(fnp);
 	printf("%d\n", count);
-#ifndef _WIN32
-	fflush(stdout);
-#endif
 	}
     }
 
@@ -814,9 +796,6 @@ file (fnp)			/* Print the file identification */
 	printf("%s\n", fnp);
     else
 	printf("\nFile %s:\n\n", fnp);
-#ifndef _WIN32
-    fflush(stdout);
-#endif
     }
 
 /* ----------------------------------------------------------------------- */
@@ -864,9 +843,6 @@ match ()			/* Match the current line in lbuf[] */
     if (debug > 1)
 	{
 	printf("LINE(\"%s\")\n", lbuf);
-#ifndef _WIN32
-	fflush(stdout);
-#endif
 	}
 
     MatchItemCount = 0;
@@ -893,9 +869,6 @@ match ()			/* Match the current line in lbuf[] */
 	    printf("GREPMATCH(%d, %d, %d)\n", i, (p->Begin - lbuf), (p->End - p->Begin));
 	    ++p;
 	    }
-#ifndef _WIN32
-	fflush(stdout);
-#endif
 	}
 
     return  (MatchItemCount);
@@ -926,9 +899,6 @@ patmatch (line, pattern)
     if (debug > 2)
 	{
 	printf("patmatch(\"%s\")\n", line);
-#ifndef _WIN32
-	fflush(stdout);
-#endif
 	}
 
     l = line;
@@ -938,9 +908,6 @@ patmatch (line, pattern)
 	if (debug > 3)
 	    {
 	    printf("byte[%d] = 0x%02X, '%c', op = %s\n", l - line, *l, *l, patname(op));
-#ifndef _WIN32
-	    fflush(stdout);
-#endif
 	    }
 
 	switch (op)
@@ -1133,44 +1100,8 @@ patname (
     }
 
 /* ----------------------------------------------------------------------- *\
-|  Highlight subsystem - 16 bit
-\* ----------------------------------------------------------------------- */
-#ifndef _WIN32
-
-static	char    *pLoLite     = "\033[0m";  /* The unhighlight request string */
-static	char    pHiLite [10] = "\033[1m";  /* The highlight   request string */
-
-/* ----------------------------------------------------------------------- */
-    void
-InitializeColors (void)
-
-    {
-    }
-
-/* ----------------------------------------------------------------------- */
-    void
-SetHighlightColor (
-    int  Color)
-
-    {
-    sprintf(pHiLite, "\033[%um", Color);
-    }
-
-/* ----------------------------------------------------------------------- */
-    void
-SetHighlight (
-    int  Highlight)
-
-    {
-    if (hflag)
-	fputs((Highlight ? pHiLite : pLoLite), stdout);
-    }
-
-#endif
-/* ----------------------------------------------------------------------- *\
 |  Highlight subsystem - 32 bit
 \* ----------------------------------------------------------------------- */
-#ifdef _WIN32
 
 static	HANDLE  hConsole;		/* The stdout console handle */
 static	WORD	HiLite;			/* The highlighted color value */
@@ -1224,5 +1155,5 @@ SetHighlight (
     if (hflag)
 	SetConsoleTextAttribute(hConsole, (WORD)(Highlight ? HiLite : LoLite));
     }
-#endif
+
 /* ----------------------------------------------------------------------- */

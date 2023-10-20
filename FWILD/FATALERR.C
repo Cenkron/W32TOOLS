@@ -14,12 +14,12 @@
 #include  <stdio.h>
 #include  <stdlib.h>
 
-#include  "fwild.h"
+#include  "fWild.h"
 
 /* ----------------------------------------------------------------------- */
 	void
 fatalerr (
-	char  *s)
+	const char  *s)
 
 	{
 	fprintf(stderr, "\7%s\n", s);

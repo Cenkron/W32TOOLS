@@ -10,11 +10,11 @@
 
 #include  <stdio.h>
 
-#include  "fwild.h"
+#include  "fWild.h"
 
 /* ----------------------------------------------------------------------- */
     void
-docprint (char *dp[])		/* Help documentation array pointer */
+docprint (const char  *dp[])	/* Help documentation array pointer */
 
 	{
 	while (*dp)

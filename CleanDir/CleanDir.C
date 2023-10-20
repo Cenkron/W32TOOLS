@@ -17,7 +17,8 @@
 #include  <stdio.h>
 #include  <conio.h>
 
-#include  <fwild.h>
+#include  <fWild.h>
+
 #include  <getoptns.h>
 #include  <getopt2.h>
 
@@ -36,8 +37,10 @@ static BOOL			Running     = TRUE;
 static BOOL			Listing     = FALSE;
 static BOOL			Interactive = TRUE;
 static BOOL			Verbose     = FALSE;
-static int			xmode       = 0;		// Dummy, not used in the CleanDir version of fwild
+static int			xmode       = 0;		// Dummy, not used in the CleanDir version of fWild
 static Decision_t	Decision    = Keep;
+
+PEX		xp = NULL;				// FEX instance pointer
 
 char star [2] = {'*', 0};
 char dot  [2] = {'.', 0};
@@ -210,7 +213,7 @@ ProcessPath (
 	strcpy(NewPath, pPath);		// Make the starting search path
 	PathCat(NewPath, star);
 
-	// The following code is a simplified abstraction from the fwild library
+	// The following code is a simplified abstraction from the fWild library
 
 	if ((sh = FindFirstFile(NewPath, &wfd)) != INVALID_HANDLE_VALUE)
 		{
@@ -231,7 +234,12 @@ ProcessPath (
 				if (Attr & FILE_ATTRIBUTE_DIRECTORY)
 					{
 					strcpy(CurrentDir, CurrentFile);	// Current file is a directory
-					if (fexcludeCheck(CurrentDir))
+					strcpy(NewPath, pPath);				// Make the child search path
+					PathCat(NewPath, CurrentDir);
+
+					// Check if the file/path is excluded
+
+					if (fExcludePathCheck(xp, NewPath))
 						{
 						if (Verbose)
 //BWJ fix xmode system
@@ -261,8 +269,6 @@ ProcessPath (
 						if (Verbose)
 							printf(" Dir  found, \"%s\"\n", CurrentDir);
 
-						strcpy(NewPath, pPath);					// Make the child search path
-						PathCat(NewPath, CurrentDir);
 						PathNotEmpty |= ProcessPath(NewPath);	// Search it recursively
 						}
 					}
@@ -313,7 +319,7 @@ ProcessRootPath (
 	strcpy(NewPath, pPath);		// Make the starting search path
 	PathCat(NewPath, star);
 
-	// The following code is a simplified abstraction from the fwild library
+	// The following code is a simplified abstraction from the fWild library
 
 	if ((sh = FindFirstFile(NewPath, &wfd)) != INVALID_HANDLE_VALUE)
 		{
@@ -332,7 +338,12 @@ ProcessRootPath (
 			&&  (Attr & FILE_ATTRIBUTE_DIRECTORY))
 				{
 				strcpy(CurrentDir, CurrentFile);	// Current file is a directory
-				if (fexcludeCheck(RootedX(CurrentDir)))
+				strcpy(NewPath, pPath);				// Make the child search path
+				PathCat(NewPath, CurrentDir);
+
+				// Check if the file/path is excluded
+
+				if (fExcludePathCheck(xp, NewPath))
 					{
 					if (Verbose)
 //BWJ fix xmode system
@@ -356,8 +367,6 @@ ProcessRootPath (
 					if (Verbose)
 						printf(" Dir  found, \"%s\"\n", CurrentDir);
 
-					strcpy(NewPath, pPath);			// Make the child search path
-					PathCat(NewPath, CurrentDir);
 					ProcessPath(NewPath);			// Begin a recursive search of this directory
 					}
 				}
@@ -510,12 +519,12 @@ configOptions (
 
 		case 'X':		// Signifies path exclusion entry
 			if      (optarg[0] == '-')
-				fexcludeDefEnable(FALSE);		/* Disable default file exclusion(s) */
+				fExcludeDefEnable(xp, FALSE);	/* Disable default file exclusion(s) */
 			else if (optarg[0] == '+')
-				fexcludeShowConf(TRUE);			/* Enable stdout of configuration */
+				fExcludeShowConf(xp, TRUE);		/* Enable stdout of exclusion(s) */
 			else if (optarg[0] == '=')
-				fexcludeShowExcl(TRUE);			/* Enable stdout of excluded path(s) */
-			else if (fexclude(optarg))
+				fExcludeShowExcl(xp, TRUE);		/* Enable stdout of excluded path(s) */
+			else if (fExclude(xp, optarg))
 				printf("Exclusion string fault: \"%s\"\n", optarg);
 			break;
 
@@ -548,6 +557,10 @@ main (
 	int		errorCode;			// The getopt2 completion code
 	char   *envPtr = NULL;		// Ptr to environment string
 
+
+	if ((xp = fExcludeOpen()) == NULL)
+		exit(1);
+
 	envPtr = getenv("CleanDir");
 
 	getoptInit(&options);		// Set up the switch table state machine
@@ -556,7 +569,7 @@ main (
 	if (errorCode != OPTERR_NONE)
 		usage();
 
-	fexcludeInit(&xmode);	// Init the path exclusion mechanism
+	fExcludeConnect(xp, NULL);	// Init only the exclusion instance
 
 	if (argIndex >= argc)
 		{
@@ -577,6 +590,7 @@ main (
 			}
 		}
 
+	xp = fExcludeClose(xp);					// Close the Exclusion instance
 	exit (exitcode);
 	}
 

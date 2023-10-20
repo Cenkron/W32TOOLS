@@ -19,7 +19,7 @@
 #include <fcntl.h>
 
 #include "dtypes.h"
-#include "fwild.h"
+#include "fWild.h"
 #include "xcopy.h"
 
 /**********************************************************************/
@@ -131,10 +131,9 @@ printf("\ninit_buffer\n");
 		}
 
 #if 0
-printf("\ninit_buffer done\n");
+printf("\ninit_buffer done, do copy\n");
 #endif
 
-	// ReSharper disable once CppDeclaratorMightNotBeInitialized
 	errorflg = copy_loop(src, srcfh, dst, dstfh);
 
 	if (errorflg)
@@ -149,25 +148,12 @@ printf("\nunlink copy temp_name \"%s\"\n", temp_name);
 #endif
 			unlink(temp_name);
 			}
-		
-#if 0 // BWJ THIS IS A TEST FOR W7 - retry this until it takes? REMOVE THIS
-		{
-		int count = 25;
-		do  {
-			if ((src_dt=fgetfdt(src)) < 0)
-				error(dst, "error getting source time/date");
 
-			else if (fsetfdt(dst, src_dt) != 0)
-				error(dst, "error setting destination time/date");
-			} while ((fgetfdt(dst) != fgetfdt(src))  &&  (--count > 0));
-		}
-#else
-	if ((src_dt=fgetfdt(src)) < 0)
-		error(dst, "error getting source time/date");
+		if ((fgetfdt(src, &src_dt)) != 0)
+			error(dst, "error getting source time/date");
 
-	else if (fsetfdt(dst, src_dt) != 0)
-		error(dst, "error setting destination time/date");
-#endif
+		else if (fsetfdt(dst, src_dt) != 0)
+			error(dst, "error setting destination time/date");
 		}
 
 err_exit:

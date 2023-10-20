@@ -14,7 +14,7 @@
 #include  <stdio.h>
 #include  <ctype.h>
 
-#include  "fwild.h"
+#include  "fWild.h"
 
 #ifndef TRUE
 #define FALSE	  0
@@ -43,9 +43,6 @@ char	metach  = '%';			/* The meta-character */
 char   *cfnp    = NULL;			/* Command input filename */
 char   *ifnp    = NULL;			/* Input lines filename */
 
-void cantopen (char *);
-void usage ();
-void help ();
 void dprint (char **);
 
 extern	void	init	(void);
@@ -135,15 +132,6 @@ next:;
 		}
 
 	process(ifnp, argc, argv);		/* Perform the real work */
-	}
-
-/* ----------------------------------------------------------------------- */
-	void
-cantopen (				/* Inform user of input failure */
-	char  *fnp)			/* Input file name */
-
-	{
-	fprintf(stderr, "\7Unable to open file: %s\n", fnp);
 	}
 
 /* ----------------------------------------------------------------------- */

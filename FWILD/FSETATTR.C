@@ -20,15 +20,15 @@
 
 #define  FWILD_INTERNAL
 
-#include  "fwild.h"
+#include  "fWild.h"
 
 /* ----------------------------------------------------------------------- *\
 |  fsetattr ()  -  Set the file attributes (via filename)
 \* ----------------------------------------------------------------------- */
 	int
 fsetattr (
-	char  *fnp,					/* Pointer to the path/filename */
-	int    FwildAttr)			/* The new file attributes */
+	const char  *fnp,			/* Pointer to the path/filename */
+	int			 FwildAttr)		/* The new file attributes */
 
 	{
 	int    result;			/* The success (0) fail (-1) result */

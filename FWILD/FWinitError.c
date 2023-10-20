@@ -1,6 +1,6 @@
 /* ----------------------------------------------------------------------- *\
 |
-|	fwinitError () - Report FWinit failure
+|	fwInitError () - Report FWinit failure
 |
 |	Copyright (c) 1987, 1990, all rights reserved, Brian W Johnson
 |
@@ -11,15 +11,17 @@
 #include  <stdio.h>
 #include  <stdlib.h>
 
-#include  "fwild.h"
+#include  "fWild.h"
 
 /* ----------------------------------------------------------------------- */
 	void
-fwinitError (
-	char *fnp)			/* Input file name */
+fwInitError (
+	const char *fnp)	/* Input file name */
 
 	{
-	printf("Invalid filespec: %s\n", fnp);
+	char *pErrMsg = fwerror();
+
+	fprintf(stderr, "%s\"  -  %s\n", fnp, pErrMsg);
 	exit(5);
 	}
 

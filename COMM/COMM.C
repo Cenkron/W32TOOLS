@@ -13,7 +13,7 @@
 #include  <string.h>
 #include  <ctype.h>
 
-#include  "fwild.h"
+#include  "fWild.h"
 
 #ifndef TRUE
 #define FALSE	  0
@@ -71,9 +71,6 @@ void flushout (int);
 void output (char *, int);
 void trim (char *, int);
 void finis (void);
-void cantopen (char *);
-void usage (void);
-void help (void);
 void dprint (char **);
 int	equals (char *str1, char *str2);
 int	input (int into);
@@ -137,12 +134,18 @@ main (argc, argv)
     for (temp = 0; temp < 2; temp++)
 	{
 	if ((area[temp].fd = fopen(argv[1 + temp], "r")) == NULL)
+		{
 	    cantopen(argv[1 + temp]);
+	 	exit(1);
+	 	}
 	}
     if (argc > 3)
 	{
 	if ((outfd = fopen(argv[3], "w")) == NULL)
+		{
 	    cantopen(argv[3]);
+	 	exit(1);
+	 	}
 	}
     else
 	outfd = stdout;
@@ -300,16 +303,6 @@ finis ()			/* Exit from comm */
     fclose(area[0].fd);
     fclose(area[1].fd);
     exit(0);
-    }
-
-/* ----------------------------------------------------------------------- */
-    void
-cantopen (s)
-    char  *s;
-
-    {
-    fprintf(stderr, "\7Unable to open input file: %s\n", s);
-    exit(1);
     }
 
 /* ----------------------------------------------------------------------- */

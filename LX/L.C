@@ -12,17 +12,21 @@
 |								   22-Mar-98  QuoteFlag added
 |								   25-Sep-01  Support for huge directories
 |								   27-Sep-07  Support for 64 bit file sizes
+|								   16-Jun-22  Added exclusion path mechanism
+|								   22-Oct-23  Major cleanup
 |
 \* ----------------------------------------------------------------------- */
 
 #include  <windows.h>
+
 #include  <stdio.h>
-#include  <ctype.h>
 #include  <stdlib.h>
 #include  <string.h>
-#include  <time.h>
+#include  <ctype.h>
 #include  <io.h>
-#include  "fwild.h"
+#include  <time.h>
+
+#include  "fWild.h"
 #include  "ptypes.h"
 
 /* ----------------------------------------------------------------------- */
@@ -41,16 +45,17 @@ char  *usagedoc [] =
 "",
 "    %ca        List only un-archived entries",
 "    %cA A      List by Boolean [arhs] attributes: (e.g., %cA HS+ar )",
+"    %cb        List file lengths in hexadecimal",
 "    %cc        List (comprehensively) all files and directories",
 "    %cC N      Use N columns for wide listings (default 5 columns)",
-"    %cd        List directories (default)",
-"    %ce        Don't use default .* extension",
-"    %cE        Check only for existence of the files",
-"    %cf        List files (default)",
+"    %cd        List only directories, not files (default both)",
+"    %cD        Enable listing \"Access Denied\" warnings",
+"    %ce        Check only for existence of the files",
+"    %cE        Don't do automatic directory expansion",
+"    %cf        List only files, not directories (default all)",
 "    %cF pnstaw Determine the list format (default \"psta\")",
-"    %ch        List hidden files",
-"    %cH        List file lengths in hexadecimal",
-"    %ci        Take pathnames from stdin",
+"    %ch        List hidden files and/or directories",
+"    %cH        List only hidden files and/or directories",
 "    %cl        List in lower case",
 "    %cL N      Use N lines for \"more\" listings (default 25 lines)",
 "    %cm        List in \"more\" mode, using the default",
@@ -64,14 +69,21 @@ char  *usagedoc [] =
 "    %cQ        Quote filenames with whitespace [on]",
 "    %cr        List at the requested output rate",
 "    %cR N      Use N as the requested output rate, (default 25 lps)",
-"    %cs        List system files",
+"    %cs        List system files and/or directories",
+"    %cS        List only system files and/or directories",
 "    %ct        List file and byte count totals",
+"    %cT        List file time as raw UNIX time",
 "    %cu        List in upper case",
-"    %cv[v]     List the volume identification [no legend]",
+"    %cv        Verbose output (usually used for debugging",
+"    %cV[v]     List (only) the volume identification [no legend]",
 "    %cw        List in wide mode, using the default",
 "    %cW N      List in wide mode, using N columns",
 "    %cx        List extended datetime information",
-"    %cX (pathname> Exclude (possibly wild) matching pathnames",
+"    %cX <pathspec> e/X/clude (possibly wild) paths matching pathspec",
+"    %cX @<xfile>   e/X/clude files that match pathspec(s) in xfile",
+"    %cX-       Disable default file exclusion(s)",
+"    %cX+       Show exclusion path(s)",
+"    %cX=       Show excluded path(s)",
 "    %cy <td>   List only if younger than <td>",
 "    %cz        Exit with zero return code even if not found",
 "",
@@ -81,34 +93,42 @@ NULL
 
 /* ----------------------------------------------------------------------- */
 
-#define	  FW_NORM	   (FW_FILE | FW_SUBD)
-#define	  DEFNAMESIZE  (40)				/* The default name field size */
+#define		FW_NORM	   (FW_FILE | FW_DIR)	// Default search type
+#define		DEFNAMESIZE  (40)				// The default name field size
+
+#define		NULCH	('\0')
 
 /* ----------------------------------------------------------------------- */
 
 int		defflg = TRUE;					/* Use the defaults flag */
+int		b_flag = FALSE;					/* List lengths in hexadecimal flag */
 int		c_flag = FALSE;					/* List all files/directories flag */
-int		d_flag = FALSE;					/* List directories flag */
 int		e_flag = TRUE;					/* Existence check flag */
-int		f_flag = FALSE;					/* List files flag */
-int		h_flag = FALSE;					/* List lengths in hexadecimal flag */
-int		i_flag = FALSE;					/* Take pathnames from stdin */
+int		E_flag = FALSE;					/* Don't do automatic directory expansion */
+int		H_flag = FALSE;					/* List only hidden files and/or directories */
+int		i_flag = FALSE;					/* Take pathnames from stdin (automatic) */
 int		l_flag = FALSE;					/* Lower case flag */
 int		m_flag = FALSE;					/* List in "more" mode */
-int		o_flag = FALSE;					/* List older flag */
+int		o_flag = FALSE;					/* List older than <td> flag */
 int		p_flag = FALSE;					/* List parameters flag */
 int		r_flag = FALSE;					/* List at requested rate flag */
 int		q_flag = FALSE;					/* Quiet errors flag */
+int		S_flag = FALSE;					/* List only hidden files and/or directories */
 int		t_flag = FALSE;					/* File and byte total flag */
 int		u_flag = FALSE;					/* Upper case flag */
-int		v_flag = 0;						/* Volume name flag */
+int		V_flag = 0;						/* Show volume name */
 int		w_flag = FALSE;					/* Wide listing mode flag */
 int		x_flag = 0;						/* Extended datetime */
-int		y_flag = FALSE;					/* List younger flag */
+int		y_flag = FALSE;					/* List younger than <td> flag */
 int		z_flag = FALSE;					/* Return zero even if failure */
 
-void   *hp	   = NULL;					/* Pointer to wild name data block */
+int		verbose		= 0;				/* Show verbose output */
+int		rawTimeFlag	= FALSE;			/* Show time/date as raw time */
+int		LoopEnb		= TRUE;				/* Run the process loop */
+int		DispEnb		= TRUE;				/* General display control */
 
+PHP		hp		 = NULL;				/* Pointer to the fWild instance */
+PEX		xp		 = NULL;				/* Pointer to the exclusion instance */
 int		smode	 = FW_NORM;				/* File search mode attributes */
 
 int		namesize = DEFNAMESIZE;			/* Length of the name field */
@@ -128,14 +148,18 @@ int		QuoteFlag = 1;					/* Quote filenames with spaces */
 time_t	oldertime = 0L;					/* The older-than time */
 time_t	youngertime = 0L;				/* The younger-than time */
 
+static	char	pSrch[MAX_PATH];		// Buffer for the search path
+
 /* ----------------------------------------------------------------------- */
 
 #define	 SETEXIT(n)	  {if (exitcode < (n)) exitcode = (n);}
 
-static	void	process (char *);
-static	void	volprnt (char *);
-static	void	finish	(void);
-static	char   *stdpath (void);
+static	void	ProcessLoop (const char *);
+static	void	Process (char *);
+static	int		timebound (void);
+static	void	VolPrint (const char *);
+static	void	listTotal	(void);
+static	char   *UseStdin (void);
 static	void	delay_init (void);
 static	int		test_attr (int attr);
 static	void	set_attr (char *s);
@@ -143,7 +167,7 @@ static	void	set_attr_default (void);
 
 extern	void	fdpr_init		(void);
 extern	int		fdpr_format		(char *);
-extern	void	fdpr			(char *fnp, int type, UINT64 size);
+extern	void	fdpr			(viod);
 extern	void	fdpr_complete	(void);
 
 /* ----------------------------------------------------------------------- */
@@ -156,13 +180,17 @@ main (
 	int	   option;						/* Option character */
 	long   ltemp;						/* Used for optvalue() */
 	char  *ap;							/* Argument pointer */
-	char  *fnp = NULL;					/* Input file name pointer */
 
-static	char   *fargv [] = { "*" };		/* Fake argv array */
-static	char   *optstring = "?aA:cC:dDeEfF:hHiIlL:mM:nN:o:O:pP:qQrR:sStTuUvwW:VxX:y:Y:zZ";
+static	char   *optstring = "?aA:bcC:dDeEfF:hHlL:mM:nN:o:O:pP:qQrR:sStTuUvwW:VxX:y:Y:zZ";
 
 
-	setbuf(stdout, fmalloc(BUFSIZ));
+	if ((hp = fwOpen()) == NULL)
+		exit(1);
+	if ((xp = fExcludeOpen()) == NULL)
+		exit(1);
+
+
+//	setbuf(stdout, fmalloc(BUFSIZ));
 	optenv = getenv("L");
 
 	while ((option = getopt(argc, argv, optstring)) != EOF)
@@ -172,10 +200,14 @@ static	char   *optstring = "?aA:cC:dDeEfF:hHiIlL:mM:nN:o:O:pP:qQrR:sStTuUvwW:VxX
 			case 'a':
 				if (option == 'A')
 					set_attr(optarg);
-				else
+				else // (option == 'a')
+					{
 					set_attr("A");
-				defflg = FALSE;
-				f_flag = TRUE;
+					}
+				break;
+
+			case 'b':
+				b_flag = TRUE;
 				break;
 
 			case 'c':
@@ -189,26 +221,36 @@ static	char   *optstring = "?aA:cC:dDeEfF:hHiIlL:mM:nN:o:O:pP:qQrR:sStTuUvwW:VxX
 					colsize = (int)(ltemp);
 					break;
 					}
-				else
+				else // (option == 'c')
 					{
-					defflg = FALSE;
-					c_flag = TRUE;
-					d_flag = TRUE;
-					f_flag = TRUE;
-					p_flag = TRUE;
-					t_flag = TRUE;
-					v_flag = 1;
+//					defflg  = FALSE;
+					LoopEnb = TRUE;
+					DispEnb = TRUE;
+					c_flag  = TRUE;
+					p_flag  = TRUE;
+					t_flag  = TRUE;
+					V_flag  = 1;
 					set_attr("H+S+A+R");
 					}
 				break;
 
 			case 'd':
-				defflg = FALSE;
-				d_flag = TRUE;
+				if (option == 'D')
+					{
+					smode |=  FW_AD;
+					}
+				else // (option == 'd')
+					{
+					smode |=  FW_DIR;
+					smode &= ~FW_FILE;
+					}
 				break;
 
 			case 'e':
-				e_flag = FALSE;
+				if (option == 'E')
+					E_flag = TRUE;
+				else
+					e_flag = FALSE;
 				break;
 
 			case 'f':
@@ -220,22 +262,16 @@ static	char   *optstring = "?aA:cC:dDeEfF:hHiIlL:mM:nN:o:O:pP:qQrR:sStTuUvwW:VxX
 						usage();
 						}
 					}
-				else
+				else // (option == 'f')
 					{
-					defflg = FALSE;
-					f_flag = TRUE;
-					}
+					smode |=  FW_FILE;					}
+					smode &= ~FW_DIR;
 				break;
 
 			case 'h':
 				if (option == 'H')
-					h_flag = !h_flag;
-				else
-					set_attr("H+*");
-				break;
-
-			case 'i':
-				i_flag = TRUE;
+					H_flag = TRUE;
+				set_attr("H+*");
 				break;
 
 			case 'l':
@@ -250,9 +286,9 @@ static	char   *optstring = "?aA:cC:dDeEfF:hHiIlL:mM:nN:o:O:pP:qQrR:sStTuUvwW:VxX
 					if (rowsize == 1)
 						rowsize = 2;
 					}
-				else
+				else // (option == 'l')
 					{
-					l_flag = ! l_flag;
+					l_flag = TRUE;
 					u_flag = FALSE;
 					}
 				break;
@@ -282,12 +318,15 @@ static	char   *optstring = "?aA:cC:dDeEfF:hHiIlL:mM:nN:o:O:pP:qQrR:sStTuUvwW:VxX
 						}
 					namesize = (int)(ltemp);
 					}
-				else
-					defflg = FALSE;
+				else // (option == 'n')
+					{
+					DispEnb = FALSE;
+					defflg  = FALSE;
+					}
 				break;
 
 			case 'o':
-				if ((oldertime = fwsgettd(optarg)) < 0L)
+				if ((oldertime = fwsgettd(optarg)) == 0)
 					{
 					printf("Older time - %s\n", fwserrtd());
 					usage();
@@ -327,22 +366,42 @@ static	char   *optstring = "?aA:cC:dDeEfF:hHiIlL:mM:nN:o:O:pP:qQrR:sStTuUvwW:VxX
 				break;
 
 			case 's':
+				if (option == 'S')
+					S_flag = TRUE;
 				set_attr("S+*");
 				break;
 
 			case 't':
-				defflg = FALSE;
-				t_flag = TRUE;
+				if (option == 'T')
+					{
+					rawTimeFlag = TRUE;
+					}
+				else
+					{
+					defflg  = FALSE;
+					LoopEnb = TRUE;
+					DispEnb = FALSE;
+					t_flag  = TRUE;
+					}
 				break;
 
 			case 'u':
 				l_flag = FALSE;
-				u_flag = ! u_flag;
+				u_flag = TRUE;
 				break;
 
 			case 'v':
-				defflg = FALSE;
-				++v_flag;
+				if (option == 'V')
+					{
+					defflg  = FALSE;
+					LoopEnb = FALSE;
+					DispEnb = FALSE;
+					V_flag  = TRUE;
+					}
+				else
+					{
+					++verbose;
+					}
 				break;
 
 			case 'w':
@@ -355,18 +414,33 @@ static	char   *optstring = "?aA:cC:dDeEfF:hHiIlL:mM:nN:o:O:pP:qQrR:sStTuUvwW:VxX
 						}
 					colsize = (int)(ltemp);
 					}
-				w_flag = ! w_flag;
+				w_flag = TRUE;
 				break;
 
 			case 'x':
-				if (option == 'x')
-					++x_flag;
-				else if (fexclude(optarg))
-					printf("Exclusion string fault: \"%s\"\n", optarg);
+				if (option == 'x')					// (lower case only)
+					{
+//printf("lower X\n");
+					x_flag = TRUE;					// Show datetime info
+					}
+				else // (option == 'X')				// (upper case only)
+					{
+//printf("upper X\n");
+//printf("optarg %s\n", optarg);
+
+					if (optarg[0] == '-')			// (Upper case)
+						fExcludeDefEnable(xp, FALSE);	// Disable default file exclusion(s)
+					else if (optarg[0] == '+')
+						fExcludeShowConf(xp, TRUE);		// Enable stdout of exclusion(s)
+					else if (optarg[0] == '=')
+						fExcludeShowExcl(xp, TRUE);		// Enable stdout of excluded path(s)
+					else if (fExclude(xp, optarg))
+						printf("Exclusion string fault: \"%s\"\n", optarg);
+					}
 				break;
 
 			case 'y':
-				if ((youngertime = fwsgettd(optarg)) < 0L)
+				if ((youngertime = fwsgettd(optarg)) == 0)
 					{
 					printf("Younger time - %s\n", fwserrtd());
 					usage();
@@ -386,77 +460,134 @@ static	char   *optstring = "?aA:cC:dDeEfF:hHiIlL:mM:nN:o:O:pP:qQrR:sStTuUvwW:VxX
 			}
 		}
 
-	if (( ! isatty(fileno(stdin)))
-	||	( ! isatty(fileno(stdout))))
-		m_flag = FALSE;
+	i_flag = ( ! isatty(fileno(stdin)));
 
-	set_attr_default();
+	if	( ! isatty(fileno(stdout)))
+		m_flag = FALSE;
+	
 	if (defflg)
 		{
-		d_flag = TRUE;
-		f_flag = TRUE;
 		p_flag = TRUE;
 		}
 
 	fdpr_init();
 	delay_init();
+
 	if (i_flag)
 		{
-		while (ap = stdpath())					/* Process the stdin list */
+		while ((ap = UseStdin()) != NULL)				// Process the stdin list
 			{
-			itemcode = 1;
-			if (v_flag > 0)							/* Process the volume name */
-				volprnt(ap);
-			if ((hp = fwinit(ap, smode)) == NULL)	/* Process the input list */
-				fwinitError(ap);
-			fwExclEnable(hp, TRUE);					/* Enable file exclusion */
-			while (fnp = fwild(hp))					/* Process each filespec */
-				process(fnp);
-			hp = NULL;
-
-			if ((itemcode != 0)
-			&& ((f_flag | d_flag | t_flag)	&&	( ! q_flag)))
-				cantfind(ap);						/* Couldn't find any */
-
-			SETEXIT(itemcode);
+			if (V_flag > 0)					// Process the volume name
+				VolPrint(ap);
+			if (LoopEnb)
+				{
+				if (verbose > 2)
+					printf("(STDIN) Pattern: \"%s\"\n", ap);
+				ProcessLoop(ap);
+				}
 			}
 		}
 
-	else											/* Process the command line */
+	else if (optind >= argc)				// if no filespec provided, use default ""
 		{
-		if (optind >= argc)
-			{
-			optind = 0;
-			argc   = 1;
-			argv   = fargv;
-			}
+		ProcessLoop("");
+		}
 
-		while (optind < argc)
+	else		 							
+		{
+		while (optind < argc)				// Process the command line list
 			{
 			ap = argv[optind++];
-			itemcode = 1;
-			if (v_flag > 0)							/* Process the volume name */
-				volprnt(ap);
-			if ((hp = fwinit(ap, smode)) == NULL)	/* Process the input list */
-				fwinitError(ap);
-			fwExclEnable(hp, TRUE);					/* Enable file exclusion */
-			while (fnp = fwild(hp))					/* Process each filespec */
-				process(fnp);
-			hp = NULL;
-
-			if ((itemcode != 0)
-			&& ((f_flag | d_flag | t_flag)	&&	( ! q_flag)))
-				cantfind(ap);						/* Couldn't find any */
-
-			SETEXIT(itemcode);
+			if (V_flag > 0)					// Process the volume name
+				VolPrint(ap);
+			if (LoopEnb)
+				{
+				if (verbose > 2)
+					printf("(CMD) Pattern: \"%s\"\n", ap);
+				ProcessLoop(ap);
+				}
 			}
 		}
 
-	fdpr_complete();
-	finish();
-	if (x_flag > 0)
-		printf("Exit code: %d\n", exitcode);
-	exit((z_flag) ? (0) : (exitcode));
+	listTotal();
+	xp = fExcludeClose(xp);					// Close the Exclusion instance
+	hp = fwClose(hp);						// Close the fWild instance
+	}
+
+/* ----------------------------------------------------------------------- */
+	static void
+ProcessLoop (
+	const char *pPattern)		// Search pathspec
+
+	{
+	char  *fnp;					// Found file name pointer
+
+	pathCopy(pSrch, pPattern, MAX_COPY);		// Copy the pathspec
+
+	if (verbose > 1)
+		printf("L1 Pattern: \"%s\"\n", pSrch);
+
+// BWJ E_flag may be worthless
+//	if ((*pSrch != '\0')  &&  fnchkdir(pSrch)  &&  (! E_flag))
+//		pathCat(pSrch, "*", MAX_COPY);
+
+	if (verbose > 0)
+printf("L2 Pattern: \"%s\"\n", pSrch);
+
+	if (fwInit(hp, pSrch, smode) != FWERR_NONE)	// Process the pattern
+		fwInitError(pSrch);
+	fExcludeConnect(xp, hp);					// Connect the exclusion instance
+	while (fnp = fWild(hp))						// Process each filespec
+		Process(fnp);
+
+	if ((itemcode != 0)
+	&& (( ! t_flag)  &&	 ( ! q_flag)))
+		cantfind(pSrch);						// Couldn't find any
+
+	SETEXIT(itemcode);
+	}
+	
+/* ----------------------------------------------------------------------- */
+	static void
+Process (fnp)					/* Process one filename */
+	char  *fnp;					/* Pointer to the file name */ 
+
+	{
+	int		type = fwtype(hp);
+	UINT64	size = fwsize(hp);
+
+	if (verbose > 1)
+		{
+printf("L: Found: \"%s\"\n", fnp);
+printf("L: Attr:  \"%s\"\n", showFileAttr(type));
+		}
+
+	if ((H_flag && ! (type & ATT_HIDDEN))	// Special cases
+	||  (S_flag && ! (type & ATT_SYSTEM)))
+		return;
+
+	if (type & ATT_DIR) 
+		{
+		if (c_flag || ( ! fndot(fnp))  &&  test_attr(type)  &&  timebound())
+			{
+			++dtotal;
+			itemcode = 0;
+			if (e_flag && DispEnb)	// If file/directory listing is enabled
+				fdpr();
+			}
+		}
+
+	else /* a file */
+		{
+		if (test_attr(type)	 &&	 timebound())
+			{
+			++ftotal;
+			btotal += size;
+			itemcode = 0;
+			if (e_flag && DispEnb)	// If file/directory listing is enabled
+				fdpr();
+			}
+		}
 	}
 
 /* ----------------------------------------------------------------------- */
@@ -471,9 +602,6 @@ timebound (void)
 
 	if (x_flag > 0)
 		{
-#if 1
-		printf("Unixtime: %08llX\n", t = fwgetfdt(hp));
-#endif
 		printf("Datetime: %s", asctime(localtime(&t)));
 		if (x_flag > 1)
 			printf("Datetime: %lld\n", t);
@@ -492,78 +620,39 @@ timebound (void)
 
 /* ----------------------------------------------------------------------- */
 	static void
-process (fnp)					/* Process one filename */
-	char  *fnp;					/* Pointer to the file name */ 
-
-	{
-	int		type;
-	UINT64	size;
-
-
-	type = fwtype(hp);
-	size = fwsize(hp);
-
-	if (type & ATT_SUBD) 
-		{
-		if (c_flag || ( ! fndot(fnp))  &&  test_attr(type)  &&  timebound())
-			{
-			++dtotal;
-			itemcode = 0;
-			if (d_flag	&&	e_flag)
-				fdpr(fnp, type, size);
-			}
-		}
-
-	else /* a file */
-		{
-		if (test_attr(type)	 &&	 timebound())
-			{
-			++ftotal;
-			btotal += size;
-			itemcode = 0;
-			if (f_flag	&&	e_flag)
-				fdpr(fnp, type, size);
-			}
-		}
-	}
-
-/* ----------------------------------------------------------------------- */
-	static void
-volprnt (s)						/* Get and process the volume name */
-	char  *s;					/* Pointer to the argument */ 
+VolPrint (						// Get and print the volume name
+	const char  *pPath)			// Pointer to the pathspec
 
 	{
 	char  *vnp;
-	char  *stpchr();
 
-// vnp = vol_name(s);
-// printf("Source string: %s\n", s);
-// printf("vnp:           %04X\n", vnp);
-// printf("vnp[0]:        %02X\n", *vnp);
+	if (verbose)
+printf("VolPrint path; \"%s\"\n", pPath);
 
-	if (v_flag == 1)
-		printf("Volume name: ");
+	printf("Volume name: ");
 
-	if (vnp = vol_name(s))
+	if ((vnp = volName(pPath)) != NULL)
 		printf("%s\n", vnp);
 	else
 		{
 		SETEXIT(1);						/* Exit code - show failure */
-		printf("<None>\n");
+		printf("<invalid>\n");
 		}
+
+	if (verbose)
+printf("VolPrint exit\n");
 	fflush(stdout);
 	}
 
 /* ----------------------------------------------------------------------- */
 	static void
-finish ()
+listTotal ()
 
 	{
 	if (t_flag)
 		{
 		printf("\nTotal of %I64u bytes in %lu files", btotal, ftotal);
-		if (d_flag || ( ! f_flag))
-			printf(" and %lu directories", dtotal);
+		printf(" and %lu directories", dtotal);
 		printf("\n");
 		fflush(stdout);
 		}
@@ -571,53 +660,31 @@ finish ()
 
 /* ----------------------------------------------------------------------- */
 	static char *
-stdpath ()						/* Parse pathnames from stdin */
+UseStdin ()						/* Parse pathnames from stdin */
 
 	{
-	int	 ch;
-	char  *p;
-static	int	  eofflag = FALSE;
-static	char  line [81];
+static	char  line [MAX_PATH];
 
-	line[0] = '\0';
-	if ( ! eofflag)
+	if (fgets(line, MAX_COPY, stdin) == NULL)
+		return (NULL);
+
+	// Truncate the line ending
+
+	char *pStr;
+	char  ch;
+
+	pStr = line;
+	while ((ch = *pStr) != NULCH)
 		{
-		for (;;)
+		if ((ch == '\r') || (ch == '\n'))
 			{
-			ch = getchar();
-			if (ch == EOF)
-				{
-				eofflag = TRUE;
-				break;
-				}
-			if (isgraph(ch))
-				break;
+			*pStr = NULCH;
+			break;
 			}
+		++pStr;
 		}
-
-	if ( ! eofflag)
-		{
-		for (p = &line[0]; ; )
-			{
-			if (p >= &line[80])
-				{
-				line[0] = '\0';
-				break;
-				}
-			*(p++) = (char)(ch);
-			*p = '\0';
-			ch = getchar();
-			if ( ! isgraph(ch))
-				{
-				if (ch == EOF)
-					eofflag = TRUE;
-				break;
-				}
-			}
-		}
-
-	p = (line[0] != '\0') ? (&line[0]) : (NULL);
-	return (p);
+	
+	return (line);
 	}
 
 /* ----------------------------------------------------------------------- *\

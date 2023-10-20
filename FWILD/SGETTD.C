@@ -31,6 +31,8 @@
 |	30-Jul-93	Correction to DST handling
 |	17-Aug-97	Modified for NT
 |
+|	Currently, only RM.c, Sorts.c, and xcopy.c use this.
+|
 \* ----------------------------------------------------------------------- */
 
 #include  <stdio.h>
@@ -40,12 +42,12 @@
 #include  <ctype.h>
 #include  <time.h>
 #include  <ptypes.h>
-#include  <fwild.h>
+#include  <fWild.h>
 
 // #define  TESTMODE	0
 
-#ifdef  TESTMODE
-#if  TESTMODE
+#ifdef  TEST
+#if  TEST
 #define  DBG(s,v)	printf("%s: %04X\n", s, v)
 #else
 #define  DBG(s,v)
@@ -205,14 +207,14 @@ static	int		timematch   (PHRASE *pp);
 static	time_t	finalparse  (void);
 static	FIELD  *fld_find    (UINT16 attr);
 
-#ifdef  TESTMODE
+#ifdef  TEST
 extern	void	prn_tstr    (TSTR *t);
 #endif
 
 /* ----------------------------------------------------------------------- *\
 |  sgettd () - Parse a string to a UNIX time
 \* ----------------------------------------------------------------------- */
-	time_t				/* Return the UNIX timedate, or -1L if err */
+	time_t				/* Return the UNIX timedate, or 0 if err */
 sgettd (
 	char *s)			/* Pointer to the time/date string */
 
@@ -1232,7 +1234,7 @@ serrtd (void)
 	}
 
 /* ----------------------------------------------------------------------- */
-#ifdef  TESTMODE
+#ifdef  TEST
 	static void
 prn_attr (
 	UINT16 attr)

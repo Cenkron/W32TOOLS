@@ -24,6 +24,9 @@
 |	Wild '?' must match exactly one path character
 |	Wild '*' can  match 0 or more path characters
 |
+|	This file is deprecated.  It is no longer included in the build.
+|	It's functionality has been subsumed into the file pnMatch.c
+|
 \* ----------------------------------------------------------------------- */
 
 #include  <windows.h>
@@ -34,8 +37,9 @@
 
 #include  "fwild.h"
 
-// #define   TEST
-// #define   DEBUG
+// --------------------------------------------------------------------------
+//	#define   TEST
+//	#define   DEBUG
 
 #ifdef DEBUG
 #define   DBG(arg) printf("(%d) %d   Pattern: \"%s\"   Name: \"%s\"\n", arg, nest, pp, pn)

@@ -1,9 +1,67 @@
-This repository is built using Visual Studio 2019 Community Edition.
-It requires the current VS C/C++ and MFC components.
+This repository is a collection of command line utility tools for
+Windows, and are similar to the command line utilities provided by
+unix, Linux, and other unix-like operating systems.
 
-This build is 32 bit for compatibility with older Windows versions.
+It was built for those, like the author, that think there is a time
+and place for file management and other activities via the command
+line, as well as a time and place for the visual utilites.
+
+These tools are quite similar to the unix style utilities in purpose,
+but most provide significantly more capabilities, and cater to the
+philosophic differences of Windows.  Some are unique to this collection.
+The similarity is in purpose, not as clones with identical options.
+This is intentional.  The command line options differ considerably
+in detail, because of the basic differences between Windows and
+unix-like operating systems.  They mostly support the unix-like
+pipelining philosophy, but with some limitations due to Windows.
+
+All these utilities provide help similarly to those of unix-like
+utilities, by typing "<command name> -?".  There is no other
+documentation.
+
+These utilities are currently built using the Visual Studio
+2022 Community Edition, organized as a single solution with
+47 projects.  The solution build only requires the current
+Visual Studio C/C++ and MFC components.
+
+This build is now 64 bit, although 32 bit is still supported
+for compatibility with older Windows versions.
 The 32 bit build is fully compatible with current Windows 10 X64.
+However, Windows support for Win32 apps might end in the future.
+The Windows X64 build provides significantly better performance
+than the 32 bit build, at least on X64 systems.
 
-Windows X64 build is supported.  There is no apparent performance
-benefit to using the X64 build, but Windows support for Win32 apps
-could end in the future.
+These utilities are mostly based on a very powerfuln fWild subsystem
+library, which implements the expansion of path/file name strings
+into a list of files/directories for the utility program to act upon.
+It is the Windowas "FindFirstFile" subsystem on steroids.
+
+The expanded treatment of the file/path name analysis includes
+consistent treatment of UNC (networked) paths.  This means paths
+of the form "\\<server>\<file system>\<rest of path>".
+
+Notes on the fWild treatment of wild cards in path/file names:
+
+Generally, it works with either '\' or '/' as path separators,
+for those with strong typing habits.
+
+The treatment of '*' in path/file names is believed to be
+consistent with native windows apps such as COPY, DIR, and CD.
+The treatment is as a match to any number of characters,
+including zero.
+
+The treatment of '?' in path/file names is known to be different
+from the Windows utilities.  The fWild subsystem treats '?' as a
+match to exactly one character, as opposed to Windows, which
+treats '?' as a match to zero or one characters.
+This difference is intentional.
+
+The fWild subsystem adds the ** token as a pseudo-directory
+segment within a path, which matches zero or more directories.
+
+Thus the path "d:\**\*" will match all files (and directories)
+on the D: drive.
+
+Most of the command line tools in this project use the fWild
+subsytem so all of the above wild card mechanisms are in place
+for almost all of the utilities.

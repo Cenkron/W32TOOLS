@@ -8,7 +8,7 @@
 #include <stdlib.h>
 #include <process.h>
 
-#include <fwild.h>
+#include <fWild.h>
 
 /*--------------------------------------------------------------------*/
 	char * 

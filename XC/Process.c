@@ -12,7 +12,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <dtypes.h>
-#include <fwild.h>
+#include <fWild.h>
+
 #include "xcopy.h"
 
 /* ----------------------------------------------------------------------- */
@@ -24,61 +25,92 @@ PRIVATE void    move (char *src, char *dst, char *path);
 /* ----------------------------------------------------------------------- */
 	EXPORT void
 process (
-	char *src,
 	void *hp,
-	char *dst,
-	char *path)
+	char *pSrcName,
+	char *pDstName,
+	char *pDstPath)
 
 	{
-	char *xsrc;
-
-	if ((fnreduce(src) < 0)
-	||  ((xsrc = fnabspth(src)) == NULL))
-		error(src, "src pathspec error");
-
-	if (fnreduce(dst) < 0)
-		error(dst, "dst pathspec error");
-
-	if (fnreduce(path) < 0)
-		error(path, "path pathspec error");
-
-
-	strcpy(temp_name, path);
-	catpth(temp_name, "xcopy.$$$");
-	if (fnreduce(temp_name) < 0)
-		error(temp_name, "temp name error");
-
-
-	if (!azFlags.n && azFlags.p)
+	if (v_flag >= 2)
 		{
-#ifdef DEBUG
-printf("\nunlink process \"%s\"\n", temp_name);
-#endif
-		unlink(temp_name);
-		if (rename(dst,temp_name) == (-1))
-			error(dst,"unsuccessful protect");
+printf("PR src: \"%s\"\n", pSrcName);
+printf("PR dst: \"%s\"\n", pDstName);
+printf("PR pth: \"%s\"\n", pDstPath);
 		}
 
-	if (should_copy(src, hp, dst)
-	&&  may_copy(src, dst, path)
-	&&  can_copy(src, dst, path))
+	fnreduce(pDstName);
+	fnreduce(pDstPath);
+
+	if ((! should_copy(pSrcName, hp, pDstName))					// Decide whether to do the copy
+	||  (! may_copy(pSrcName, pDstName, pDstPath))
+	||  (! can_copy(pSrcName, pDstName, pDstPath)))
+		return;													// No, just return
+
+
+	if (!azFlags.p)												// Not protect mode
 		{
-		if (azFlags.k && (xsrc[0] == dst[0]))   /* if kill flag set */
-			{                                   /* and src drive = dst drive */
-			move(src, dst, path);               /* then just move file */
-			}
-		else
+		if ((azFlags.k)											// If kill flag set,
+		&&  (isSameDevice(pSrcName, pDstName)))					// and (src device == dst device),
+			move(pSrcName, pDstName, pDstPath);					// then just move the file
+
+		else // Do actual copy 									// Not protected, or moving
 			{
-			if ((copy(src, dst, path) == 0)
-			&&  (verify(src, dst, path) == 0))
-				{
-				kill(src);
-				}
+			do	{
+				if (copy(pSrcName, pDstName, pDstPath) != 0)	// Copy the file
+					break;
+
+				if (((azFlags.v) || (azFlags.k))
+				&&  (verify(pSrcName, pDstName, pDstPath) != 0))
+					{
+					unlink(pDstName);							// Delete the failed verify
+					break;
+					}
+
+				if (azFlags.k)									// If kill flag set,
+					{
+					kill(pSrcName);								// Delete the src file
+					break;
+					}
+
+				} while (FALSE);
 			}
 		}
 
-	if (xsrc)
-		free(xsrc);
+	else if (! azFlags.n) // Protect and execute				// Protect mode copy
+		{
+		strcpy(temp_name, pDstPath);							// Make a tempFile name
+		catpth(temp_name, "xcopy.$$$");
+		fnreduce(temp_name);
+
+		unlink(temp_name);										// Ensure tempFile doesn't exist
+		do	{
+			if (copy(pSrcName, temp_name, pDstPath) != 0)		// Copy the file
+				break;
+
+			if (verify(pSrcName, temp_name, pDstPath) != 0)
+				{
+				unlink(temp_name);								// Delete the failed copy
+				break;
+				}
+				
+			if (rename(temp_name, pDstName) != 0)				// Rename to requested name
+				{
+				unlink(temp_name);								// Delete the failed rename
+				break;
+				}
+
+			if (azFlags.k)										// If kill flag set,
+				{
+				kill(pSrcName);								// Delete the src file
+				break;
+				}
+
+			} while (FALSE);
+
+		unlink(temp_name);										// Ensure tempFile is gone
+		}
+
+	return;
 	}
 
 /* ----------------------------------------------------------------------- */
@@ -86,41 +118,42 @@ printf("\nunlink process \"%s\"\n", temp_name);
 /* ----------------------------------------------------------------------- */
 	PRIVATE void
 move (
-	char *src,
-	char *dst,
-	char *pth)
+	char *pSrcName,
+	char *pDstName,
+	char *pDstPath)
 
 	{
-	char    path  [1024];
+static char path  [MAX_PATH];
 	char    drive [1024];
 	char    dir   [1024];
 	char    fname [1024];
 	char    ext   [1024];
 
+	// This code reqires that isSameDevice() has already been called
+
 	if (!azFlags.l)
 		{
-		notify(MOVING, src, pth, dst);
+		notify(MOVING, pSrcName, pDstPath, pDstName);
 		}
 
 	if (!azFlags.n)
 		{
 #ifdef DEBUG
-printf("\nunlink process move1 \"%s\"\n", dst);
+printf("\nunlink process move1 \"%s\"\n", pDstName);
 #endif
-		unlink(dst);
+		unlink(pDstName);				// In case it already existd
 
-		_splitpath(dst, drive, dir, fname, ext);
+		_splitpath(pDstName, drive, dir, fname, ext);
 		_makepath(path, drive, dir, NULL, NULL);
 
-
-		if (rename(src, dst) != 0)
+		if (rename(pSrcName, pDstName) != 0)
 			{
-			error(src, "Unable to rename file");
+			error(pSrcName, "Unable to rename file");
 
 			if (azFlags.p)
 				{
-				if (rename(temp_name, dst) == (-1))
-					error(dst, "unsuccessful unprotect");
+				if (rename(temp_name, pDstName) == (-1))
+					error(pDstName, "unsuccessful unprotect");
 				}
 			}
 		else
@@ -146,13 +179,15 @@ catpth (
 	char *t)
 
 	{
-	char * p;
+	char *p = fncatpth(s, t);
 
-	if ((p = fncatpth(s, t)) == NULL)
+	if (p)
+		{
+		strcpy(s, p);
+		free(p);
+		}
+	else
 		error(s, "fncatpth error");
-
-	strcpy(s,p);
-	free(p);
 	}
 
 /*--------------------------------------------------------------------*/
@@ -162,7 +197,7 @@ notfound (
 
 	{
 	if ((!azFlags.z)  &&  (!azFlags.w))
-		printf("\n\aFile not found: %s\n",fn);
+		printf("\nFile not found: %s\n",fn);
 
 	if (azFlags.x)
 		{
@@ -181,7 +216,7 @@ error (
 
 	{
 	if (!azFlags.z)
-		printf("\n\aFile error: %s - %s\n", filename, message);
+		printf("\nFile error: %s - %s\n", filename, message);
 
 	if (azFlags.x)
 		exit(azFlags.z ? 0 : 1);
@@ -194,7 +229,7 @@ fatal (
 
 	{
 	if (!azFlags.z)
-		printf("\n\aFatal error: %s\n",s);
+		printf("\nFatal error: %s\n", s);
 
 	exit(azFlags.z ? 0 : 1);
 	}

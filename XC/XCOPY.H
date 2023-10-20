@@ -29,8 +29,10 @@ typedef   signed _int64  INT64;
 extern          A_Z_FLAGS azFlags;
 extern          A_Z_FLAGS AZ_Flags;
 
+extern          int		v_flag;
+
 extern          int     mode;
-extern          INT64   filesize;
+extern          UINT64  filesize;
 extern          char    temp_name [];	// MAX_PATH
 extern          char    path_char;
 extern          int     cols;
@@ -50,7 +52,7 @@ extern  int     ch_disk (void);
 extern  int     clr_readonly (char *filename);
 extern  int     copy (char *, char *, char *);
 extern  int     copy_loop (char *src, int srcfh, char *dst, int dstfh);
-extern  INT64   dfree (char *);
+extern  UINT64  dfree (char *);
 extern  void    error (char *, char *);
 extern  void    fatal (char *);
 extern  int     get_screen_width (void);
@@ -62,7 +64,7 @@ extern  void    kill (char *);
 extern  int     main (int, char * *);
 extern  int     may_copy (char *, char *, char *);
 extern  void    notfound (char *fn);
-extern  void    process (char *src, void *hp, char *dst, char *path);
+extern  void    process (void *hp, char *pSrc, char *pDst, char *pPath);
 extern  int     set_readonly (char *filename);
 extern  int     should_copy (char *src, void *hp, char *dst);
 extern  int     verify (char *, char *, char *);

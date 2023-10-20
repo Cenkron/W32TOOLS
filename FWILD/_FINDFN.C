@@ -34,30 +34,96 @@
 |
 \* ----------------------------------------------------------------------- */
 
-// #define	TEST				// Define in the makefile to include debug output
-// #define	CONSOLEMODETEST		// Define in the makefile to build a test program
-
 #include  <windows.h>
 
-#if defined(CONSOLEMODETEST) || defined(TEST)
+#if defined(TEST) || defined(DEBUG)
 #include <stdio.h>
 #endif
 
 #define	 FWILD_INTERNAL
 
-#include  "fwild.h"
+#include  "fWild.h"
 
-#ifdef	TEST
-static	void	d_disp (DTA_BLK *pDta);
-static	int		i;
-#endif
+//----------------------------------------------------------------------------
+//	#define TEST		// Define to build a test program
+//	#define DEBUG		// Define to include debug output
+
+#define ATT_MASK (ATT_RONLY | ATT_HIDDEN | ATT_SYSTEM | ATT_DIR | ATT_ARCH)
+
+//----------------------------------------------------------------------------
+//	Translate file search attributes to a diagnostic string
+//----------------------------------------------------------------------------
+#ifdef	DEBUG
+	static char *
+showSrchType (
+	int mode)
+
+	{
+static char  modeStr [30];	// The returned mode string
+
+	modeStr[0] = '\0';
+	if (mode & FW_DIR)
+		strcat(modeStr, "DIR ");
+	if (mode & FW_FILE)
+		strcat(modeStr, "FILE ");
+	if (mode & FW_HIDDEN)
+		strcat(modeStr, "HIDDEN ");
+	if (mode & FW_SYSTEM)
+		strcat(modeStr, "SYSTEM ");
+
+	return (modeStr);
+	}
+
+//----------------------------------------------------------------------------
+//	Translate found file attributes to a diagnostic string
+//----------------------------------------------------------------------------
+	static char *
+showFileType (
+	int mode)
+
+	{
+static char  modeStr [40];	// The returned mode string
+
+	modeStr[0] = '\0';
+	if (mode & ATT_DIR)
+		strcat(modeStr, "DIR ");
+	else // (not DIR)
+		strcat(modeStr, "FILE ");
+	if (mode & ATT_RONLY)
+		strcat(modeStr, "RONLY ");
+	if (mode & ATT_HIDDEN)
+		strcat(modeStr, "HIDDEN ");
+	if (mode & ATT_SYSTEM)
+		strcat(modeStr, "SYSTEM ");
+	if (mode & ATT_ARCH)
+		strcat(modeStr, "AR ");
+
+	return (modeStr);
+	}
 
 /* ----------------------------------------------------------------------- *\
-|  wfd_to_dta () - Translate the WIN32_FIND_DATA to the DTA_BLK structure
+|  d_disp ()  -	 Display the details of a FW_DTA
+\* ----------------------------------------------------------------------- */
+	static void
+d_disp (
+	FW_DTA	 *pDta)				/* The pointer to the DTA structure */	
+
+	{
+	printf("Name: \"%s\"\n",	pDta->dta_name);
+	printf("Type: %s\n",		showFileType(pDta->dta_type));
+//	printf("Time: %04X\n",		pDta->dta_time);
+//	printf("Date: %04X\n",		pDta->dta_date);
+	printf("Size: %-8llu\n",	pDta->dta_size);
+	printf("Hand: %-01X\n",		(unsigned)(pDta->sh));
+	}
+
+#endif
+/* ----------------------------------------------------------------------- *\
+|  wfd_to_dta () - Translate the WIN32_FIND_DATA to the FW_DTA structure
 \* ----------------------------------------------------------------------- */
 	static void
 wfd_to_dta (
-	DTA_BLK	 *pDta)					/* The pointer to the DTA structure */	
+	FW_DTA	 *pDta)					/* The pointer to the DTA structure */
 
 	{
 //	FILETIME   LocalTime;			/* The localized time */
@@ -74,31 +140,48 @@ wfd_to_dta (
 \* ----------------------------------------------------------------------- */
 	static BOOL					/* Returns TRUE if NOT valid */
 Invalid (
-	DTA_BLK	 *pDta)				/* The pointer to the DTA structure */	
+	FW_DTA	 *pDta)				/* The pointer to the DTA structure */
 
 	{
 	BOOL	   result	= TRUE;					/* The returned result */
-	int		   NewAttr	= 0;					/* The returned bitmap */
 	int		   SrchAttr = pDta->SearchAttr;		/* The search attribute bitmap */
+	int		   fileAttr	= 0;					/* The returned bitmap */
 
+	fileAttr = (ATT_MASK & AttrFromWin32(pDta->wfd.dwFileAttributes));
 
-	pDta->dta_type = NewAttr = AttrFromWin32(pDta->wfd.dwFileAttributes);
-
-	if (NewAttr & ATT_SUBD)
+#ifdef DEBUG
+	printf("Invalid(): filename:  \"%s\"\n", pDta->dta_name);
+	printf("Invalid(): Srch Attr: %s\n",     showSrchType(SrchAttr));
+	printf("Invalid(): Fnd  Attr: %s\n",     showFileType(fileAttr));
+#endif
+	if (fileAttr & ATT_DIR)
 		{
-		if ((SrchAttr & ATT_SUBD)				/* Check if want subdirectories */
-		&& (    ((NewAttr & SrchAttr) & (FW_HIDDEN | FW_SYSTEM))
-				== ((NewAttr           ) & (FW_HIDDEN | FW_SYSTEM))))
+		if ((SrchAttr & ATT_DIR)				/* Check if want subdirectories */
+		&& (    ((fileAttr & SrchAttr) & (FW_HIDDEN | FW_SYSTEM))
+			==  ((fileAttr           ) & (FW_HIDDEN | FW_SYSTEM))))
 			result = FALSE;
 		}
+
 	else /* (it's a file) */
 		{
-		if (((NewAttr & (ATT_HIDDEN | ATT_SYSTEM)) == 0)
-		||	((NewAttr & ATT_HIDDEN)	 &&	 (SrchAttr & ATT_HIDDEN))
-		||	((NewAttr & ATT_SYSTEM)	 &&	 (SrchAttr & ATT_SYSTEM)))
+		if (((fileAttr & (ATT_HIDDEN | ATT_SYSTEM)) == 0)
+		||	((fileAttr & ATT_HIDDEN)	 &&	 (SrchAttr & ATT_HIDDEN))
+		||	((fileAttr & ATT_SYSTEM)	 &&	 (SrchAttr & ATT_SYSTEM)))
+			{
+			fileAttr |= ATT_FILE;
 			result = FALSE;
+			}
 		}
 
+	if (! result)
+		{
+		pDta->dta_type = fileAttr;	// Valid; return properties
+		wfd_to_dta(pDta);
+		}
+	
+#ifdef DEBUG
+	printf("Invalid(): %s\n", (result ? "Invalid" : "Valid"));
+#endif
 	return (result);
 	}
 
@@ -107,8 +190,8 @@ Invalid (
 \* ----------------------------------------------------------------------- */
 	static int
 __findf (
-	DTA_BLK	 *pDta,				/* The pointer to the DTA structure */	
-	char	 *pName)			/* The pointer to the search path/file name */
+	FW_DTA		 *pDta,			/* The pointer to the DTA structure */	
+	const char	 *pName)		/* The pointer to the search path/file name */
 
 	{
 	int		  result;			/* The returned result */
@@ -117,7 +200,10 @@ __findf (
 	pDta->sh = FindFirstFile(pName, &pDta->wfd);
 	result	 = (pDta->sh == INVALID_HANDLE_VALUE) ? 2 : 0;
 
-	return (pDta->result = result);
+#ifdef DEBUG
+	printf("__findf(): Handle: %01X;  Pattern: \"%s\"\n", (unsigned)(pDta->sh), pName);
+#endif
+	return (result);
 	}
 
 /* ----------------------------------------------------------------------- *\
@@ -125,7 +211,7 @@ __findf (
 \* ----------------------------------------------------------------------- */
 	static int
 __findn (
-	DTA_BLK	 *pDta)				/* The pointer to the DTA structure */	
+	FW_DTA	 *pDta)				/* The pointer to the DTA structure */	
 
 	{
 	int		   result;			/* The returned result */
@@ -142,23 +228,27 @@ __findn (
 		result = 18;
 		}
 
-	return (pDta->result = result);
+#ifdef DEBUG
+	printf("__findf(): [%d]  Found: %s\n", result, pDta->dta_name);
+#endif
+	return (result);
 	}
 
 /* ----------------------------------------------------------------------- *\
-|  _findf ()  -	 Initiate a wild card search (public version)
+|	_findf () -	Initiate a wild card search (public version)
+|	_findf () -	Also returns the first file/dir
+|				This is a combination of _findo() and _findn()
 \* ----------------------------------------------------------------------- */
 	int
 _findf (
-	DTA_BLK	 *pDta,				/* The pointer to the DTA structure */	
-	char	 *pName,			/* The pointer to the search path/file name */
-	int		   Attr)			/* The attribute bitmap */
+	FW_DTA		 *pDta,			/* The pointer to the DTA structure */	
+	const char	 *pName,		/* The pointer to the search path/file name */
+	int			  Attr)			/* The attribute bitmap */
 
 	{
 	int		   result;			/* The returned result */
 
-
-#ifdef TEST
+#ifdef DEBUG
 	printf("_findf():  Attr: %04X  Pattern: %s\n", Attr, pName);
 #endif
 
@@ -166,40 +256,66 @@ _findf (
 	result = __findf(pDta, pName);
 
 	while ((result == 0)  &&  Invalid(pDta))
+		{
+		if (result == 0)
+			{
+#ifdef DEBUG
+			d_disp(pDta);
+#endif
+			}
+		}
 		result = __findn(pDta);
 
-	if (result == 0)
-		{
-		wfd_to_dta(pDta);
-#ifdef TEST
-		d_disp(pDta);
+#ifdef DEBUG
+	printf("_findf():  [%d]  Found: %s\n", result, pDta->dta_name);
 #endif
-		}
-
 	return (result);
 	}
 
 /* ----------------------------------------------------------------------- *\
-|  _findn ()  -	 Continue a wild card search (public version)
+|	_findo ()  -	 Initiate a wild card search (public version)
 \* ----------------------------------------------------------------------- */
 	int
-_findn (
-	DTA_BLK	 *pDta)				/* The pointer to the DTA structure */	
+_findo (
+	FW_DTA		 *pDta,			/* The pointer to the DTA structure */	
+	const char	 *pPattern,		/* The pointer to the search path/file name */
+	int			  Attr)			/* The attribute bitmap */
 
 	{
 	int		   result;			/* The returned result */
 
-	do	result = __findn(pDta);
-		while ((result == 0)  &&  Invalid(pDta));
+	pDta->SearchAttr = Attr;
+	result = __findf(pDta, pPattern);
 
-	if (result == 0)
-		{
-		wfd_to_dta(pDta);
-#ifdef TEST
-		d_disp(pDta);
+#ifdef DEBUG
+	printf("_findo():  [%d] Attr: %04X  Pattern: %s\n", result, Attr, pPattern);
 #endif
-		}
+	return (result);
+	}
 
+/* ----------------------------------------------------------------------- *\
+|	_findn ()  -	 Continue a wild card search (public version)
+\* ----------------------------------------------------------------------- */
+	int
+_findn (
+	FW_DTA	 *pDta)				/* The pointer to the DTA structure */	
+
+	{
+	int		   result;			/* The returned result */
+
+	do	{
+		result = __findn(pDta);
+		if (result == 0)
+			{
+#ifdef DEBUG
+			d_disp(pDta);
+#endif
+			}
+		} while ((result == 0)  &&  Invalid(pDta));
+
+#ifdef DEBUG
+	printf("_findn():  [%d]  Found: %s\n", result, pDta->dta_name);
+#endif
 	return (result);
 	}
 
@@ -208,7 +324,7 @@ _findn (
 \* ----------------------------------------------------------------------- */
 	void
 _findc (
-	DTA_BLK	 *pDta)				/* The pointer to the DTA structure */	
+	FW_DTA	 *pDta)				/* The pointer to the DTA structure */	
 
 	{
 	if (pDta->sh != INVALID_HANDLE_VALUE)
@@ -216,29 +332,16 @@ _findc (
 		FindClose(pDta->sh);
 		pDta->sh = INVALID_HANDLE_VALUE;
 		}
-	}
 
-/* ----------------------------------------------------------------------- *\
-|  d_disp ()  -	 Display the details of a DTA_BLK
-\* ----------------------------------------------------------------------- */
-#ifdef	TEST
-	static void
-d_disp (
-	DTA_BLK	 *pDta)				/* The pointer to the DTA structure */	
-
-	{
-	printf("Type:  %02X\n",	 pDta->dta_type);
-//	printf("Time:  %04X\n",	 pDta->dta_time);
-//	printf("Date:  %04X\n",	 pDta->dta_date);
-	printf("Size:  %-8llu\n", pDta->dta_size);
-	printf("Name:  %s\n",	 pDta->dta_name);
-	}
-
+#ifdef DEBUG
+	printf("_findc()\n");
 #endif
+	}
+
 /* ----------------------------------------------------------------------- *\
 |  main ()	-  Console mode test main
 \* ----------------------------------------------------------------------- */
-#ifdef	CONSOLEMODETEST
+#ifdef	TEST
 	void
 main (
 	int		 argc,		// Argument count
@@ -248,12 +351,44 @@ main (
 	int		 result;	// The findf/findn result
 	int		 Attr = 0;	// The search attribute
 	char	*s;			// Ptr to the search string
-	DTA_HDR	 Hdr;		// The test DTA_HDR structure
-	DTA_ELE	 Ele;		// The test DTA_ELE structure
+	FW_HDR	 Hdr;		// The test FW_HDR structure
+	FW_LEV	 Ele;		// The test FW_LEV structure
 
 
 	s = (argc > 1) ? (argv[1]) : ("test*");
-	Hdr.link = &Ele;
+
+	Attr = ATT_HIDDEN | ATT_SYSTEM;
+
+	result = _findo(&Ele.dta, s, Attr);
+	printf("Result: %d\n", result);
+	
+	do	{
+		result = _findn(&Ele.dta);
+		printf("Found: %s\n", Ele.dta.dta_name);
+		printf("Date:  %s\n", fwdate(&Hdr));
+		printf("Time:  %s\n", fwtime(&Hdr));
+
+		}	while (result == 0);
+
+	}
+
+#endif
+/* ----------------------------------------------------------------------- */
+#ifdef	TESTX
+	void
+main (
+	int		 argc,		// Argument count
+	char	**argv)		// Argument list
+
+	{
+	int		 result;	// The findf/findn result
+	int		 Attr = 0;	// The search attribute
+	char	*s;			// Ptr to the search string
+	FW_HDR	 Hdr;		// The test FW_HDR structure
+	FW_LEV	 Ele;		// The test FW_LEV structure
+
+
+	s = (argc > 1) ? (argv[1]) : ("test*");
 
 	Attr = ATT_HIDDEN | ATT_SYSTEM;
 
@@ -268,4 +403,5 @@ main (
 	}
 
 #endif
+/* ----------------------------------------------------------------------- */
 /* ----------------------------------------------------------------------- */

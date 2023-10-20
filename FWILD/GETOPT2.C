@@ -6,7 +6,7 @@
 |				Brian W Johnson
 |				   20-Jun-2022
 |
-|			Modified from the fwild library version
+|			Modified from the fWild library version
 |			Supports simultaneous use of multiple switch characters
 |
 |	    int
@@ -57,7 +57,7 @@
 #include  <getopt2.h>
 
 #include  "ascii.h"
-#include  "fwild.h"
+#include  "fWild.h"
 
 #define DEBUG_LEVEL 0
 //#define DEBUG_LEVEL 3

@@ -1,107 +1,101 @@
 /* ----------------------------------------------------------------------- *\
 |
-|				   FNCHKDIR
+|						   FNCHKDIR
 |
-|		    Copyright (c) 1985, 1990, all rights reserved
-|				Brian W Johnson
-|				   26-May-90
-|				   17-Dec-94
-|				   17-Aug-97 NT
-|				   26-Sep-97 UNC
+|			    Copyright (c) 1985, 2023, all rights reserved
+|					Brian W Johnson
+|					   26-May-90
+|					   17-Dec-94
+|					   17-Aug-97 NT
+|					   26-Sep-97 UNC
+|					   30-Sep-23 (Major update)
 |
-|	    int			Returns TRUE if the string "s" is the
-|	bool = fnchkdir (s);	name of an existing directory file
-|	    char  *s;		Pointer to the string
+|		int				Returns TRUE if the string "s" is the
+|	fnchkdir (			  name of an existing directory file
+|		char  *s)		Pointer to the string
 |
 \* ----------------------------------------------------------------------- */
 
 #include  <windows.h>
 #include  <stdio.h>
-#include  <ctype.h>
 #include  <string.h>
 
 #define  FWILD_INTERNAL
 
-#include  "fwild.h"
+#include  "fWild.h"
 
-/* ----------------------------------------------------------------------- */
-	int						/* Return TRUE if the directory exists */
-fnchkdir (					/* Verify the existence of a directory */
-    char  *s)				/* Pointer to the filename string */
+/* ------------------------------------------------------------------------ */
+//	#define TEST	// Define this to include the test main
+//	#define DEBUG	// Define this to include the diagnostics
 
-	{
-	return (_fnchkdir(s) || fnchkunc(s));
-	}
+#ifdef  TEST
+#define DEBUG
+#endif
+
+#define	PATHCH	('\\')
+
+static char temp [MAX_PATH];
 
 /* ------------------------------------------------------------------------ */
 	int						/* Return TRUE iff the directory exists */
-_fnchkdir (					/* Verify the existence of a directory */
-	char  *s)				/* Pointer to the filename string */
+fnchkdir (					/* Verify the existence of a directory */
+	const char  *pPath)		/* Pointer to the filename string */
 
 	{
-	int      result;		/* The returned result */
-	char    *p;				/* Temporary string pointer */
-	char    *pbuff;			/* Absoluted copy of the input string */
-	DTA_BLK  dta;			/* A DTA for _findf() */
+	int      result = FALSE;	// The returned result
+	char    *pbuff  = temp;		// Absoluted copy of the input string
 
-
-	if (strchr(s, '?')			/* Wild is disallowed */
-	||  strchr(s, '*'))
+	if (pPath == NULL)					// Null string ptr is illegal
 		return (FALSE);
 
-	p = pbuff = fnabspth(s);	/* Perform reduction */
-	if (p == NULL)
-		return (FALSE);			// Invalid path
-		
-	if (isalpha(*p) && (*(p + 1) == ':'))
-		p += 2;
+#ifdef DEBUG
+printf("fnchkdir Entry   \"%s\"\n", pPath);
+#endif
 
-	for (;;)
-		{
-		if ((*p == '/') || (*p == '\\'))
-			++p;
-		else if (strncmp(p, "..", 2) == 0)
-			p += 2;
-		else if ((*p == '.')
-			 && ((*(p+1) == '/')  ||  (*(p+1) == '\\')  ||  (*(p+1) == '\0')))
-			++p;
-		else
-			break;
-		}
+	if (isWild(pPath))					// Wild is not allowed
+		return (FALSE);
 
-//	printf("Check:      \"%s\"\n", pbuff);
-	if (*p == '\0')			/* "X:"  "X:/"  "."  ".."  "/"  "X:." */
-		result = TRUE;			/* are all good directories */
+	if (_fnabspth(pbuff, pPath) != 0)	// Make absolute and reduce
+		return (FALSE);					// Invalid path
 
-	else if (result = _findf(&dta, pbuff, ATT_SUBD | ATT_HIDDEN) == 0)	/* Test it */
-		{
-		result = ((dta.dta_type & ATT_SUBD) != 0);
-		_findc(&dta);
-		}
-   
-	free(pbuff);
+	strsetp(pbuff, PATHCH);				// Standardize the path character
+
+#ifdef DEBUG
+printf("Checking:        \"%s\"\n", pbuff);
+#endif
+
+	result = isDirectory(pbuff);			// Test it
+
+#ifdef DEBUG
+printf("fnchkdir Exit    %d\n", result);
+printf("fnchkdir Exit    %s\n", ((result) ? "TRUE" : "FALSE"));
+#endif
 	return (result);
 	}
 
 /* ----------------------------------------------------------------------- */
-#ifdef  TEST
-	void
-main (
-	int    argc,
-	char  *argv [])
+#ifdef TEST
+main ()					/* Test main program */
 
 	{
-	char  *p;
+	char  in [1024];
+	int   result;
 
-	if (argc > 1)
-		p = *++argv;
-	else
-		p = "";
-	if (fnchkdir(p))
-		printf("TRUE\n");
-	else
-		printf("FALSE\n");
+	for (;;)
+		{
+		printf("\nPattern: ");
+		gets(in);
+		if (tolower(in[0]) == 'q')	// Terminate testing
+			break;
+
+		printf("\n");
+		result = fnchkdir(in);
+		printf("\nResult: %d\n",  result);
+		printf("\nResult: %s   \"%s\"\n\n",
+			((result) ? "TRUE" : "FALSE"), in);
+		}
 	}
-#endif
+
+#endif // TEST
 /* ------------------------------------------------------------------------ */
 /* ------------------------------------------------------------------------ */

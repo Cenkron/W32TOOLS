@@ -10,7 +10,7 @@
 
 #include  <ctype.h>
 
-#include  "fwild.h"
+#include  "fWild.h"
 
 /* ----------------------------------------------------------------------- *\
 |  Skip over all leading white space

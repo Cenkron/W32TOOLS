@@ -14,7 +14,7 @@
 #include  <ctype.h>
 #include  <limits.h>
 
-#include  "fwild.h"
+#include  "fWild.h"
 
 #ifndef TRUE
 #define FALSE	  0
@@ -41,9 +41,6 @@ long	hsize   = 10L;		/* Head size */
 
 char	swch = '-';		/* The switch character */
 
-void cantopen (char *);
-void usage (void);
-void help (void);
 void dprint (char **);
 void build (char *);
 void process (FILE *, char *);
@@ -63,6 +60,10 @@ main (
 	void  *hp  = NULL;			/* Pointer to wild file data block */
 	char  *fnp = NULL;			/* Input file name pointer */
 	FILE  *fp  = NULL;			/* Input file descriptor */
+
+
+	if ((hp = fwOpen()) == NULL)
+		exit(1);
 
 	setbuf(stdout, buffer);
 	swch = egetswch();
@@ -125,11 +126,10 @@ main (
 	else
 		{
 		do  {
-			if ((hp = fwinit(*argv, smode)) == NULL)	/* Process the input list */
-				fwinitError(*argv);
-			if ((fnp = fwild(hp)) == NULL)
+			if (fwInit(hp, *argv, smode) != FWERR_NONE)	// Process the pattern
+				fwInitError(*argv);
+			if ((fnp = fWild(hp)) == NULL)
 				{
-				hp = NULL;
 				cantopen(*argv);
 				}
 			else
@@ -142,20 +142,12 @@ main (
 						}
 					else
 						cantopen(fnp);
-					} while ((fnp = fwild(hp)));
-				hp = NULL;
+					} while ((fnp = fWild(hp)));
 				}
 			} while (*++argv);
 		}
-	}
 
-/* ----------------------------------------------------------------------- */
-	void
-cantopen (				/* Inform user of input failure */
-    char  *fnp)			/* Input file name */
-
-	{
-	fprintf(stderr, "\7Unable to open input file: %s\n", fnp);
+	hp = fwClose(hp);
 	}
 
 /* ----------------------------------------------------------------------- */

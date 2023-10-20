@@ -13,31 +13,61 @@
 #include  <stdio.h>
 #include  <stdlib.h>
 #include  <ctype.h>
+#include  <io.h>
 
-#include  "fwild.h"
+#include  "fWild.h"
 
 #ifndef TRUE
 #define FALSE	  0
 #define TRUE	  1
 #endif
 
+/* ----------------------------------------------------------------------- */
+
 char	copyright [] =
 "Copyright (c) 1993 by J & M Software, Dallas TX - All Rights Reserved";
 
 char	buffer [BUFSIZ];	/* Buffer for stdout */
 
-int	d_flag = FALSE;		/* List detail results flag */
-int	i_flag = FALSE;		/* Take pathnames from stdin */
-int	l_flag = FALSE;		/* List file names flag */
+typedef enum
+	{
+	Mixed = 0,
+	Unix,
+	Windows
+	}  ENDTYPE;
 
-long	tc = 0L;		/* Total character count */
-long	tw = 0L;		/* Total word count */
-long	tl = 0L;		/* Total line count */
+ENDTYPE	type;					// Type of file
+static char typeName [3][15] =	// Name of file type
+	{ "Mixed", "Unix", "Windows" };
+
+int	smode = FW_FILE;	/* File search mode attributes */
+
+int	a_flag = FALSE;		/* Analyze the line ending type (default off) */
+int	i_flag = FALSE;		/* Take pathnames from stdin (automatic) */
+int	d_flag = TRUE;		/* List detail results flag (default on) */
+int	t_flag = TRUE;		/* List only total results flag (default on)  */
+int	f_flag = TRUE;		/* List only files, not stats (default off)  */
+int	m_flag = FALSE;		/* Show only mixed type files (default off) */
+int	w_flag = FALSE;		/* Show only Unix type files (default off) */
+int	u_flag = FALSE;		/* Show only Windows type files (default off) */
+
+INT64	tc		= 0L;	/* Total character count */
+INT64	tw		= 0L;	/* Total word count */
+INT64	tl		= 0L;	/* Total LF (line) count */
+INT64	tr		= 0L;	/* Total CR count */
+INT64	files	= 0;	// Total number of files
+INT64	ufiles	= 0;	// Total number of unix (LF) files
+INT64	wfiles	= 0;	// Total number of Windows (CRLF) files
+INT64	mfiles	= 0;	// Total number of mixed line ending files
 
 char	swch = '-';		/* The switch character */
 
-static  void    process (FILE *, char *);
-static  char   *stdpath (void);
+void   *hp  = NULL;		// Pointer to the fWild instance
+
+static  void    Process (FILE *, char *);
+static	void	ProcessLoop (const char *pPattern);
+static	void	ListTotals (void);
+static  char   *UseStdin (void);
 
 /* ----------------------------------------------------------------------- */
 
@@ -47,14 +77,19 @@ char  *usagedoc [] =
 "",
 "wc counts the characters, words, and lines in the input_file_list",
 "",
-"    %ci  takes the input_file_list from stdin",
-"    %cd  lists detailed results",
-"    %cl  lists file names as they are processed",
+"    %ca  analyze the file ending type  (default off)",
+"    %cf  lists only selected files, no stats (default off)",
+"    %ct  lists (only) total results    (default all)",
+"    %cm  lists only Mixed text files   (default all types)",
+"    %cw  lists only Windows text files (default all types)",
+"    %cu  lists only Unix text files    (default all types)",
 "",
 copyright,
 NULL
 };
 
+/* ----------------------------------------------------------------------- */
+//	Main program
 /* ----------------------------------------------------------------------- */
 	void
 main (
@@ -62,15 +97,14 @@ main (
 	char  *argv [])
 
 	{
-	int    smode = FW_FILE;	/* File search mode attributes */
-	int    option;		/* Option character */
-	char  *ap;			/* Argument pointer */
-	void  *hp  = NULL;		/* Pointer to wild file data block */
-	char  *fnp = NULL;		/* Input file name pointer */
-	FILE  *fp  = NULL;		/* Input file descriptor */
+	int    option;			/* Option character */
+	char  *pPattern;		/* Pattern pointer */
 
-static	char   *optstring = "?dDiIlL";
+static	char   *optstring = "?aAfFiImMuUwW";
 
+
+	if ((hp = fwOpen()) == NULL)
+		exit(1);
 
 	setbuf(stdout, buffer);
 	optenv = getenv("WC");
@@ -80,17 +114,41 @@ static	char   *optstring = "?dDiIlL";
 		{
 		switch (tolower(option))
 			{
-			case 'd':
-				++d_flag;
-				++l_flag;
+			case 'f':
+				f_flag = FALSE;
 				break;
 
-			case 'i':
-				i_flag = TRUE;
+			case 'a':
+				a_flag = TRUE;
+				m_flag = TRUE;
+				u_flag = TRUE;
+				w_flag = TRUE;
 				break;
 
-			case 'l':
-				++l_flag;
+			case 't':
+				d_flag = FALSE;
+				t_flag = TRUE;
+				break;
+
+			case 'm':
+				a_flag = TRUE;
+				m_flag = TRUE;
+				u_flag = FALSE;
+				w_flag = FALSE;
+				break;
+
+			case 'u':
+				a_flag = TRUE;
+				m_flag = FALSE;
+				u_flag = TRUE;
+				w_flag = FALSE;
+				break;
+
+			case 'w':
+				a_flag = TRUE;
+				m_flag = FALSE;
+				u_flag = FALSE;
+				w_flag = TRUE;
 				break;
 
 			case '?':
@@ -102,122 +160,161 @@ static	char   *optstring = "?dDiIlL";
 		}
 
 
+	i_flag = ( ! isatty(fileno(stdin)));
+
 	if (i_flag)
 		{
-		while (ap = stdpath())			/* Process the stdin list */
-			{
-			if ((hp = fwinit(ap, smode)) == NULL)	/* Process the input list */
-				fwinitError(ap);
-			if ((fnp = fwild(hp)) == NULL)
-				{
-				hp = NULL;
-				cantopen(ap);
-				}
-				
-			else
-				{
-				do  {				/* Process one filespec */
-					if (fp = fopen(fnp, "r"))
-						{
-						process(fp, fnp);
-						fclose(fp);
-						}
-					else
-						cantopen(fnp);
-					} while ((fnp = fwild(hp)));
-				hp = NULL;
-				}
-			}
+		while (pPattern = UseStdin())		// Expand the stdin list
+			ProcessLoop (pPattern);			// Expand pathspec
 		}
-
-	else if (optind >= argc)
-		process(stdin, "<stdin>");
 
 	else
 		{
 		while (optind < argc)
 			{
-			ap = argv[optind++];
-			if ((hp = fwinit(ap, smode)) == NULL)	/* Process the input list */
-				fwinitError(ap);
-			if ((fnp = fwild(hp)) == NULL)
-				{
-				hp = NULL;
-				cantopen(ap);
-				}
-			else
-				{
-				do  {				/* Process one filespec */
-					if (fp = fopen(fnp, "r"))
-						{
-						process(fp, fnp);
-						fclose(fp);
-						}
-					else
-						cantopen(fnp);
-					} while ((fnp = fwild(hp)));
-				hp = NULL;
-				}
+			pPattern = argv[optind++];
+			ProcessLoop (pPattern);			// Expand pathspec
 			}
 		}
 
-	if (d_flag)
-		printf("    Total:      ");
-	printf("%8ld characters  %8ld words  %8ld lines\n", tc, tw, tl);
+	ListTotals();
+
+	hp = fwClose(hp);
 	exit(0);
 	}
 
 /* ----------------------------------------------------------------------- */
+//	Generate the file list from the search pattern
+/* ----------------------------------------------------------------------- */
 	static void
-process (				/* Process one input file */
-	FILE  *fp,			/* Input file descriptor */
-	char  *fnp)			/* Input file name */ 
+ProcessLoop (	
+	const char *pPattern)	// Expand the filespec
 
 	{
-	int  ch;			/* Temporary character */
-	int  inword;		/* TRUE when parsing a word */
-	long  nc = 0;		/* Character count */
-	long  nw = 0;		/* Word count */
-	long  nl = 0;		/* Line count */
+	char  *fnp = NULL;		/* Input file name pointer */
+	FILE  *fp  = NULL;		/* Input file descriptor */
 
-	if (d_flag)
-		printf("%-16s", fnp);
-	else if (l_flag)
-		printf("%s", fnp);
 
-	inword = FALSE;
+	if (fwInit(hp, pPattern, smode) != FWERR_NONE)	// Process the pattern
+		fwInitError(pPattern);
+	if ((fnp = fWild(hp)) == NULL)
+		{
+		cantopen(pPattern);
+		}
+				
+	else
+		{
+		do  {				// Process one filespec
+			if (fp = fopen(fnp, "rb"))
+				{
+				Process(fp, fnp);
+				fclose(fp);
+				}
+			else
+				cantopen(fnp);
+			} while ((fnp = fWild(hp)));
+		}
+	}
+
+/* ----------------------------------------------------------------------- */
+//	Process one file
+/* ----------------------------------------------------------------------- */
+	static void
+Process (				// Process one input file
+	FILE  *fp,			// Input file descriptor
+	char  *fnp)			// Input file name
+
+	{
+	int		ch;					// Temporary character
+	int		inWord   = FALSE;	// TRUE when parsing a word
+	int		selected = FALSE;	// Selected by the type analysis
+
+	INT64	nc = 0;		// Character count
+	INT64	nw = 0;		// Word count
+	INT64	nl = 0;		// LF (line) count
+	INT64	nr = 0;		// CR count
+
 	while ((ch = getc(fp)) != EOF)
 		{
 		++nc;
+		if (ch == '\r')
+			++nr;
+		
 		if (ch == '\n')
-			{
 			++nl;
-			inword = FALSE;
-			}
 
-		if ((ch == '\n') || (ch == ' ') || (ch == '\t'))
-			inword = FALSE;
-		else if (inword == FALSE)
+		if ((ch == '\r') || (ch == '\n') || (ch == ' ') || (ch == '\t'))
+			inWord = FALSE;
+		else if (inWord == FALSE)
 			{
-			inword = TRUE;
+			inWord = TRUE;
 			++nw;
 			}
 		}
 
-	tc += nc;		/* Update the totals */
-	tw += nw;
-	tl += nl;
+	if (a_flag)
+		{
+		if (nl > 0)		// Classify by line ending type
+			{
+			if (nr == nl)
+				{
+				type = Windows;
+				if (w_flag)
+					{
+					++wfiles;
+					selected = TRUE;
+					}
+				}
+			else if (nr == 0)
+				{
+				type = Unix;
+				if (u_flag)
+					{
+					++ufiles;
+					selected = TRUE;
+					}
+				}
+			else
+				{
+				type = Mixed;
+				if (m_flag)
+					{
+					++mfiles;
+					selected = TRUE;
+					}
+				}
+			}
+		}
 
-	if (d_flag)
-		printf("%8ld characters  %8ld words  %8ld lines", nc, nw, nl);
-	if (d_flag || l_flag)
-		putchar('\n');
-	fflush(stdout);
+	if (selected || (! a_flag))
+		{
+		tc += nc;		// Update the totals
+		tw += nw;
+		tl += nl;
+		tr += nr;
+		++files;
+
+		if (d_flag)
+			{
+			printf("%s\n", fnp);
+			if (f_flag)
+				{
+				printf("%8lld characters  %8lld words       %8lld lines\n", nc, nw, nl);
+				if (a_flag)
+					{
+					printf("%8lld LF count    %8lld CR count    %s\n", nl, nr, &typeName[type][0]);
+					}
+				}
+			fflush(stdout);
+			}
+		}
 	}
 
 /* ----------------------------------------------------------------------- */
+//	Process stdin to generate the input filespecs
+/* ----------------------------------------------------------------------- */
 	char *
-stdpath (void)		/* Parse pathnames from stdin */
+UseStdin (void)		/* Parse pathnames from stdin */
 
 	{
 	int  ch;
@@ -266,4 +363,25 @@ static	char  line [81];
 	return (p);
 	}
 
+/* ----------------------------------------------------------------------- */
+//	List total stats
+/* ----------------------------------------------------------------------- */
+	static void
+ListTotals (void)
+
+	{
+	if (t_flag && f_flag)
+		{
+		printf("-----------------------------------------------------------------\n");
+		printf("Total: %6lld files\n", files);
+		printf("%8lld characters  %8lld words       %8lld lines\n", tc, tw, tl);
+		if (a_flag)
+			{
+			printf("%8lld Unix files  %8lld Win files   %8lld Mixed files\n",
+				ufiles, wfiles, mfiles);
+			}
+		}
+	}
+
+/* ----------------------------------------------------------------------- */
 /* ----------------------------------------------------------------------- */

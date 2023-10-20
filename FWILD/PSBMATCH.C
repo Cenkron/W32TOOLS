@@ -23,7 +23,7 @@
 
 #define  FWILD_INTERNAL		// Enable internal definitions
 
-#include  "fwild.h"
+#include  "fWild.h"
 
 /* ----------------------------------------------------------------------- */
 	int			// Return TRUE if the paths match
@@ -39,10 +39,10 @@ psubmatch (
 
 	if ((pattern == NULL)		// Validate both pointers
 	||  (target  == NULL))
-		goto exxit;
+		goto exit;
 
 	if ((abspath = fnabspth(target)) == NULL)	// Canonicalize the target path
-		goto exxit;
+		goto exit;
 
 	target  = abspath;
 
@@ -50,7 +50,7 @@ psubmatch (
 
 	dflag = (isalpha(*pattern)  &&  (*(pattern + 1) == ':'));
 	if (dflag  &&  (toupper(*pattern) != *target))
-		goto exxit;
+		goto exit;
 
 	target += 2;			// Strip the drive(s)
 	if (dflag)
@@ -62,7 +62,7 @@ psubmatch (
 	if (*pattern == '\0')
 		{
 		result = dflag;
-		goto exxit;
+		goto exit;
 		}
 
 	// if the pattern specifies a root, match only against the root
@@ -70,7 +70,7 @@ psubmatch (
 	if ((*pattern == '\\')  ||  (*pattern == '/'))
 		{
 		result = pmatch(pattern, target, eflag);
-		goto exxit;
+		goto exit;
 		}
 
 	// Match the pattern against the first character of the target
@@ -79,7 +79,7 @@ psubmatch (
 
 	do  {
 		if (result = pmatch(pattern, ++target, eflag))
-			goto exxit;
+			goto exit;
 
 		while (*target  &&  ((*target != '\\')  &&  (*target != '/')))
 			++target;
@@ -87,7 +87,7 @@ psubmatch (
 
 	// If we haven't already matched, return no match
 
-exxit:
+exit :
 	if (abspath != NULL)
 		free(abspath);		// Free the canonical path
 	return (result);

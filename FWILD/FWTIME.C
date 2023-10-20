@@ -14,8 +14,8 @@
 |				    9-Jan-04 (display midnight hour as 12AM)
 |
 |	    char *		Return a pointer to a time string
-|	p = fwtime(		Get the time of the current fwild filename
-|	    void *hp)	Pointer to the fwild header
+|	p = fwtime(		Get the time of the current fWild filename
+|	    void *hp)	Pointer to the fWild header
 |
 \* ----------------------------------------------------------------------- */
 
@@ -25,25 +25,26 @@
 
 #define  FWILD_INTERNAL
 
-#include  "fwild.h"
+#include  "fWild.h"
 
-static	char	timeb [7];	/* The returned time string */
+static	char	timeb [8];	/* The returned time string */
 
 /* ------------------------------------------------------------------------ */
 	char *				/* Return a pointer to a time string */
 fwtime (				/* Get the time of the current filename */
-	DTA_HDR  *hp)		/* Pointer to the DTA header */
+	FW_HDR  *hp)		/* Pointer to the DTA header */
 
 	{
 	int    hour;		/* The corrected hour */
 	char   ampm;		/* The am/pm symbol */
 	struct tm *ptm;		/* Ptr to the struct tm */
 
-	if (hp->f_fdt < 0)
+
+	if ( ! fwActive(hp)  ||  (hp->file_fdt == 0))
 		strcpy(&timeb[0], " -----");
 	else
 		{
-		ptm  = localtime(&hp->f_fdt);
+		ptm  = localtime(&hp->file_fdt);
 		hour = ptm->tm_hour;
 
 		if (hour >= 12)

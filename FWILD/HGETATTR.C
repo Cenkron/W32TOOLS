@@ -18,7 +18,7 @@
 #include  <sys\types.h>
 #include  <sys\stat.h>
 
-#include  "fwild.h"
+#include  "fWild.h"
 
 /* ----------------------------------------------------------------------- *\
 |  hgetattr ()  -  Get the file attribute word (via open file handle)

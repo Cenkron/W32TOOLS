@@ -14,7 +14,7 @@
 #include  <string.h>
 #include  <ctype.h>
 
-#include  "fwild.h"
+#include  "fWild.h"
 
 #define  ESC	"\033"
 
@@ -78,6 +78,9 @@ main (
 	FILE  *fp  = NULL;			// Input file descriptor
 
 
+	if ((hp = fwOpen()) == NULL)
+		exit(1);
+
 	optenv = getenv("PLOT");
 
 	while ((option = getopt(argc, argv, "?d:D:lLrR")) != EOF)
@@ -123,10 +126,10 @@ main (
 		while (optind < argc)
 			{
 			ap = argv[optind++];
-			hp = finit(ap, smode);		// Process the input list
-			if ((fnp = fwild(hp)) == NULL)
+			if (fwInit(hp, ap, smode) != FWERR_NONE)	// Process the pattern
+				fwInitError(ap);
+			if ((fnp = fWild(hp)) == NULL)
 				{
-				hp = NULL;
 				cantopen(ap);
 				}
 			else
@@ -141,17 +144,17 @@ main (
 						}
 					else
 						cantopen(fnp);
-					} while ((fnp = fwild(hp)));
-					hp = NULL;
+					} while ((fnp = fWild(hp)));
 				}
 			}
 		}
 
 done:
 	lj_reset();
-
 	fflush(prfp);
 	fclose(prfp);
+
+	hp = fwClose(hp);
 	}
 
 /* ----------------------------------------------------------------------- *\

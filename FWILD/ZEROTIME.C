@@ -13,7 +13,7 @@
 
 #include  <time.h>
 
-#include  "fwild.h"
+#include  "fWild.h"
 
 static	struct tm	t =
 	{

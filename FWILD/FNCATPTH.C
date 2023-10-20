@@ -1,4 +1,4 @@
-/* ----------------------------------------------------------------------- *\
+/* ------------------------------------------------------------------------ *\
 |
 |				   FNCATPTH
 |
@@ -7,99 +7,107 @@
 |				   26-May-90
 |				   10-Sep-23 Adapted to the revised fnreturn.c
 |
-|	    char *		Return an allocated pathname
-|	p = fncatpth (s1, s2);	Concatenate a path to a path
-|	    char  *s1;		Pointer to a pathname head
-|	    char  *s2;		Pointer to a pathname tail
+|		int					Returns 0 for success, else (-1) if error
+|	_fncatpth (				Return pcat concatenated onto base
+|		char  *pDst,		Ptr to the caller's buffer for the returned pathspec
+|		const char  *base,	Pointer to the base path string
+|		const char  *pcat)	Pointer to the path to be concatenated
+|
+|		char *				Return an allocated pathname
+|	p = fncat (				Return pcat concatenated onto base
+|		const char  *base,	Pointer to the base path string
+|		const char  *pcat)	Pointer to the path to be concatenated
 |
 |	Returns a pointer to path s1 with path s2 concatenated.
-|	The return string is allocated, and should disposed with free()
+|	The return string is allocated, and should be disposed with free()
 |
-\* ----------------------------------------------------------------------- */
+\* ------------------------------------------------------------------------ */
 
 #include  <windows.h>
 #include  <stdio.h>
 #include  <stdlib.h>
 #include  <string.h>
 
-#include  "fwild.h"
+#include  "fWild.h"
 
-/* ----------------------------------------------------------------------- */
-
-//#define TEST	// Define this to include the test main and diagnostics
-
-//#define DEBUG	// Define this to include the diagnostics
+// ---------------------------------------------------------------------------
+//	#define TEST	// Define this to include the test main and diagnostics
+//	#define DEBUG	// Define this to include the diagnostics
 
 #ifdef TEST
 #define DEBUG
 #endif
 
-#define	  ispath(ch)	(((ch) == '/') || ((ch) == '\\'))
+#define  _ERROR	(-1)	 
+#define  isPath(ch)	(((ch) == '/') || ((ch) == '\\'))
 
-static	char	path [] = "\\";
-
-/* ----------------------------------------------------------------------- */
-	char *					/* Return a newly allocated string */
-fncatpth (					/* Return s2 concatenated onto s1 */
-	char  *s1,				/* Pointer to the base path string */
-	char  *s2)				/* Pointer to the concatenated path string */
+// ---------------------------------------------------------------------------
+	int						// Returns 0 for success, else (-1) if reduce error
+_fncatpth (					// Concatenate pConcat onto pBase
+		  char  *pDst,		// Ptr to the caller's buffer for the returned pathspec
+	const char  *pBase,		// Pointer to the base path string
+	const char  *pConcat)	// Pointer to the path to be concatenated
 
 	{
-	int    len1;			/* Length of s1 */
-	int    len2;			/* Length of s2 */
-	char  *p;				/* Pointer to the returned path string */
-	char  *q;				/* Temorary pointer into the p path string */
-
-
+	if ((pBase   == NULL)				// Validate all pointers
+	||  (pConcat == NULL)
+	||  (pDst    == NULL))
+		return (_ERROR);
+	
 #ifdef DEBUG
-printf("fncatpth Entry \"%s\"   \"%s\"\n", s1, s2);
+printf("fncatpth Entry Dest \"%s\"\n", pDst);
+printf("fncatpth Entry Base \"%s\"\n", pBase);
+printf("fncatpth Entry Cat  \"%s\"\n", pConcat);
 fflush(stdout);
 #endif
-	while (ispath(*s2))		/* Eliminate any leading s2 path character */
-		++s2;
 
-	len1 = (int)(strlen(s1));
-	len2 = (int)(strlen(s2));
-	p = fmalloc(MAX_PATH);
-
-	if (len1 == 0)
-		strcpy(p, s2);		/* Path 1 is an empty string */
-	else
-		{
-		strcpy(p, s1);
-		if (len2 != 0)
-			{
-			q = s1 + len1 - 1;
-			if (( ! ispath(*q)) && (*q != ':'))
-				{
-				path[0] = strpath(p);
-				strcat(p, &path[0]);
-				}
-			strcat(p, s2);
-			}
-		}
-#ifdef DEBUG
-printf("fncatpth - fnreduce: \"%s\"\n", p);
-fflush(stdout);
-#endif
-	if (fnreduce(p) < 0)
-		{
-#ifdef DEBUG
-printf("fncatpth Return: NULL\n");
-fflush(stdout);
-#endif
-		free(p);
-		return (NULL);
-		}
+	pathCopy(pDst, pBase, MAX_COPY);	// Copy Path 1 to the destination buffer
+	pathCat(pDst, pConcat, MAX_COPY); 	// Concatenate Path2 to the destination buffer
 
 #ifdef DEBUG
-printf("fncatpth Return: \"%s\"\n", p);
+printf("fncatpth - fnreduce: \"%s\"\n", pDst);
 fflush(stdout);
 #endif
-	return (p);
+
+	fnreduce(pDst);
+
+#ifdef DEBUG
+printf("fncatpth Return: \"%s\"\n", pDst);
+fflush(stdout);
+#endif
+	return (0);
 	}
 
-/* ----------------------------------------------------------------------- */
+// ---------------------------------------------------------------------------
+	char *					// Return a newly allocated string, else NULL if a reduce error
+fncatpth (					// Concatenate pConcat onto pBase
+	const char  *pBase,		// Pointer to the base path string
+	const char  *pConcat)	// Pointer to the path to be concatenated
+
+	{
+	char		*pDst;		// Pointer to the returned pathspec string
+
+#ifdef DEBUG
+printf("fncatpth Entry \"%s\"   \"%s\"\n", pBase, pConcat);
+fflush(stdout);
+#endif
+
+	if ((pBase   == NULL)
+	||  (pConcat == NULL))
+		return (NULL);
+		
+	pDst = fmalloc(MAX_PATH);		// Allocate the concat path
+
+	if ((_fncatpth(pDst, pBase, pConcat)) == _ERROR)	// Build the path
+		{
+		free(pDst);
+		pDst = NULL;
+		}
+
+	return (pDst);
+	}
+	
+// ---------------------------------------------------------------------------
 #ifdef TEST
 main (						/* Test program */
 	int    argc,
@@ -114,14 +122,14 @@ main (						/* Test program */
 		{
 		p = *++argv;
 		q = *++argv;
-printf("Orig   string:   \"%s\" CONCATENATE \"%s\"\n", p, q);
-printf("Concat string:   \"%s\" CONCATENATE \"%s\"\n", p, q);
+		printf("Orig   string:   \"%s\" CONCATENATE \"%s\"\n", p, q);
+		printf("Concat string:   \"%s\" CONCATENATE \"%s\"\n", p, q);
 		r = fncatpth(p, q);
 		if (r)
-printf("After  fncatpth: \"%s\"\n", r);
+		printf("After  fncatpth: \"%s\"\n", r);
 		else
 			{
-printf("After  fncatpth: \"(NULL)\"\n");
+			printf("After  fncatpth: \"(NULL)\"\n");
 			free(r);
 			}
 		}
@@ -129,5 +137,5 @@ printf("After  fncatpth: \"(NULL)\"\n");
 		printf("Needs two strings !\n");
     }
 #endif
-/* ----------------------------------------------------------------------- */
-/* ----------------------------------------------------------------------- */
+// ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------

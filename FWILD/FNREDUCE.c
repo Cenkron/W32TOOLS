@@ -19,7 +19,9 @@
 |	fnCondense (s);		Eliminate pathname redundancy
 |	    char  *s;		Pointer to the pathname
 |
-|	Both functions work similarly, but only fnreduce can handle a path prefix.
+|	Both functions work similarly, but
+|	fnreduce can handle a path prefix.
+|	fnCondense requires a post prefix path.
 |
 |	Both functions return -1 if a NULL pointer passed
 |	The return string is reduced to minimal form,
@@ -51,13 +53,11 @@
 #include  <ctype.h>
 #include  <string.h>
 
-#include  "fwild.h"
+#include  "fWild.h"
 
 // ------------------------------------------------------------------------------------------------
-
-//#define TEST	// Define this to include the test main
-
-//#define DEBUG	// Define this to include the diagnostics
+//	#define TEST	// Define this to include the test main
+//	#define DEBUG	// Define this to include the diagnostics
 
 #ifdef  TEST
 #define DEBUG
@@ -70,8 +70,6 @@
 #define ispath(ch)	(ch == PATHCH)
 
 #define ERROR   (-1)		// Returned if a NULL ptr to the path string
-
-#define DRIVESPEC(ch) ((int)(tolower(ch) - 'a' + 1))
 
 #define	MAX_RECORD (100)	// Maximum parseable depth (very generous)
 
@@ -91,8 +89,8 @@ Element	Etable [MAX_RECORD];
 // BWJ issue of fnCondenseDot()
 
 // ------------------------------------------------------------------------------------------------
-// Condense the path pointed by s (uses a recursive algorithm)
-// Condense should be called pointing after the prefix and the possible root path char.
+//	Condense the path pointed by s
+//	Condense should be called pointing after the prefix and the possible root path char.
 // ------------------------------------------------------------------------------------------------
 	int								// Returns path depth
 fnCondense (						// Condense '.' and '..' from the path name
@@ -112,6 +110,11 @@ fnCondense (						// Condense '.' and '..' from the path name
 
 	if (strlen(s) == 0)				// Empty string is legal
 		return (0);
+
+#ifdef DEBUG
+printf("fnCondense: Entry \"%s\"\n", s);
+fflush(stdout);
+#endif
 
 	pElement = &Etable[0];									// Init and use the first element
 		pElement->pSep   = (NULL);							// First element; no initial separator
@@ -133,14 +136,14 @@ fnCondense (						// Condense '.' and '..' from the path name
 				{
 				Running = FALSE;							// EOL found; finish this section, then we are done
 #ifdef DEBUG
-printf("(%2d) \"%s\"\n", depth, s);
+printf("(%d)               \"%s\"\n", depth, s);
 printf("NUL E(%d)\n", (int)(pElement - &Etable[0]));
 fflush(stdout);
 #endif
 				if (pElement->length == 0)					// If the element is empty
 					{
 #ifdef DEBUG
-printf("NUL Empty (%2d) \"%s\"\n", depth, p);
+printf("NUL Empty (%d)     \"%s\"\n", depth, p);
 fflush(stdout);
 #endif
 // Can't happen		if (isFirst(pElement))					// If the first element, the string is empty
@@ -158,7 +161,7 @@ fflush(stdout);
 				else if ((pElement->length == 1) && (*(pElement->pField) == DOTCH))
 					{
 #ifdef DEBUG
-printf("NUL Dot (%2d) \"%s\"\n", depth, p);
+printf("NUL Dot (%d)       \"%s\"\n", depth, p);
 fflush(stdout);
 #endif
 					if (! isFirst(pElement)					// If not the first element,
@@ -172,7 +175,7 @@ fflush(stdout);
 					{
 //					pElement->isName = FALSE;				// Not a name (but doesn't matter)
 #ifdef DEBUG
-printf("NUL DD  (%2d) \"%s\"\n", depth, p);
+printf("NUL DD  (%d)       \"%s\"\n", depth, p);
 fflush(stdout);
 #endif
 					if (isFirst(pElement))					// If this is the first element
@@ -225,14 +228,14 @@ fflush(stdout);
 			case PATHCH:									// We have reached the end of an element
 				{
 #ifdef DEBUG
-printf("(%2d) \"%s\"\n", depth, s);
+printf("(%d)               \"%s\"\n", depth, s);
 printf("PTH E(%d)\n", (int)(pElement - &Etable[0]));
 fflush(stdout);
 #endif
 				if (pElement->length == 0)
 					{
 #ifdef DEBUG
-printf("PTH Dup (%2d) \"%s\"\n", depth, p);
+printf("PTH Dup (%d)       \"%s\"\n", depth, p);
 fflush(stdout);
 #endif
 					// Excise this "\\" element, reusing the same element and preceding separator (if any)
@@ -245,7 +248,7 @@ fflush(stdout);
 
 					// Do the actual excision copy, and readjust the current char pointer
 
-					strcpy(pElement->pField, (p + 1));		// Excise this "\\" element
+					pathCopy(pElement->pField, (p + 1), MAX_COPY);	// Excise this "\\" element
 					p = pElement->pField;					// Point first character of the new field (no real change)
 					break;									// Accept it
 					} // End (element length == 0)
@@ -253,9 +256,9 @@ fflush(stdout);
 				else if ((pElement->length == 1) && (*(pElement->pField) == DOTCH))
 					{
 #ifdef DEBUG
-printf("PTH Dot (%2d) \"%s\"\n", depth, p);
-printf("(%2d) \"%s\"\n", depth, s);
-printf("(%2d) \"%s\"\n", depth, p);
+printf("PTH Dot (%d)       \"%s\"\n", depth, p);
+printf("(%d) \"%s\"\n", depth, s);
+printf("(%d) \"%s\"\n", depth, p);
 fflush(stdout);
 #endif
 					if ((isFirst(pElement))
@@ -277,11 +280,11 @@ fflush(stdout);
 
 						// Do the actual excision copy, and readjust the current char pointer
 
-						strcpy(pElement->pField, (p + 1));	// Excise this ".\" element (first element or not)
+						pathCopy(pElement->pField, (p + 1), MAX_COPY);	// Excise this ".\" element (first element or not)
 						p = pElement->pField;				// Point first character of the new field
 #ifdef DEBUG
-printf("(%2d) \"%s\"\n", depth, s);
-printf("(%2d) \"%s\"\n", depth, p);
+printf("(%d)               \"%s\"\n", depth, s);
+printf("(%d)               \"%s\"\n", depth, p);
 fflush(stdout);
 #endif
 						}
@@ -292,7 +295,7 @@ fflush(stdout);
 					{
 					pElement->isName = FALSE;				// Not a name
 #ifdef DEBUG
-printf("PTH DD  (%2d) \"%s\"\n", depth, p);
+printf("PTH DD  (%d)       \"%s\"\n", depth, p);
 fflush(stdout);
 #endif
 					// If either this is the first element, or the previous element is not a name, we must accept it
@@ -331,7 +334,7 @@ fflush(stdout);
 
 						// Do the actual excision copy, and readjust the current char pointer
 
-						strcpy(pElement->pField, (p+1));	// Excise this and the previous (named) element
+						pathCopy(pElement->pField, (p+1), MAX_COPY);	// Excise this and the previous (named) element
 						p = pElement->pField;				// Advance to the next first character of the new field
 						break;								// Accept the excision
 						}
@@ -343,7 +346,7 @@ fflush(stdout);
 					{
 					++depth;
 #ifdef DEBUG
-printf("PTH Nam (%2d) \"%s\"\n", depth, p);
+printf("PTH Nam (%d)       \"%s\"\n", depth, p);
 fflush(stdout);
 #endif
 					// So, we need a new element for the next element
@@ -365,7 +368,7 @@ fflush(stdout);
 			default: // element name character				// Processing a character of an element
 				{
 #ifdef DEBUG
-printf("ch      (%2d) \"%s\"\n", depth, p);
+printf("ch      (%d)       \"%s\"\n", depth, p);
 fflush(stdout);
 #endif
 				if ((ch != '.')
@@ -392,65 +395,38 @@ fflush(stdout);
 	}
 
 // ------------------------------------------------------------------------------------------------
-// fnreduce - Remove any redundancies to get the shortest possible path
+//	fnreduce - Remove any redundancies to get the shortest possible path
 // ------------------------------------------------------------------------------------------------
 	int					// Returns minimum depth of path (negative if physically unreachable)
 fnreduce (				// Eliminate pathname redundancy
-    char  *s)			// Pointer to the pathname string
+    char  *pPath)			// Pointer to the pathname string
 
 	{
-	char  *p = s;		// Pointer to the path following any prefix and root separator
-	char  *pTemp;		// Returned result from prefix queries
-	int    CWDdepth;	// The CWD depth
+	char  *pBody;		// Returned result from prefix queries
 	int    depth;		// The relative depth of the tested path
 
 
-	if (s == NULL)					// Null string ptr is illegal
+	if (pPath == NULL)					// Null string ptr is illegal
 		return (ERROR);
 
 #ifdef DEBUG
-printf("fnreduce Entry: \"%s\"\n", s);
+printf("fnreduce Entry:   \"%s\"\n", pPath);
 fflush(stdout);
 #endif
 
-	strsetp(s, PATHCH);				// Normalize the standard path character in the string
+	strsetp(pPath, PATHCH);		// Normalize the standard path character in the string
 
-	if ((pTemp = QueryDrivePrefix(s, TRUE)) != NULL)	// Single mode
-		{
-		p = pTemp;					// We have a drive spec; point the root
-		if (ispath(*p))				// If we now find a root separator
-			{
-			CWDdepth = 0;			// rooted, so the CWD depth is zero
-			++p;					// Skip over the root separator
-			}
-		else						// Drive spec, unrooted
-			CWDdepth = getdepth(DRIVESPEC(*s));
-		}
-
-	else if ((pTemp = QueryUNCPrefix(s)) != NULL)
-		{
-		p = pTemp;					// - UNC spec, rooted (by definition)
-		CWDdepth = 0;
-		}
-
-	else if (ispath(*p))			// No prefix found; if we have a root separator
-		{
-		CWDdepth = 0;				// No Drive/UNC spec, rooted
-		++p;						// Skip over the root separator
-		}
-	else							// No Drive/UNC spec, unrooted
-		CWDdepth = getdepth(0);		// Request for the default drive
-
-	depth = fnCondense(p);			// Condense the path elements
-
-	// If the reported effective depth is negative, this is a phsically impossible path.
+	pBody = PointPastPrefix(pPath);
+	
+	depth = fnCondense(pBody);	// Condense the path elements
 
 #ifdef DEBUG
-printf("fnreduce Return: \"%s\"\n", s);
+printf("fnreduce Return:  \"%s\"\n", pPath);
 fflush(stdout);
 #endif
+	// If the reported depth is negative, and exceeds the CWD depth, the path is non-physical
 
-	return (CWDdepth + depth);		// Report the effective depth of the tested path
+	return (depth);				// Report the effective depth of the tested path
 	}
 
 /* ----------------------------------------------------------------------- */

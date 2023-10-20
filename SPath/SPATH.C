@@ -7,7 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <fwild.h>
+#include <fWild.h>
 
 /*--------------------------------------------------------------------*/
 #define VERSION "950412.152651"
@@ -29,6 +29,9 @@ char *aszPaths [32]	= {NULL};
 char	szTempPath [2048];
 
 char *aszExts []	= {".BAT", ".COM", ".EXE", ".DLL", NULL};
+
+PHP		hp = NULL;				// FWILD instance pointer
+PEX		xp = NULL;				// FEX instance pointer
 
 /*--------------------------------------------------------------------*/
 	char * 
@@ -56,7 +59,7 @@ usagedoc [] = {
 BOOL	GetPaths (void);
 void	proc_name (char *szDir, char *szName, char *szExt);
 void	proc_dir (char *s);
-void	proc_file (char *s, char *dta);
+void	proc_file (char *s);
 void	process (char *s);
 
 /*--------------------------------------------------------------------*/
@@ -66,6 +69,12 @@ void	process (char *s);
 main (int argc, char *argv[])
 	{
 	int		c;
+
+
+	if ((hp = fwOpen()) == NULL)
+		exit(1);
+	if ((xp = fExcludeOpen()) == NULL)
+		exit(1);
 
 	optenv = getenv("SPATH");
 
@@ -78,10 +87,12 @@ main (int argc, char *argv[])
 					usage();
 
 				if      (optarg[0] == '-')
-					fexcludeDefEnable(FALSE);		/* Disable default file exclusion(s) */
+					fExcludeDefEnable(xp, FALSE);	// Disable default file exclusion(s)
 				else if (optarg[0] == '+')
-					fexcludeShowConf(TRUE);			/* Enable stdout of exclusion(s) */
-				else if (fexclude(optarg))
+					fExcludeShowConf(xp, TRUE);		// Enable stdout of exclusion(s)
+				else if (optarg[0] == '=')
+					fExcludeShowExcl(xp, TRUE);		// Enable stdout of excluded path(s)
+				else if (fExclude(xp, optarg))
 					{
 					fprintf(stderr, "Error excluding %s\n", optarg);
 					usage();
@@ -126,6 +137,8 @@ main (int argc, char *argv[])
 	while (optind < argc)
 		process(argv[optind++]);
 
+	xp = fExcludeClose(xp);						// Close the Exclusion instance
+	hp = fwClose(hp);							// Close the fWild instance
 	return(0);
 	}
 
@@ -187,15 +200,14 @@ proc_dir (
 	char *s)
 
 	{
-	void *	dta;
-	char *	fn;
+	char *fn;
+	
 
-	if ((dta = fwinit(s, attrib)) == NULL)
-		fwinitError(s);
-	fwExclEnable(dta, TRUE);				/* Enable file exclusion */
-	if ((fn = fwild(dta)) == NULL)
+	if (fwInit(hp, s, attrib) != FWERR_NONE)	// Process the pattern
+		fwInitError(s);
+	fExcludeConnect(xp, hp);					// Connect the exclusion instance
+	if ((fn = fWild(hp)) == NULL)
 		{
-		dta = NULL;
 		if (verbosity > 1)
 			printf("%s not found.\n", s);
 		return;
@@ -203,21 +215,19 @@ proc_dir (
 	else
 		{
 		do	{
-			proc_file(fn, dta);
-			} while (fn = fwild(dta));
-		dta = NULL;
+			proc_file(fn);
+			} while (fn = fWild(hp));
 		}
 	}
 
 /*--------------------------------------------------------------------*/
 	void
 proc_file (
-	char *s,
-	char *dta)
+	char *s)
 
 	{
 	int		n;
-	int		attr	= fwtype(dta);
+	int		attr	= fwtype(hp);
 
 	if (verbosity > 0)
 		{
@@ -225,7 +235,7 @@ proc_file (
 		while (n++ < 41)
 			putchar(' ');
 		printf("%8lld  %9s  %6s  %c%c%c%c\n", 
-			fwsize(dta), fwdate(dta), fwtime(dta),
+			fwsize(hp), fwdate(hp), fwtime(hp),
 			(attr & ATT_ARCH)   ? 'a' : '-',
 			(attr & ATT_RONLY)  ? 'r' : '-',
 			(attr & ATT_HIDDEN) ? 'h' : '-',

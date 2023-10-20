@@ -12,7 +12,7 @@
 #include <malloc.h>
 #include <fcntl.h>
 
-#include <fwild.h>
+#include <fWild.h>
 #include <getoptns.h>
 
 /*--------------------------------------------------------------------*/
@@ -29,7 +29,9 @@
 /*--------------------------------------------------------------------*/
 
 int		d_flag	= FALSE;
-int		l_flag	= FALSE;
+int		i_flag	= FALSE;		// Enable pipe input from stdin
+int		l_flag	= FALSE;		// Remove if larger than l_value bytes
+int		n_flag	= FALSE;		// No remove listing output
 long	l_value	= 0;
 int		q_flag	= FALSE;
 int		r_flag	= FALSE;
@@ -42,21 +44,27 @@ int		y_flag	= FALSE;
 time_t	y_time	= 0;
 
 int		verbosity = 0;
+int		NumberRequests = 0;
+
+PHP		hp = NULL;				// FWILD instance pointer
+PEX		xp = NULL;				// FEX instance pointer
 
 /*--------------------------------------------------------------------*/
 
 #define OLDERDT(x)	((x)<(o_time))
 #define NEWERDT(x)	((y_time)<(x))
 
+#define		NULCH	('\0')
+
 /*--------------------------------------------------------------------*/
 
-int		destroy (char * filename);
-void	fatalerr (char *s);
-void	keep_dir_name (char *s);
-void	proc_file (char *s, char *dta);
-void	process (char *s, int att);
-void	remove_directories (void);
-int		query (char *s);
+static	int		destroy (char *filename);
+static	void	keep_dir_name (char *s);
+static	void	proc_file (char *s);
+static	void	processLoop (char *s, int att);
+static	void	remove_directories (void);
+static	int		query (char *s);
+static	char   *UseStdin (void);		// Parse pathnames from stdin
 
 /*--------------------------------------------------------------------*/
 
@@ -109,128 +117,165 @@ main (
 
 	{
 	int		c;
-	int		attrib	= FW_FILE | FW_SUBD;
+	int		attrib = (FW_FILE);
+	char   *pathName;
+
+
+	if ((hp = fwOpen()) == NULL)
+		exit(1);
+	if ((xp = fExcludeOpen()) == NULL)
+		exit(1);
 
 	optenv = getenv("RM");
 
 	while ( (c=getopt(argc,argv,"dDhHl:L:nNo:O:qQrRsStTvVX:y:Y:zZ?")) != EOF )
-	switch (tolower(c))
 		{
-		case 'x' :
-			if (c == 'x')
+		switch (tolower(c))
+			{
+			case 'x' :
+				if (c == 'x')
+					usage();
+
+				if      (optarg[0] == '-')
+					fExcludeDefEnable(xp, FALSE);	// Disable default file exclusion(s)
+				else if (optarg[0] == '+')
+					fExcludeShowConf(xp, TRUE);		// Enable stdout of exclusion(s)
+				else if (optarg[0] == '=')
+					fExcludeShowExcl(xp, TRUE);		// Enable stdout of excluded path(s)
+				else if (fExclude(xp, optarg))
+					{
+					printf("\7Exclusion string fault: \"%s\"\n", optarg);
+					usage();
+					}
+				break;
+
+			case 'd' :
+				++d_flag;
+				verbosity = 1;
+				break;
+
+			case 'h' :
+				attrib |= FW_HIDDEN;
+				break;
+
+			case 'l' :
+				l_value = atol(optarg);
+				if (l_value > 0)
+					l_flag = TRUE;
+				break;
+
+			case 'n' :
+				++n_flag;
+				break;
+
+			case 'o':
+				if ((o_time=sgettd(optarg)) == 0)
+					fatalerr("Bad date/time value");
+				else
+					++o_flag;
+				break;
+
+			case 'q' :
+				++q_flag;
+				break;
+
+			case 'r' :
+				++r_flag;
+				break;
+
+			case 's' :
+				attrib |= FW_SYSTEM;
+				break;
+
+			case 't' :
+				attrib |= FW_DIR;
+				++t_flag;
+				break;
+
+			case 'v' :
+				++verbosity;
+				break;
+
+			case 'y':
+				if ((y_time=sgettd(optarg)) == 0)
+					fatalerr("Bad date/time value");
+				else
+					++y_flag;
+				break;
+
+			case 'z' :
+				++z_flag;
+				break;
+
+			case '?':
+				help();
+
+			default:
+				fprintf(stderr, "invalid option '%c'\n", optchar);
 				usage();
-
-			if      (optarg[0] == '-')
-				fexcludeDefEnable(FALSE);		/* Disable default file exclusion(s) */
-			else if (optarg[0] == '+')
-				fexcludeShowConf(TRUE);			/* Enable stdout of exclusion(s) */
-			else if (optarg[0] == '=')
-				fexcludeShowExcl(TRUE);			/* Enable stdout of excluded paths(s) */
-			else if (fexclude(optarg))
-				{
-				printf("\7Exclusion string fault: \"%s\"\n", optarg);
-				usage();
-				}
-			break;
-
-		case 'd' :
-			++d_flag;
-			break;
-
-		case 'h' :
-			attrib |= FW_HIDDEN;
-			break;
-
-		case 'l' :
-			l_value = atol(optarg);
-			if (l_value > 0)
-				l_flag = TRUE;
-			break;
-
-		case 'n' :
-			verbosity = max(0, (verbosity - 1));
-			break;
-
-		case 'o':
-			if ((o_time=sgettd(optarg)) < 0)
-				fatalerr("Bad date/time value");
-			else
-				++o_flag;
-			break;
-
-		case 'q' :
-			++q_flag;
-			break;
-
-		case 'r' :
-			++r_flag;
-			break;
-
-		case 's' :
-			attrib |= FW_SYSTEM;
-			break;
-
-		case 't' :
-			++t_flag;
-			break;
-
-		case 'v' :
-			verbosity = min(2, (verbosity + 1));
-			break;
-
-		case 'y':
-			if ((y_time=sgettd(optarg)) < 0)
-				fatalerr("Bad date/time value");
-			else
-				++y_flag;
-			break;
-
-		case 'z' :
-			++z_flag;
-			break;
-
-		case '?':
-			help();
-
-		default:
-			fprintf(stderr, "invalid option '%c'\n", optchar);
-			usage();
+			}
 		}
 
-	if (optind == argc)
+	i_flag = ( ! isatty(fileno(stdin)));
+
+	if (i_flag)
+		{
+		while ((pathName = UseStdin()) != NULL)		// Process the stdin list
+			{
+			if (verbosity > 1)
+				printf("PathName (stdin): \"%s\"\n", pathName);
+			++NumberRequests;
+
+			processLoop(pathName, attrib);
+
+			if (t_flag)
+				remove_directories();
+			}
+		}
+
+	else // (i_flag == FALSE)
+		{
+		while (optind < argc)						// Process the command line list
+			{
+			pathName = argv[optind++];
+			if (verbosity > 1)
+				printf("PathName (cmd): \"%s\"\n", pathName);
+			++NumberRequests;
+			processLoop(pathName, attrib);
+
+			if (t_flag)
+				remove_directories();
+			}
+		}
+
+	if ((NumberRequests == 0) && ! d_flag)
 		{
 		fprintf(stderr, "No file(s) specified\n");
 		usage();
 		return(0);
 		}
 
-	while (optind < argc)
-		process(argv[optind++], attrib);
-
-	if (t_flag)
-		remove_directories();
-
+	xp = fExcludeClose(xp);			// Close the Exclusion instance
+	hp = fwClose(hp);				// Close the fWild instance
 	return(0);
 	}
 
 /*--------------------------------------------------------------------*/
 
 /*--------------------------------------------------------------------*/
-	void
-process (
-	char *s,
-	int   att)
+	static void
+processLoop (
+	char *s,	// filename
+	int   attr)	// attributes
 
 	{
-	char *dta;
-	char *fn;
+	char *fn;	// found filename
 	char *t;
 	BOOL  flag = FALSE;
 
-//	strupr(s);
 
-	if ((dta = fwinit(s, att)) == NULL)
-		fwinitError(s);
+	if (fwInit(hp, s, attr) != FWERR_NONE)	// Process the pattern
+		fwInitError(s);
 	if ((t_flag)
 	&&  (s[strlen(s)-1] != '.'))
 		{
@@ -246,35 +291,33 @@ process (
 			}
 		}
 
-	fwExclEnable(dta, TRUE);			/* Enable file exclusion */
-	if ((fn = fwild(dta)) == NULL)
+	fExcludeConnect(xp, hp);		// Connect the exclusion instance
+	if ((fn = fWild(hp)) == NULL)
 		{
-		dta = NULL;
-		if ((verbosity > 0) && !d_flag)
+		if (! d_flag)
 			printf("%s not found\n", s);
 		return;
 		}
     else
 		{
 		do	{
-			proc_file(fn, dta);
-			} while (fn = fwild(dta));
-		dta = NULL;
+			proc_file(fn);
+			} while (fn = fWild(hp));
 		}
 	}
 
 /*--------------------------------------------------------------------*/
-	void
+	static void
 proc_file (
-	char *s,
-	char *dta)
+	char *s)	// filename
 
 	{
-	int		attrib	= fwtype(dta);
+	int		attrib	= fwtype(hp);
 	int		result;
+	time_t	fdt = 0;
 
 	if ((attrib != (-1)) 
-	&&  (attrib & ATT_SUBD))
+	&&  (attrib & ATT_DIR))
 		{
 		if ((t_flag)
 		&&  (s[strlen(s)-1] != '.'))
@@ -283,14 +326,13 @@ proc_file (
 			}
 		}
 
-	else if ((!l_flag || (fwsize(dta) >= l_value))
-		 &&  (!o_flag || OLDERDT(fwgetfdt(dta)))
-		 &&  (!y_flag || NEWERDT(fwgetfdt(dta))))
+	else if ((!l_flag || (fwsize(hp) >= l_value))
+		 &&  (!o_flag || OLDERDT(fwgetfdt(hp)))
+		 &&  (!y_flag || NEWERDT(fwgetfdt(hp))))
 		{
 		if ( (attrib & ATT_RONLY) && !r_flag)
 			{
-			if (verbosity > 0)
-				printf("%s is read/only\n", s);
+			printf("%s is read/only\n", s);
 			}
 		else
 			{
@@ -298,15 +340,14 @@ proc_file (
 				{
 				BOOL  OutDone = FALSE;
 		
-				if (verbosity > 1)
+				if (verbosity > 0)
 					{
 					printf("%s", s);
 					OutDone = TRUE;
 					}
     
 				if ((attrib & ATT_RONLY)
-				&& (fsetattr(s, _A_NORMAL) < 0)
-				&& (verbosity > 0))
+				&& (fsetattr(s, _A_NORMAL) < 0))
 					{
 					printf(" attribute change failed");
 					OutDone = TRUE;
@@ -319,17 +360,8 @@ proc_file (
 
 				if (result)
 					{
-					if (verbosity == 1)
-						{
-						printf("%s", s);
-						OutDone = TRUE;
-						}
-
-					if (verbosity > 0)
-						{
-						printf(" remove failed");
-						OutDone = TRUE;
-						}
+					printf(" remove failed");
+					OutDone = TRUE;
 					}
 				else
 					{
@@ -349,7 +381,7 @@ proc_file (
 /*--------------------------------------------------------------------*/
 
 /*--------------------------------------------------------------------*/
-	int
+	static int
 query (
 	char *s)
 
@@ -397,7 +429,7 @@ query (
 /*--------------------------------------------------------------------*/
 
 /*--------------------------------------------------------------------*/
-	int
+	static int
 destroy (
 	char * filename)
 
@@ -436,7 +468,7 @@ destroy (
 /*--------------------------------------------------------------------*/
 
 /*--------------------------------------------------------------------*/
-	void
+	static void
 remove_directories (void)
 
 	{
@@ -448,7 +480,7 @@ remove_directories (void)
 
 		if (query(s))
 			{
-			if (verbosity > 1)
+			if (verbosity > 0)
 				printf("%s <DIR>", s);
 			if (rmdir(s) == 0)
 				{
@@ -457,9 +489,9 @@ remove_directories (void)
 				}
 			else
 				{
-				if (verbosity == 1)
-					printf("%s <DIR>", s);
 				if (verbosity > 0)
+					printf("%s <DIR>", s);
+				if (verbosity > 1)
 					printf(" remove error\n");
 				}
 			}
@@ -467,7 +499,7 @@ remove_directories (void)
     }
 
 /*--------------------------------------------------------------------*/
-	void
+	static void
 keep_dir_name (
 	char *s)
 
@@ -487,6 +519,35 @@ keep_dir_name (
 		dirnode->link = root;
 		root = dirnode;
 		}
+	}
+
+/* ----------------------------------------------------------------------- */
+	static char *
+UseStdin ()						/* Parse pathnames from stdin */
+
+	{
+static	char  line [MAX_PATH];
+
+	if (fgets(line, MAX_COPY, stdin) == NULL)
+		return (NULL);
+
+	// Truncate the line ending
+
+	char *pStr;
+	char  ch;
+
+	pStr = line;
+	while ((ch = *pStr) != NULCH)
+		{
+		if ((ch == '\r') || (ch == '\n'))
+			{
+			*pStr = NULCH;
+			break;
+			}
+		++pStr;
+		}
+	
+	return (line);
 	}
 
 /*--------------------------------------------------------------------*/

@@ -19,7 +19,7 @@
 #include  <string.h>
 #include  <malloc.h>
 
-#include  "fwild.h"
+#include  "fWild.h"
 
 #define	 LINESIZE	1024	/* Text line buffer size */
 
@@ -27,13 +27,10 @@
 #define	 EXCLUDE	   1	/* Exclude specified fields mode */
 #define	 COMPATIBILITY 2	/* Compatibility mode */
 
-#define	 MAXTOKEN	  10	/* Max number of tokens */
+#define	 MAXTOKEN	  50	/* Max number of tokens */
 
 extern	int	z_flag;			/* Ignore child error flag */
 extern	int	Q_flag;			/* Quoted argument flag */
-
-extern	void	usage (void);
-extern	void	cantopen (char *fnp);
 
 int		query	(void);
 void	batch	(char *p);

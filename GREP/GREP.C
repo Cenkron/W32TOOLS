@@ -28,11 +28,8 @@
 |
 \* ----------------------------------------------------------------------- */
 
-#ifdef _WIN32
 #include  <windows.h>
 #include  <wincon.h>
-#endif
-
 #include  <stdio.h>
 #include  <stdlib.h>
 #include  <string.h>
@@ -40,7 +37,7 @@
 #include  <signal.h>
 #include  <io.h>
 
-#include  "fwild.h"
+#include  "fWild.h"
 #include  "case.h"
 
 /* ----------------------------------------------------------------------- */
@@ -71,11 +68,7 @@ char  *usagedoc [] =
 "    %cP <pathname> Read the regular expression from the named file",
 "    %cr      Print only NON-matching lines            (toggles, default off)",
 "    %cR [-/+]NN Print NN lines before/after match lines  (max 99, default 0)",
-#ifdef _WIN32
 "    %cs NNN  Set the matched field text color         (default yellow)",
-#else
-"    %cs NNN  Set the matched field text attribute     (default bold)",
-#endif
 "    %cS      Print region separators (if -R regioned) (toggles, default off)",
 "    %ct N    Set the tab width increment              (default 8)",
 "    %cvvv    Print verbose internal information       (cumulative)",
@@ -138,11 +131,7 @@ NULL
 #define MAX_EXT_PATTERN	 (1024)			// Maximum external pattern expression
 #define PATHNAMESIZE	 (1024)			// Size of a pathname buffer
 
-#ifdef _WIN32
 #define PRTFLUSH()						// 32 bit windows needs no flushing
-#else
-#define PRTFLUSH()	(fflush(fout))		// Only 16 bit windows needs flushing
-#endif
 
 // ----------------------------------------------------------------------------
 // Global control flags
@@ -248,6 +237,9 @@ FILE   *fout;							// The output file, defaults to stdout
 char	swch = '-';				/* The switch character */
 
 char	buffer [BUFSIZ];		/* Buffer for stdout */
+
+PHP		hp = NULL;				// FWILD instance pointer
+PEX		xp = NULL;				// FEX instance pointer
 
 // ----------------------------------------------------------------------------
 // Region line buffers
@@ -391,9 +383,7 @@ ConfigureOutputFile (void)
 
 	{
 	tty_flag = ((fout == stdout)  &&  isatty(fileno(stdout)));
-#ifdef _WIN32
 	if ( ! tty_flag)
-#endif
 		if (fout != stdout)
 			setbuf(fout, buffer);
 	}
@@ -428,13 +418,18 @@ main (argc, argv)
 	{
 	int	   option;				/* Option character */
 	long   ltemp;				/* optvalue() temporary */
-	char  *ap;					/* Argument pointer */
+	char  *fnp;					/* Pointer to filename */
 	FILE  *ifp;					/* Indirect input file descriptor pointer */
 	char  *ip;					/* Indirect input pathname */
 	char  *pPattern;			/* Ptr to the pattern buffer */
 
 static	char   *optstring = "?acCfFhHiIlLmMnNo:O:pP:rR:s:St:T:vVw:W:X:";
 
+
+	if ((hp = fwOpen()) == NULL)
+		exit(1);
+	if ((xp = fExcludeOpen()) == NULL)
+		exit(1);
 
 	fout	 = stdout;			// The output file defaults to stdout
 	swch	 = egetswch();
@@ -533,11 +528,7 @@ static	char   *optstring = "?acCfFhHiIlLmMnNo:O:pP:rR:s:St:T:vVw:W:X:";
 			case 's':
 				if (option == 's')
 					{
-#ifdef _WIN32
 					if (optvalue(optarg, &ltemp, 1, 255))
-#else
-					if (optvalue(optarg, &ltemp, 1, 47))
-#endif
 						{
 						fprintf(fout, "Color error - %s\n", optvalerror());
 						usage();
@@ -575,14 +566,14 @@ static	char   *optstring = "?acCfFhHiIlLmMnNo:O:pP:rR:s:St:T:vVw:W:X:";
 					usage();
 
 				if      (optarg[0] == '-')
-					fexcludeDefEnable(FALSE);		/* Disable default file exclusion(s) */
+					fExcludeDefEnable(xp, FALSE);	// Disable default file exclusion(s)
 				else if (optarg[0] == '+')
-					fexcludeShowConf(TRUE);			/* Enable stdout of exclusion(s) */
+					fExcludeShowConf(xp, TRUE);		// Enable stdout of exclusion(s)
 				else if (optarg[0] == '=')
-					fexcludeShowExcl(TRUE);			/* Enable stdout of excluded path(s) */
-				else if (fexclude(optarg))
+					fExcludeShowExcl(xp, TRUE);		// Enable stdout of excluded path(s)
+				else if (fExclude(xp, optarg))
 					{
-					printf("\7Exclusion string fault: \"%s\"\n", optarg);
+					printf("Exclusion string fault: \"%s\"\n", optarg);
 					usage();
 					}
 				break;
@@ -631,8 +622,8 @@ static	char   *optstring = "?acCfFhHiIlLmMnNo:O:pP:rR:s:St:T:vVw:W:X:";
 		{
 		if (iflag)
 			{
-			while ((ap = getname(stdin)) != NULL)
-				procwild(ap);
+			while ((fnp = getname(stdin)) != NULL)
+				procwild(fnp);
 			}
 		else
 			{
@@ -644,33 +635,33 @@ static	char   *optstring = "?acCfFhHiIlLmMnNo:O:pP:rR:s:St:T:vVw:W:X:";
 		{
 		while (optind < argc)
 			{
-			ap = argv[optind++];
+			fnp = argv[optind++];
 			if (iflag)
 				{
-				if (iswild(ap))
-					fprintf(fout, "Indirect file can't be wild: %s\n", ap);
-				else if (ifp = fopen(ap, "r"))
+				if (isWild(fnp))
+					fprintf(fout, "Indirect file can't be wild: %s\n", fnp);
+				else if (ifp = fopen(fnp, "r"))
 					{
 					while ((ip = getname(ifp)) != NULL)
 						procwild(ip);
 					fclose(ifp);
 					}
 				else
-					fprintf(fout, "Unable to open indirect file: %s\n", ap);
+					fprintf(fout, "Unable to open indirect file: %s\n", fnp);
 				}
 			else
-				procwild(ap);
+				procwild(fnp);
 			}
 		}
 
-#ifdef _WIN32
 	if (tty_flag)
 		SetHighlight(FALSE);
-#endif
 
 	if (fout != stdout)
 		fclose(fout);
 
+	xp = fExcludeClose(xp);				// Close the Exclusion instance
+	hp = fwClose(hp);					// Close the fWild instance
 	exit(0);
 	}
 
@@ -682,18 +673,17 @@ procwild (
 	char  *pp)					/* Pointer to pathname specifier */
 
 	{
-	void  *hp;					/* Pointer to wild file data block */
 	FILE  *fp;					/* Input file descriptor */
 	char  *fnp;					/* The translated file name */
 	int	   smode = FW_FILE;		/* File search mode attributes */
 
 
-	if ((hp = fwinit(pp, smode)) == NULL)	/* Process the input list */
-		fwinitError(pp);
-	fwExclEnable(hp, TRUE);					/* Enable file exclusion */
-	if ((fnp = fwild(hp)) == NULL)
+
+	if (fwInit(hp, pp, smode) != FWERR_NONE)	// Process the pattern
+		fwInitError(pp);
+	fExcludeConnect(xp, hp);					// Connect the exclusion instance
+	if ((fnp = fWild(hp)) == NULL)
 		{
-		hp = NULL;
 		cantopen(pp);
 		}
 	else
@@ -706,8 +696,7 @@ procwild (
 				}
 			else
 				cantopen(fnp);
-			} while ((fnp = fwild(hp)));
-		hp = NULL;
+			} while ((fnp = fWild(hp)));
 		}
 	}
 
@@ -1265,7 +1254,7 @@ file (fnp)						/* Print the file identification */
 	if (fonly || fronly)
 		fprintf(fout, "%s\n", fnp);
 	else
-		fprintf(fout, "\nFile %s:\n\n", fnp);
+		fprintf(fout, "\nFile %s\n\n", fnp);
 	PRTFLUSH();
 	}
 
@@ -1763,55 +1752,8 @@ debugmatches (
 	}
 
 /* ----------------------------------------------------------------------- *\
-|  Highlight subsystem - 16 bit
-\* ----------------------------------------------------------------------- */
-#ifndef _WIN32
-
-static	char	*pLoLite	 = "\033[0m";  /* The unhighlight request string */
-static	char	pHiLite [10] = "\033[1m";  /* The highlight	  request string */
-
-/* ----------------------------------------------------------------------- *\
-|  InitializeColors () - Initialize the color system
-\* ----------------------------------------------------------------------- */
-	void
-InitializeColors (void)
-
-	{
-	}
-
-/* ----------------------------------------------------------------------- *\
-|  SetHighlightColor () - Set the highlight color
-\* ----------------------------------------------------------------------- */
-	void
-SetHighlightColor (
-	int	 Color)
-
-	{
-	if (tty_flag)
-		sprintf(pHiLite, "\033[%um", Color);
-	}
-
-/* ----------------------------------------------------------------------- *\
-|  SetHighlight () - 
-\* ----------------------------------------------------------------------- */
-	int
-SetHighlight (
-	int	 Highlight)
-
-	{
-	if (highlightflag  &&  tty_flag)
-		{
-		fputs((Highlight ? pHiLite : pLoLite), stdout);
-		fputc('\n', stdout);
-		}
-	return (Highlight);
-	}
-
-#endif
-/* ----------------------------------------------------------------------- *\
 |  Highlight subsystem - 32 bit
 \* ----------------------------------------------------------------------- */
-#ifdef _WIN32
 
 static	HANDLE	hConsole;				/* The stdout console handle */
 static	WORD	HiLite;					/* The highlighted color value */
@@ -1875,5 +1817,5 @@ SetHighlight (
 		SetConsoleTextAttribute(hConsole, (WORD)(Highlight ? HiLite : LoLite));
 	return (Highlight);
 	}
-#endif
+
 /* --------------------------------- EOF --------------------------------- */

@@ -3,7 +3,7 @@
 |		     Wild Card File Name Server Include File
 |			  for Microsoft C on the IBM PC
 |
-|	Copyright (c) 1985, 1990, 1991, 1993, 1997, 1998, all rights reserved
+|		Copyright (c) 1985 - 2023, all rights reserved
 |				Brian W Johnson
 |				   17-Jun-90
 |				   14-May-91
@@ -16,6 +16,8 @@
 |				   30-Sep-07 for 64 bit file sizes
 |				   07-Oct-10 added pfopen()
 |				   10-Sep-23 New fnreduce error
+|				    4-Oct-23 Major update of fWild
+|				    6-Oct-23 Major update of path construction, path analysis
 |
 \* ----------------------------------------------------------------------- */
 
@@ -30,8 +32,6 @@ extern "C" {
 #include <SYS\STAT.H>
 #include <SYS\TIMEB.H>
 
-#include "FEXCLUDE.h"
-
 /* ------------------------------------------------------------------------ *\
 |  Special definitions
 \* ------------------------------------------------------------------------ */
@@ -39,120 +39,207 @@ extern "C" {
 typedef signed   __int64  INT64,  *PINT64;
 typedef unsigned __int64  UINT64, *PUINT64;
 
-#ifndef MAX_PATH
-#define MAX_PATH (260)	// Per https://learn.microsoft.com/en-us/windows/win32
+#ifdef  MAX_PATH
+#undef  MAX_PATH	// 260
 #endif
+
+#ifndef MAX_PATH
+#define MAX_PATH (1024)	// Per https://learn.microsoft.com/en-us/windows/win32
+#endif
+
+#define MAX_COPY (MAX_PATH - 64)
 
 /* ------------------------------------------------------------------------ *\
-|  fwild() internal / external definitions
+|  fWild() internal / external definitions
 \* ------------------------------------------------------------------------ */
 
-/* Mode request bit definitions */
+// File/directory attribute request bit definitions
 
-#define  FW_FILE      1			/* Ordinary file request */
-#define  FW_HIDDEN    2			/* Hidden file request */
-#define  FW_SYSTEM    4			/* System file request */
-
-/* File exclusion control attributes */
-
-#define  XD_BYNAME    1			/* Check directories, unrooted */
-#define  XD_BYPATH    2			/* Check directories, rooted */
-#define  XF_BYNAME	  4			/* Check files, unrooted */
-#define  XF_BYPATH    8			/* Check files, rooted */
-
+#define  FW_HIDDEN		(0x02)			// Hidden file request
+#define  FW_SYSTEM		(0x04)			// System file request
+#define  FW_DIR			(0x10)			// Subdirectory request
 #ifdef  FWILD_INTERNAL
-#define  FW_VOLU      8			/* Volume name request */
+#define  FW_VOLU		(0x08)			// Volume name request
 #endif
+#define  FW_FILE		(0x40)			// Ordinary file request (synthetic)
 
-#define  FW_SUBD     16			/* Subdirectory request */
+// Allow fWild to print Access Denied warnings (synthetic)
 
-/* File attribute bit definitions */
+#define  FW_AD			(0x8000)
 
-#define  ATT_RONLY    1			/* Read only file */
-#define  ATT_HIDDEN   2			/* Hidden file */
-#define  ATT_SYSTEM   4			/* System file */
-#define  ATT_VOLU     8			/* Volume identification */
-#define  ATT_SUBD    16			/* Subdirectory file */
-#define  ATT_ARCH    32			/* File not archived */
+#define FW_ALLAD	(FW_FILE | FW_DIR | FW_HIDDEN | FW_SYSTEM | FW_AD)
+#define FW_ALL		(FW_FILE | FW_DIR | FW_HIDDEN | FW_SYSTEM)
+#define ATT_ALL		(ATT_RONLY | ATT_HIDDEN | ATT_SYSTEM\
+					| ATT_VOLU | ATT_DIR | ATT_ARCH | ATT_FILE
+
+// File/directory  attribute bit definitions
+
+#define  ATT_RONLY		(0x01)			// Read only file
+#define  ATT_HIDDEN		(0x02)			// Hidden file
+#define  ATT_SYSTEM		(0x04)			// System file
+#define  ATT_VOLU		(0x08)			// Volume identification
+#define  ATT_DIR		(0x10)			// Subdirectory file
+#define  ATT_ARCH		(0x20)			// File not archived
+#define  ATT_FILE		(0x40)			// Ordinary file request (synthetic)
+#define  ATT_NONE		(0x00)			// FinderFile() failure (synthetic)
+
+// File exclusion control attributes
+
+#define  XD_BYNAME    0x01				// Check directories, unrooted
+#define  XD_BYPATH    0x02				// Check directories, rooted
+#define  XF_BYNAME	  0x04				// Check files, unrooted
+#define  XF_BYPATH    0x08				// Check files, rooted
 
 // ------------------------------------------------------------------------------------------------
 
 #ifdef  FWILD_INTERNAL
 
-#define  f_type  pLink->dta.dta_type	/* File attribute, type */
-#define  f_fdt   pLink->fdt				/* File attribute, timestamp */
-#define  f_size  pLink->dta.dta_size	/* File attribute, size */
+#define isPath(ch)  ((ch == '\\') || (ch == '/'))  // Match either possible path character
+
+#define NULCH		('\0')				// Standard NUL character
+#define PATHCH		('\\')				// Standard path character
 
 #define FWP_MAX		(MAX_PATH + 100)	// Fwild path buffers are larger than just barely adequate
-#define LEVEL_MAX	(30)				// Number of fwild segment buffers
+#define SEG_MAX		(20)				// Number of fWild segment buffers
+#define	LEV_MAX		(30)				// Max number of search levels
 
-
-typedef	enum
+typedef	enum		// Segment types
 	{
-	TYPE_UNKNOWN = 0,	// Type not yet set                (segment 0  only)
-	TYPE_EMPTY,			// No prefix spec, (drive nor UNC) (segment 0  only)
-	TYPE_DRIVE,			// Explicit or implicit drive spec (segment 0  only)
-	TYPE_UNC,			// UNC path                        (segment 0  only)
-	TYPE_NONWILD,		// Non-wild segment				   (segment 1+ only)
-	TYPE_WILD,			// Wild segment					   (segment 1+ only)
-	TYPE_RWILD			// Recursive wild segment		   (segment 1+ only)
+	TYPE_ROOT = 0,		// Base segment				// Prefix and possibly root sepearator
+	TYPE_NORMAL,		// Non-wild segment			// Not officially wild
+	TYPE_WILD,			// Wild segment				// Officially wild
+	TYPE_RWLD			// Recursive wild segment	// Officially recursive wild
 	} SegType;
 
+typedef enum		// State machine states
+	{
+	ST_FINISHED = 0,
+	ST_ROOT_NT_0,
+	ST_ROOT_NT_1,
+	ST_ROOT_TL_0,
+	ST_NORM_NT_0,
+	ST_NORM_NT_1,
+	ST_NORM_TL_0,
+	ST_NORM_TL_1,
+	ST_NORM_TL_2,
+	ST_WILD_NT_0,
+	ST_WILD_NT_1,
+	ST_WILD_NT_2,
+	ST_WILD_TL_0,
+	ST_WILD_TL_1,
+	ST_WILD_TL_2,
+	ST_RWLD_NT_0,
+	ST_RWLD_NT_1,
+	ST_RWLD_NT_2,
+	ST_RWLD_NT_3,
+	ST_RWLD_TL_0,
+	ST_RWLD_TL_1,
+	ST_RWLD_TL_2,
+	ST_RWLD_TL_3
+	} FwildState;
 
-typedef				// The DTA object used by findf/findn/findc
+
+#define MAX_XNAME	(32)	// Max number of exclusion names
+#define MAX_XCHAR	(32)	// Max number of exclusion name chars
+
+typedef				// Exclusion interface item (fWild interface)
 	struct
 		{
-		char		dta_type;				// File attribute, type
-		UINT64		dta_size;				// File attribute, size
-		char		dta_name [MAX_PATH];	// The found filename
-		int			result;					// The returned result
-		int			SearchAttr;				// The original search attributes
-		HANDLE		sh;						// The WIN32 search handle
-		WIN32_FIND_DATA	 wfd;				// The WIN32 FIND_DATA structure
-		}  DTA_BLK, *PDTA_BLK;
+		int		drive;				// Drive number; 0 if network
+		int		type;				// File/Directory type (masked)
+		int		depth;				// Directory depth
+		char   	name [MAX_PATH];	// Item name (monocase upper)
+		}
+	EXITEM, *PEXI;
 
-
-typedef				// Recursive DTA list element object
-	struct dtaele
+typedef				// Exclusion table (internal only)
+	struct
 		{
-	struct dtaele  *pLink;					// Link to the next (inactive) DTA_ELE
-		int			wild;					// Current wild search mode
-		int			state;					// Current state
-		time_t		fdt;					// The file timestamp
-		char	   *pLast;					// Pointer to prototype string, block delimiter
-		char	   *pNext;					// Pointer to prototype string, next char
-		char		search  [FWP_MAX];		// Pointer to current search filename
-		char		pattern [FWP_MAX];		// Pointer to current pattern filename
-		char		proto   [FWP_MAX];		// Curent prototype string, first char
-		char	    found   [FWP_MAX];		// Current found filename
-		DTA_BLK		dta;					// The DTA used by findf/findn/findc
-		} DTA_ELE, *PDTA_ELE;				// Initialized to zero by fwinit()
+		PVOID	magic;				// Protect against invalid use
+		int		onceOnly;			// Ensure single initialization
+		int		enbExcl;			// TRUE to enable default exclusion config
+		int		showConf;			// TRUE to show exclusion configuration
+		int		showExcl;			// TRUE to show exclusions (real time)
+		int		listCount;			// Number of exclusion names
+		EXITEM	list [MAX_XNAME];	// Exclusion name list
+		}
+	EXtable, *PEXtable, *PEX;
 
+
+typedef				// DTA object used by FindFirstFile() and cousins
+	struct
+		{
+		int			valid;					// TRUE when WFD has found file data
+		int			SearchAttr;				// Search file attribute bitmap
+		int			dta_type;				// Found file attribute bitmaps
+		UINT64		dta_size;				// Found file size
+		time_t		dta_fdt;				// Found file date/time
+		time_t		dta_mtime;				// Found file Microsoft date/time
+		char		dta_name [FWP_MAX];		// Found file filename
+		HANDLE		sh;						// The Windows Find* search handle
+		WIN32_FIND_DATA	 wfd;				// The WIN32 FIND_DATA structure
+		}  FW_DTA, *PFW_DTA;
 
 typedef				// Segment object
 	struct
 		{
+		int			index;					// The segment index within the array
+		int			terminal;				// TRUE if the last segment
 		SegType		type;					// The segment type
-		int			terminal;				// TRUE if the terminal level of the pattern
-		int			separator;				// if TRUE, concat with separator
-		int			length;					// String length of the segment text
-		char	   *pEnd;					// Ptr to the segment string end NUL
-		char		segBuffer [FWP_MAX];	// The segment string buffer
-		} DTA_SEG, *PDTA_SEG;				// Initialized to zero by fwinit()
+		int			delta;					// Applicable change to directory depth
+		char	   *pBegin;					// Ptr to the beginning of the pattern segment
+		FwildState	levelState;				// The initial search state
+		char		buffer		[FWP_MAX];	// Segment buffer
+		} FW_SEG, *PFW_SEG;					// Initialized to zero by fwInit()
 
+typedef				// DTE level element
+	struct // dtaele
+		{
+		int			index;					// Search level index (element index)
+		void	   *pHdr;					// Point to the FW_HDR instance			 
+		FwildState	state;					// The current level search state
+		int			depth;					// Current path depth
+		PFW_SEG		pSeg;					// Ptr to the current associated segment
+		int			segIndex;				// Current associated segment index
+		char	   *patConcat;				// Pointer to the current Found concat point
+		char	   *fndConcat;				// Pointer to the current Search concat point
+		FW_DTA		dta;					// The DTA used by findf/findn/findc
+		char		pattern		[FWP_MAX];	// Current search path
+		char	    found		[FWP_MAX];	// Current found path
+		} FW_LEV, *PFW_LEV;
 
-typedef				// Basic fwild data root object
+typedef				// Basic fWild instance root object
 	struct
 		{
-		PDTA_ELE	pLink;					// Ptr to the active DTA_ELE element chain
-		int			level;					// 0 to highest level compiled
-		int			rooted;					// The path is a root path
-		int			exActive;				// Enable file exclusion processing
-		int			xmode;					// File exclusion mode
-		int			mode;					// Find search file attribute
-		char		rawPattern [FWP_MAX];	// Raw pattern string from fwinit()
-		DTA_SEG		segment  [LEVEL_MAX];	// Segment level array
-		} DTA_HDR, *PDTA_HDR;				// Initialized to zero by fwinit()
+		PVOID		magic;					// Protect against invalid use
+		int			running;				// TRUE to keep the state machine running;
+		int			SearchAttr;				// Attributes used for searching inside the library
+		int			CallerAttr;				// Caller's search file attributes bitmask
+		int			rootDepth;				// Initial path depth
+		int			curLevel;				// Current element array active level
+		int			segmentCount;			// Number of segments compliled
+
+		int			foundFlag;				// Search was successful
+		char	   *file_name;				// Pointer to the last found filespec
+		time_t		file_fdt;				// The found file timestamp
+		char		file_type;				// The found file type attribute
+		UINT64		file_size;				// The found file size
+
+		PEXtable	xp;						// Ptr to the file exclusion instance
+		EXITEM		xItem;					// EXITEM structure for file exclusion interface
+
+		FW_LEV		level		[LEV_MAX];	// Search element array
+		FW_SEG		segment		[SEG_MAX];	// Segment element array
+		char		pattern		[FWP_MAX];	// Working copy of the pattern
+		} FW_HDR, *PFW_HDR, *PFWH, *PHP;	// Initialized to zero by fwOpen()
+
+
+typedef				// FileInfo search instance
+	struct
+		{
+		void	   *magic;					// Validity check value
+		FW_DTA		dta;					// Finder instance search block
+		} FI, *PFI;
 
 
 typedef				/* File Pair (FP) structure */
@@ -161,19 +248,24 @@ typedef				/* File Pair (FP) structure */
 		int			sentinel;				// Sentinel to detect free() error
 		int			index;					// Index into fnp1 for tail part
 		int			dflag;					// TRUE if fnp2 should be constructed
-		DTA_HDR	   *hp;						// Pointer to fwild structure
-		char	   *s2;						// Pointer to dest path
+		FW_HDR	   *hp;						// Pointer to fWild structure
+		char	   *s2;						// Pointer to the constructed dest path
 		char	   *fnp1;					// Pointer to first filename
 		char	   *fnp2;					// Pointer to second filename
-		}  FP;
+		}  FP, *PFP;
 
 
-#define  DHV	DTA_HDR
-#define  FPV	FP
-#else
-#define  DHV	void
-#define  FPV	void
-#endif
+#else // (not FWILD_INTERNAL)
+
+typedef void   *PFWH;
+typedef void   *PHP;
+typedef void   *PEX;
+typedef void   *PEXI;
+typedef void   *PFP;
+typedef void   *PFI;
+typedef void   *PVOID;
+
+#endif // FWILD_INTERNAL
 
 #if defined(_FILE_DEFINED)
 #define  _PTOFILE	FILE *
@@ -201,35 +293,57 @@ typedef							/* strtoken() support */
 		char   ch;      		/* Saved delimiter character */
 		}  TOKENCB;
 
+#define DriveIndex(ch) ((toupper(ch) - 'A') + 1)
+
 /* ------------------------------------------------------------------------ *\
 |  Function prototypes
 \* ------------------------------------------------------------------------ */
 
-#define  finit(a,b)  fwinit((a),(b))					/* Backward name compatibility */
+extern	PFI		FileInfoOpen (int, const char *);		// Open file information instance
+extern	char   *FileInfoName (PFI);						// Get file Name (no path)
+extern	int		FileInfoAttr (PFI);						// Get file Attributes
+extern	UINT64	FileInfoSize (PFI);						// Get file Size
+extern	time_t	FileInfoFDT (PFI);						// Get file FTD
+extern	time_t	FileInfoMtime (PFI);					// Get Microsoft time FDT
+extern	PFI		FileInfoClose (PFI);					// Close file information instance
 
-extern	DHV    *fwinit (char *, int);					/* Init the wild filename server */
-extern	char   *fwild (DHV *);							/* Return a wild filename */
-extern	void	fwExclEnable(DHV *, int);				/* Enable the file exclusion mechanism */
-extern	DHV    *fwfree (DHV *);							/* Close and free an fwild instance (internal only) */
-extern	char   *fwfirst (char *);						/* Return the first matching wild filename */
-extern  int		fwtype (DHV *);							/* Return the type of the current fn */
-extern  char   *fwdate (DHV *);							/* Return the date of the current fn */
-extern  char   *fwtime (DHV *);							/* Return the time of the current fn */
-extern  char   *fwtimes (DHV *);						/* Return the time of the current fn (secs) */
-extern  time_t	fwgetfdt (DHV *);						/* Return the current file timedate */
-extern  UINT64	fwsize (DHV *);							/* Return the size of the current fn */
-extern	int		fwvalid (char *);						/* Validate a file/path string */
+extern	PEX		fExcludeOpen (void);					// Open the file inclusion instance
+extern	PEX		fExcludeClose (PEX);					// Close the file inclusion insstance
+extern	int		fExclude (PEX, char *);					// Exclude a file/dir name	
+extern	int		fExcludeCheck (PEX, PEXI);				// Check exclusion of a file/dir name	
+extern	int		fExcludeConnect (PEX, PFWH);			// Check exclusion of a file/dir name	
+extern	void	fExcludeDefEnable (PEX, int);			// Enable default file exclusion config
+extern	void	fExcludeShowConf (PEX, int);			// Show the file exclusion configuration
+extern	void	fExcludeShowExcl (PEX, int);			// Show file/dir exclusions in stdout
+extern	int		fExcludePathCheck (PEX, char *);		// Check a path for exclusion
+
+extern	int		fwActive (PFWH);						/* Check a PFWH for valid and active */
+extern	PFWH	fwOpen (void);							/* Open fWild instance */
+extern	int		fwInit (PFWH, const char *, int);		/* Initialize fWild search */
+extern	char   *fWild (PFWH);							/* Return a wild filename */
+extern	void	fwExclEnable(PFWH, PEX, int);			/* Enable fWild file exclusion */
+extern	PFWH	fwClose (PFWH);							/* Close fWild instance */
+//extern char  *fwFirst (const char *);					/* Return the first matching wild filename (deprecated) */
+extern  int		fwdepth (PFWH);							/* Return the directory depth of the current fn */
+extern  int		fwtype (PFWH);							/* Return the type of the current fn */
+extern  char   *fwdate (PFWH);							/* Return the date of the current fn */
+extern	char   *fwLastFound (PFWH);						/* Return ptr to the last found filespec */
+extern  char   *fwtime (PFWH);							/* Return the time of the current fn */
+extern  char   *fwtimes (PFWH);							/* Return the time of the current fn (secs) */
+extern  time_t	fwgetfdt (PFWH);						/* Return the current file timedate */
+extern  UINT64	fwsize (PFWH);							/* Return the size of the current fn */
+extern	int		fwValid (const char *);					/* Validate a file/path string */
 extern	char   *fwerror (void);							/* Return the fwerrno error string */
-extern  char   *vol_name (char *);						/* Return vol name of the spec drive */
-extern  char   *_volname (int);							/* Return vol name of the spec drive */
-extern	int		fgetattr (char *fnp);					/* Get file attributes (filename) */
+extern  char   *volName (const char *);					/* Return vol name of the spec drive (path) */
+extern  char   *_volName (int);							/* Return vol name of the spec drive */
+extern	int		fgetattr (const char *);				/* Get file attributes (filename) */
 extern	int		hgetattr (int fh);						/* Get file attributes (handle) */
-extern	time_t	fgetfdt (char *fnp);					/* Get timedate (filename) */
-extern	time_t	hgetfdt (int fh);						/* Get timedate (handle) */
-extern	int		fgetsize (char *fnp, PUINT64 size);  	/* Get file size (filename) */
-extern	int		hgetsize (int fh, PUINT64 size);     	/* Get file size (handle) */
-extern	int		fsetattr (char *fnp, int attr);			/* Set file attr (filename) */
-extern	int		fsetfdt (char *fnp, time_t fdt);		/* Set timedate (filename) */
+extern	int		fgetfdt (const char *, time_t *);		/* Get timedate (filename) */
+extern	time_t	hgetfdt (int);							/* Get timedate (handle) */
+extern	int		fgetsize (const char *, PUINT64);  		/* Get file size (filename) */
+extern	int		hgetsize (int, PUINT64);			    /* Get file size (handle) */
+extern	int		fsetattr (const char *, int);			/* Set file attr (filename) */
+extern	int		fsetfdt (const char *, time_t);			/* Set timedate (filename) */
 extern	time_t	zerotime (void);						/* Return lowest usable UNIX time */
 
 extern	int		getopt (int, char **, char *);			/* Decode command options */
@@ -239,65 +353,103 @@ extern	char   *optvalerror (void);						/* Return optval() error string */
 extern	int		expression (char *, long *);			/* Evaluate numeric expression */
 extern	char   *expression_error (void);				/* Return expression() error string */
 
-extern  char   *fnabspth (char *);						/* Return absolute name of the fn */
+extern  int		_fnabspth (char *, const char *);		/* Return absolute name of the fn */
+extern  char   *fnabspth (const char *);				/* Return absolute name of the fn */
 extern	int		fnBuildPath (const char *);				// Verifies/constructs a filespec path
-extern  char   *fncatpth (char *, char *);				/* Return concatenated name */
-extern  char   *fntail (char *);						/* Return the tail of the filename */
-extern	int		fnsubpth (char *, char *);				/* Check if s1 is a subpath of s2 */
-extern	int		_fnchkdir (char *);						/* Test if a directory exists (no UNC) */
+extern  int		_fncatpth (char *, const char *, const char *);	/* Return concatenated name to buffer */
+extern  char   *fncatpth (const char *, const char *);	/* Return concatenated name (allocated) */
+extern  char   *fntail (const char *);					/* Return the tail of the filename (raw) 	*/
+extern  char   *_fntail (const char *);					/* Return the tail of the filename (post prefix)*/
+extern	int		fnsubpth (const char *, const char *);	/* Check if s1 is a subpath of s2 */
+extern	int		fnchkdir (const char *);				/* Test if a directory exists */
+extern	int		fnchkdir (const char *);				/* Test if a directory exists */
 extern	int		fnCondense(char *);						/* Condense a non-prefix pathname */
-extern	int		fnchkdir (char *);						/* Test if a directory exists */
-extern	int		fnchkfil (char *);						/* Test if a file exists */
-extern  int 	fnchkunc (char *);						/* Test if a UNC root */
-extern	char   *fnGetPath (const char *);				// returns ptr to allocated path string
-extern	int		fnMakePath (const char *);				// Verifies/constructs a specifed path
+extern	int		fnchkdir (const char *);				/* Test if a directory exists */
+extern	int		fnchkfil (const char *);				/* Test if a file exists */
+//extern int 	fnchkunc (const char *);				/* Test if a UNC root (deprecated) */
+extern  int		_fnGetPath (const char *);				// Extracts buildable path (internal only)
+extern  int		fnGetPath (char *, const char *);		// Extracts buildable path 
+extern  int		fnMakePath (void);						// Verifies/constructs buildable path
 extern  int		fnreduce (char *);						/* Reduce a filename */
-extern	int		fnValidName (char *);					/* Test if a path is valid nonwild filename syntax */
-extern  int		fndot (char *);							/* Test if a "dot" directory */
-extern	int		fnmatch (char *, char *, int);			/* Match a wild file name segment */
-extern	int		fnmatch2 (char *, char *);				/* Match a wild file name segment */
-extern  int		iswild (char *);						/* Test if a "wild" path */
-extern	int 	fnParse (char *, int *, int *);			/* Parse a filename path */
+extern	int		fnValidName (const char *);				/* Test if a path is valid nonwild filename syntax */
+extern	int		fndot (const char *);					// Test if a "dot" directory
+extern	int		fnFileType (const char *);				// Ptr to the file/pathspec
+//extern int	fnmatch (const char *, const char *, int);	/* Match a wild file name segment  (deprecated) */
+extern	int		fnMatch (const char *, const char *);	/* Match a wild file name segment*/
+//extern int	fnmatch2 (const char *, const char *);	/* Match a wild file name segment (deprecated) */
+extern	int		isDirectory (const char *);				// Test if an existing directory
+extern	int		isFile (const char *);					// Test if an existing file
+extern	int		isPhysical (const char *);				// Test if path is physically valid
+extern  int		isWild (const char *);					// Test if a "wild" path (has '?' or '*')
+extern	int 	fnParse (const char *, int *, int *);	/* Parse a filename path */
 //extern int	pmatch (char *, char *, int);			/* Test two fnames for match (deprecated) */
 //extern int	psubmatch (char *, char *, int);		/* Test two fnames for submatch (deprecated) */
-
 //extern int	MakePath (const char *);				/* Build a path (deprecated) */
+
+extern	int		_nameMatch (const char *pPat, const char *pNam, int); // Test file/dir name for acceptance
+extern	int		pnMatch (const char *, const char *);	/* Match against a wild file name path */
+extern	int		pnOverlap (const char *, const char *);	/* Check for overlap between two paths */
 extern	int		pcreat (const char *, int);				/* Build path and creat() a file */
 extern	int		popen (const char *, int, int);			/* Build path and open() a file */
 extern	int		prename (const char *, const char *);	/* Build path and rename() a file */
-extern	char   *QueryDrivePrefix (char *s, int);		/* Query if s points a drive spec */
-extern	char   *QueryUNCPrefix (char *s);				/* Query if s points a UNC spec */
-extern	char   *PointPastPrefix (char *s, int);			/* Returns ptr past any prefix */
+//extern char  *QueryDrivePrefixMulti (const char *);	/* Query if pathspec points a drive spec (multi) */
+extern	char   *QueryUNCPrefix (const char *);			/* Query if pathspec points a UNC spec */
+extern	char   *QueryDrivePrefix (const char *);		/* Query if pathspec points a drive spec (single) */
+extern	char   *QueryRootPrefix (const char *);			/* Query if pathspec points a drive spec (single) */
+extern	char   *PointPastPrefix (const char *);			/* Returns ptr past any prefix */
+extern	int		isPrefixed (const char *);				// Query if pathspec points any prefix
 extern	int		isRooted (void);						// "rooted" property of last PointPastPrefix() call
+extern	int		isSameDevice (const char *, const char *);	// Query if two pathspecs are same device
+
+extern	char   *pathCat (char *, const char *, int);	// Concatenate a path (protected)
+extern	char   *pathCopy (char *, const char *, int);	// Copy a path (protected)
+extern	char   *pathDup (const char *);					// Duplicate a path (MAX_PATH compliant)
+extern	char   *fpathDup (const char *);				// Duplicate a path but fatal if fail
+
+extern	char   *showFileAttr (int);						// Show file attributes in a string */
+
+extern	time_t	TimeToUnixTime (time_t);				// Returns the timestamp in unix format
+extern	time_t	UnixTimeToTime (time_t);				// Returns the timestamp in Windows format
 
 #ifdef _FILE_DEFINED
-extern  FILE   *pfopen (const char *pathname, const char *mode);
-extern	void	HexDump (FILE *, void *, unsigned); /* Perform hexdump to file */
+extern  FILE   *pfopen (const char *, const char *);
+extern	void	HexDump (FILE *, void *, unsigned);		/* Perform hexdump to file */
 #endif
 
-extern  char	strpath (char *);						/* Return the path char of the fn */
+extern  char	strpath (const char *);					/* Return the path char of the fn */
 extern  void	strsetp (char *, char);					/* Set the path char in a string */
 
-extern	int		isValidPath (char);						/* Validates path characters */
+extern	int		isValidChar (char, int);				/* Validate command line characters */
+extern	int		isValidPath (char);						/* Validate path characters */
+extern	int		_isValidDrive (int);					/* Validate drive by drive number */
+extern	int		isValidDrive (const char *);			/* Validate drive by drive name */
 extern	int		isValidUNC (char);						/* Validates UNC \\server\share characters */
 extern  char	egetpath (void);						/* Return the path char of the env */
 extern  char	getpath (void);							/* Return the path char of DOS */
 extern  char	egetswch (void);						/* Return the switch char of the env */
 
-extern	int 	getdepth (int drive);					/* Get the cdw directory depth */
-extern	int		getdir (int, char *);					/* Get the CWD for a drive */
+extern	int 	_getdepth (int);						/* Get the CWD directory depth from drive number */
+extern	int 	GetDepth (const char *, int *);			/* Get the CWD directory depth from path */
+extern	char   *__getDir (int);							/* Point the CWD by drive number */
+extern	char   *_getDir (const char *);					/* Point the CWD by drive name */
+extern	char   *getDir (const char *);					/* Get the allocated CWD by drive name */
 extern	int		getdrive (void);						/* Get the default drive */
+extern	int		MakePrefixLetter (char, char *);		/* Make a drive prefix (letter) */
+extern	int		MakePrefixNumber (int, char *);			/* Make a drive prefix (number) */
 extern	int		getcols (void);							/* Get the console column count */
 extern	int		getrows (void);							/* Get the console row count */
 
 extern  char   *stpblk (char *);						/* Skip leading white space */
-extern  char   *fmalloc (unsigned int);					/* Malloc() with a fatal error */
-extern  void	fatalerr (char *);						/* Die an unnatural death */
+extern  char   *fmalloc (unsigned int);					/* malloc() with a fatal error */
+//extern char  *fstrdup (const char *);					/* strdup() with a fatal error */
+//extern char  *strdupMax(const char *);				/* strdup always with size MAX_PATH (deprecated) */
+//extern char  *fstrdupMax(const char *);				/* strdupMax with a fatal error (deprecated) */
+extern  void	fatalerr (const char *);				/* Die an unnatural death */
 
-extern  int		execute (char *, int);						/* Execute a child process */
-extern	int		fcopy (char *src, char *dst, int flg);		/* Copy a file */
-extern	int		fp_init (FPV **, int flag, char *, char *);	/* Init fpair */
-extern	int		fp_pair (FPV *, char **, char **);			/* Return fpair */
+extern  int		execute (char *, int);					/* Execute a child process */
+extern	int		fcopy (const char *, const char *, int);	/* Copy a file */
+extern	int		fp_init (PFP *, int, char *, char *);	/* Init fpair */
+extern	int		fp_pair (PFP, char **, char **);		/* Return fpair */
 
 /* Far memory manipulation support */
 
@@ -306,30 +458,34 @@ extern	int		fp_pair (FPV *, char **, char **);			/* Return fpair */
 #define  farcpy(a, b, c)	memcpy((a), (b), (c))
 #define  farset(a, b, c)	memset((a), (b), (c))
 #else
-extern	int		farcmp (void far *dst, void far *src, unsigned int n);
-extern	void	farcpy (void far *dst, void far *src, unsigned int n);
-extern	void	farset (void far *dst, int value,     unsigned int n);
+extern	int		farcmp (void far *, void far *, unsigned int);
+extern	void	farcpy (void far *, void far *, unsigned int);
+extern	void	farset (void far *, int value,  unsigned int);
 #endif
 
 /* Time/date string parsing support */
 
-extern	char   *strdate  (time_t dt);					/* Convert a DOS timedate to a date string */
-extern	char   *strtime  (time_t dt);					/* Convert a DOS timedate to a time string */
-extern	char   *strtime2 (time_t dt);					/* Convert a DOS timedate to a time string */
-extern	time_t	sgettd   (char *s);						/* Parse a TIMEDATE string */
-extern	time_t	fwsgettd (char *s);						/* Parse a TIMEDATE string (filename) */
+extern	char   *strdate  (time_t);						/* Convert a DOS timedate to a date string */
+extern	char   *strtime  (time_t);						/* Convert a DOS timedate to a time string */
+extern	char   *strtime2 (time_t);						/* Convert a DOS timedate to a time string */
+extern	time_t	sgettd   (char *);						/* Parse a TIMEDATE string */
+extern	time_t	fwsgettd (char *);						/* Parse a TIMEDATE string (filename) */
 extern	char   *serrtd   (void);						/* Return TD error string */
 extern	char   *fwserrtd (void);						/* Return TD error string (filename) */
-extern	char   *strdupMax(const char *s);				/* strdup always with size MAX_PATH */
-extern  char   *strtoken (char *string, char *control, TOKENCB *tokenblk);
+extern  char   *strtoken (char *, char *, TOKENCB *);
 
 #ifdef  FWILD_INTERNAL
 
-extern	int		_findf (DTA_BLK *, char *, int);		/* Dual mode */
-extern	int		_findn (DTA_BLK *);
-extern	void	_findc (DTA_BLK *);
-extern  int		AttrFromWin32 (DWORD attr); 			/* Convert WIN32 attr to FWILD attr */
-extern  DWORD	AttrToWin32 (int attr);					/* Convert FWILD attr to WIN32 attr */
+extern	int		FinderOpen (PFW_DTA, const char *);	// Finder open
+extern	int		FinderFile (PFW_DTA, char *);			// Finder get filename
+extern	void	FinderClose (PFW_DTA);					// Finder close
+
+extern	int		_findf (FW_DTA *, const char *, int);	/* Dual mode (open + find) */
+extern	int		_findo (FW_DTA *, const char *, int);	/* Open */
+extern	int		_findn (FW_DTA *);						/* Find */
+extern	void	_findc (FW_DTA *);						/* Close */
+extern  int		AttrFromWin32 (DWORD);		 			/* Convert WIN32 attr to FWILD attr */
+extern  DWORD	AttrToWin32 (int);						/* Convert FWILD attr to WIN32 attr */
 #endif
 
 extern	char	optswch;								/* The option switch character */
@@ -337,23 +493,21 @@ extern	char	optchar;								/* The last option character */
 extern	int		optind;									/* The current argv[] index */
 extern	char   *optarg;									/* Pointer to option parameter */
 extern	char   *optenv;									/* Pointer to environment options */
-extern	int		fwerrno;								// fwvalid() error result
-extern	int		xporlater;								// TRUE if Windows XP or later
+extern	int		fwerrno;								// fwValid() error result
 
 /* Template program support */
 
 extern	char   *usagedoc [];							/* Usage documentation pointer array */
 
-
-extern	void	fwinitError	(char *fnp);				/* Report fwinit error */
-extern	void	cantfind	(char *fnp);				/* Report can't find inout file */
-extern	void	cantopen 	(char *fnp);				/* Report can't open inout file */
+extern	void	fwInitError	(const char *fnp);			/* Report fwInit error */
+extern	void	cantfind	(const char *fnp);			/* Report can't find inout file */
+extern	void	cantopen 	(const char *fnp);			/* Report can't open inout file */
 extern	void	usage    	(void);						/* Report usage following error */
 extern	void	help     	(void);						/* Report help on request */
-extern	void	docprint 	(char *s[]);				/* Print help support */
+extern	void	docprint 	(const char *s[]);			/* Print help support */
 
 extern	void	fmemdump  (								/* Dump n bytes of memory */
-		    _PTOFILE fp, char *p, int n, long offset);
+		    _PTOFILE, char *, int, long);
 
 /* ------------------------------------------------------------------------ *\
 |  fcopy () definitions
@@ -383,7 +537,7 @@ extern	void	fmemdump  (								/* Dump n bytes of memory */
 #define  FPR_P2WILD		(2)	/* Path2 cannot be wild */
 #define  FPR_P2FILE		(3)	/* Path2 cannot be a file */
 #define  FPR_MEMORY		(4)	/* Insufficient memory */
-#define  FPR_FWERROR	(5)	/* fwild() error */
+#define  FPR_FWERROR	(5)	/* fWild() error */
 
 /* ------------------------------------------------------------------------ *\
 |  fwerrno definitions
@@ -397,6 +551,10 @@ extern	void	fmemdump  (								/* Dump n bytes of memory */
 #define  FWERR_ELEMENT		(5)		// Improper path element spec
 #define  FWERR_SIZE			(6)		// Invalid name field size
 #define  FWERR_TRAIL		(7)		// Trailing "\" following element
+#define  FWERR_INVALID		(8)		// Invalid pattern
+#define  FWERR_INSTANCE		(9)		// Not a valid instance structure
+#define  FWERR_PHYSICAL		(10)	// Non-physical device
+#define  FWERR_NOMEM		(11)	// Not enough memory
 
 /* ------------------------------------------------------------------------ *\
 |  Exit code definitions
@@ -423,3 +581,4 @@ extern char * gets(char *s);
 #endif // __FWILD_H__
 
 /* ------------------------------------------------------------------------ */
+		

@@ -8,7 +8,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <dos.h>
-#include <fwild.h>
+#include <fWild.h>
 #include <getoptns.h>
 #include <getopt2.h>
 
@@ -22,23 +22,30 @@
 //#define DIRECTORIES
 /*--------------------------------------------------------------------*/
 
-#define MASK  (ATT_VOLU | ATT_SUBD)
+#define DIRECTORIES
+#define MASK		(ATT_VOLU | ATT_DIR)
+#define HS_MODES	(FW_HIDDEN | FW_SYSTEM)
 
-int		plus_flags  = 0;	// Attribute changes added
-int		minus_flags = 0;	// Attribute changes removed
+int		smode		= FW_FILE;	// File search mode attributes
 
-int		c_flag      = 0;	// Compare attributes with proposed change, only 
-int		f_flag      = 0;	// Force updates, even if no change
-int		l_flag      = 0;	// List all files, not just those changed
-int		q_flag      = 0;	// Query flag
-int		Q_flag      = 0;	// Quiet output
-int		change_req  = 0;	// Nonzero if any change requests entered
+int		plus_flags  = 0;		// Attribute changes added
+int		minus_flags = 0;		// Attribute changes removed
+
+int		c_flag      = 0;		// Compare attributes with proposed change, only 
+int		f_flag      = 0;		// Force updates, even if no change
+int		l_flag      = 0;		// List all files, not just those changed
+int		q_flag      = 0;		// Query flag
+int		Q_flag      = 0;		// Quiet output
+int		change_req  = 0;		// Nonzero if any change requests entered
 
 #if defined(DIRECTORIES)
-int		d_flag      = 0;
+int		d_flag      = 0;		// include directory options
 #endif
 
 static	char   *fargv [] = { "" };		/* Fake argv array */
+
+PHP		hp			= NULL;		// FWILD instance pointer
+PEX		xp			= NULL;		// FEX instance pointer
 
 /**********************************************************************/
 	static char 
@@ -50,7 +57,7 @@ copyright [] =
 usagedoc [] =
 {
 #if defined(DIRECTORIES)
-"Usage:  chmod  [-aArRhHsS] [+arhs] [=arhs0] [-?cdqv] [-X...] [file_list]",
+"Usage:  chmod  [-aAdDrRhHsS] [+arhs] [=arhs0] [-?cdqv] [-X...] [file_list]",
 #else
 "Usage:  chmod  [-aArRhHsS] [+arhs] [=arhs0] [-?cqv] [-X...] [file_list]",
 #endif
@@ -68,9 +75,10 @@ usagedoc [] =
 "0         no attributes",
 "",
 #if defined(DIRECTORIES)
-"-d        directory: change attributes on directories also",
+"-d        directory: change attributes only on directories",
 #endif
-"-f        force:     force change even if no change needed",
+"-e        even if hidden or system; permit attribute changes",
+"-F        force:     force change even if no change needed",
 "-l        list:      list all files processed, not only those that are changed",
 "-q        query:     ask before changing each file",
 "-Q        Quiet:     do not output anything, except errors",
@@ -79,7 +87,7 @@ usagedoc [] =
 "-X-       disable default file exclusion(s)",
 "-X+       show exclusion path(s)",
 "-X=       show excluded path(s)",
-"-c        compare:   do not change attributes, but",
+"-c        compare:   do not change attributes, but check them",
 "          return errorlevel 1 if file matches specified attributes",
 "                            0 if it does not",
 "",
@@ -132,7 +140,7 @@ process (
 	int changed    = FALSE;
 
 	if (attrib_old < 0)
-		printf("\7Unable to get attributes: %s\n", fnp);
+		fprintf(stderr, "Unable to get attributes: %s\n", fnp);
 	else if (plus_flags | minus_flags)
 		{
 		attrib_new &= (~minus_flags);	// Determine the requested flags
@@ -143,7 +151,7 @@ process (
 			if (f_flag || (attrib_new != attrib_old))
 				{
 				if (query(fnp)  &&  (fsetattr(fnp, attrib_new) < 0))
-					printf("\7Unable to change attributes: %s\n", fnp);
+					fprintf(stderr, "Unable to change attributes: %s\n", fnp);
 				else
 					{
 					++changed;
@@ -195,10 +203,21 @@ configMinusOptions (
 		{
 		case 'c':
 		case 'C':   ++c_flag;	break;
+
 #if defined(DIRECTORIES)
 		case 'd':
-		case 'D':   ++d_flag;	break;
+		case 'D':
+			{
+			++d_flag;
+			smode |= FW_DIR;	// Change only directory attributes
+			smode &= ~FW_FILE;
+			break;
+			}
 #endif
+
+		case 'e':
+		case 'E':   smode |= HS_MODES;	break;
+
 		case 'f':
 		case 'F':   ++f_flag;	break;
 
@@ -213,12 +232,12 @@ configMinusOptions (
 		case 'x':
 		case 'X':
 			if      (optarg[0] == '-')			// (Upper case)
-				fexcludeDefEnable(FALSE);		/* Disable default file exclusion(s) */
+				fExcludeDefEnable(xp, FALSE);	// Disable default file exclusion(s)
 			else if (optarg[0] == '+')
-				fexcludeShowConf(TRUE);			/* Enable stdout of exclusion(s) */
+				fExcludeShowConf(xp, TRUE);		// Enable stdout of exclusion(s)
 			else if (optarg[0] == '=')
-				fexcludeShowExcl(TRUE);			/* Enable stdout of excluded path(s) */
-			else if (fexclude(optarg))
+				fExcludeShowExcl(xp, TRUE);		// Enable stdout of excluded path(s)
+			else if (fExclude(xp, optarg))
 				printf("Exclusion string fault: \"%s\"\n", optarg);
 			break;
 
@@ -288,7 +307,7 @@ static int onceonly = 1;
 
 	if (onceonly)
 		{
-		onceonly = 0;
+		onceonly    = 0;
 		plus_flags  = ( 0 );
 		minus_flags = (_A_ARCH | _A_HIDDEN | _A_RDONLY | _A_SYSTEM);
 		}
@@ -349,7 +368,11 @@ diagnostics (void)
 // getopt initialization data
 /*--------------------------------------------------------------------*/
 
-OPTINIT	minusOptions = { NULL, '-', "aAfFhHlLrRsS?cqQX:",	configMinusOptions };
+#if defined(DIRECTORIES)
+OPTINIT	minusOptions = { NULL, '-', "aAdDeEfFhHlLrRsS?cqQX:", configMinusOptions };
+#else
+OPTINIT	minusOptions = { NULL, '-', "aAeEfFhHlLrRsS?cqQX:",	configMinusOptions };
+#endif
 OPTINIT	plusOptions  = { NULL, '+', "aAhHrRsS", 			configPlusOptions  };
 OPTINIT	equalOptions = { NULL, '=', "0aAhHrRsS",    		configEqualOptions };
 
@@ -365,11 +388,15 @@ main (
 	int		exitcode = 0;		// The program exit code
 	int		argIndex;
 	int		errorCode;			// The getopt2 completion code
-	int		smode	= FW_FILE;	/* File search mode attributes */
-	void   *hp		= NULL;		/* Pointer to wild file data block */
 	char   *ap		= NULL;		/* Argument pointer */
 	char   *fnp		= NULL;		/* Target file name pointer */
 	char   *envPtr	= NULL;		/* Target file name pointer */
+
+
+	if ((hp = fwOpen()) == NULL)
+		exit(1);
+	if ((xp = fExcludeOpen()) == NULL)
+		exit(1);
 
 //BWJ	setbuf(stdout, fmalloc(BUFSIZ));
 	envPtr = getenv("CHMOD");
@@ -383,13 +410,13 @@ main (
 	errorCode = getopt2(argc, argv, envPtr, &argIndex);
 	if (errorCode != OPTERR_NONE)
 		{
-		printf("\7Error (%d), %s\n", errorCode, getoptErrorStr());
+		fprintf(stderr, "Error (%d), %s\n", errorCode, getoptErrorStr());
 		exit(1);
 		}
 
 #if defined(DIRECTORIES)
 	if (d_flag)
-		smode |= FW_SUBD;
+		smode |= FW_DIR;
 #endif
 
 #if DEBUG_LEVEL > 0
@@ -409,24 +436,24 @@ main (
 		{
 		ap = argv[argIndex++];
 		
-		if ((hp = fwinit(ap, smode)) == NULL)		/* Process the input list */
-			fwinitError(ap);
-		fwExclEnable(hp, TRUE);		/* Enable file exclusion */
-		if ((fnp = fwild(hp)) != NULL)
+		if (fwInit(hp, ap, smode) != FWERR_NONE)	// Process the pattern
+			fwInitError(ap);
+		fExcludeConnect(xp, hp);					// Connect the exclusion instance
+		if ((fnp = fWild(hp)) != NULL)
 			{
 			do  {			/* Process one filespec */
 				process(fnp);
-				} while (fnp = fwild(hp));
-			hp = NULL;
+				} while (fnp = fWild(hp));
 			}
 		else
 			{
-			hp = NULL;
 			exitcode = 1;
 			cantfind(ap);
 			}
 		}
 
+	xp = fExcludeClose(xp);					// Close the Exclusion instance
+	hp = fwClose(hp);						// Close the fWild instance
 	exit (exitcode);
 	}
 

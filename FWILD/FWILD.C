@@ -1,9 +1,9 @@
-/* ----------------------------------------------------------------------- *\
+/* ------------------------------------------------------------------------ *\
 |
-|							 FWINIT - FWILD - FWFREE
+|					FWOPEN - FWACTIVE - FWINIT - FWILD - FWCLOSE
 |						   Wild Card File Name Server
 |
-|			Copyright (c) 1985, 1990, 1991, 1993, all rights reserved
+|				Copyright (c) 1985 - 2023, all rights reserved
 |								Brian W Johnson
 |									8-Jun-90
 |								   14-May-91
@@ -11,28 +11,39 @@
 |								   17-Aug-97  Win32
 |								   24-Feb-98  Memory leak fixed
 |									1-Aug-06  Accept ".*" file and directory names
+|									1-Oct-23  Major rewrite
 |
-|			void *				Return a pointer to an fwild header
-|		hp = fwinit (s, mode);	Initialize the wild filename system
-|			char  *s;			Drive/path/filename string
-|			int	   mode;		Search mode to use (FW_* from fwild.h)
+|		PFWH				Return a pointer to an allocated fWild instance header
+|	fwOpen (void)			Create a new fWild instance
 |
-|			char *				Return a drive/path/filename string
-|		fnp = fwild (hp);		Return the next filename
-|			void  *hp;			Pointer to the fwild header
+|		int					TRUE iff valid
+|	fwActive (				Validate the fWild instance
+|		PFWH	hp)			Pointer to the FW_HDR header
 |
-|			void *				Always returns NULL
-|		fwfree (hp);			Close and free the fwild system instance
-|			void  *hp;			Pointer to the fwild header
+|		int					Returns 0 if successful, else error code
+|	hp = fwInit (			Initialize the wild filename system
+|		char   *s;			Drive/path/filename string
+|		int		CallerAttr;	Caller's search attributes (FW_* from fWild.h) to use
 |
-|		fwfree() need only be called if aborting the fwild sequence early
+|		char *				Return a drive/path/filename string
+|	fnp = fWild (			Return the next filename
+|		PFWH	hp;			Pointer to the fWild instance
 |
-\* ----------------------------------------------------------------------- */
+|		void
+|	fwExclEnable (			Enable/disable file exclusion
+|		PFWH	hp,			Pointer to the fWild instance
+|		PEX		xp,			Pointer to the Excl instance
+|		int		enable)		TRUE to enable exclusion
+|
+|		PFWH				Always returns NULL (to NULL the caller's hp)
+|	fwClose (				Close and free the fWild system instance
+|		PFWH	hp)			Pointer to the instance header
+|
+\* ------------------------------------------------------------------------ */
 
-#ifdef _WIN32
 #include  <windows.h>
 #include  <VersionHelpers.h>
-#endif
+#include  <errhandlingapi.h>
 #include  <stdio.h>
 #include  <ctype.h>
 #include  <string.h>
@@ -40,99 +51,281 @@
 
 #define	 FWILD_INTERNAL
 
-#include  "fwild.h"
+#include  "fWild.h"
 
-// -----------------------------------------------------------------------
+//----------------------------------------------------------------------------
 
-// #define  SHOWSRCH		// Define this to show search progress
-// #define  VERBOSEOUT	 1	// Define this in the makefile for verbose output
-// #define  MEMORYWATCH	 1	// Define this in the makefile to watch for memory leaks
+//	#define  TRUNCATE			// Define this to truncate execution of the caller
+//	#define  VERBOSEOUT			// Define this in the makefile for verbose output
+	#define  BUILD_DIAGS		// Define this to include the diagnostice methods
+								// This is done so printfs can use the decoders
+// -------------------------
 
-#ifdef	MEMORYWATCH
-#define	 mwprintf(a,b)	printf(a,b)
+#ifdef VERBOSEOUT
+
+#define BUILD_DIAGS
+#define SHOWHDR(arg)	hdr_disp(hp, arg);
+#define SHOWLEV(arg)	lev_disp(pLev, arg); seg_disp(pLev->pSeg);
+#define SHOWSEG			seg_disp(pSeg);
+#define SHOWDTA			dta_disp(&pLev->dta);
+#define SHOWPC			pc_disp(hp);
+#define PROGRESS(arg)	printf((arg)); 
+
 #else
-#define	 mwprintf(a,b)
+
+#define SHOWHDR(arg)
+#define SHOWLEV(arg)
+#define SHOWSEG
+#define SHOWDTA
+#define SHOWPC
+#define PROGRESS(arg)
+
 #endif
 
-#ifdef	VERBOSEOUT
-static void		m_disp (char *s1, char *s2);
-static void		h_disp (PDTA_HDR p, char *s);
-static void		e_disp (PDTA_ELE p, char *s, int flag);
-#endif
+//----------------------------------------------------------------------------
+//	Private definitions
+//----------------------------------------------------------------------------
 
-//BWJ
-//static void		pc_disp(PDTA_HDR p);
+#define	FW_WILD	(FW_DIR)	// Standard form for the Finder complex
 
-// States
+// Internal error code symbols
 
-// -----------------------------------------------------------------------
-// Private definitions
-// -----------------------------------------------------------------------
-
-#define	 FRESH		0					/* Initial state of DTA_ELE */
-#define	 NONW_F		2					/* Do findf for not wild */
-#define	 NONW_N		3					/* Do findn for not wild */
-#define	 NONW_T		4					/* Non-wild transition state */
-#define	 WILD_F		5					/* Do findf for ordinary wild */
-#define	 WILD_N		6					/* Do findn for ordinary wild */
-#define	 RECW_F		7					/* Do findf for recursive wild */
-#define	 RECW_N		8					/* Do findn for recursive wild */
-#define	 RECW_T		9					/* Recursive wild transition state */
-
-#define	 NOT_WILD	0					/* Not a wild expression */
-#define	 ORD_WILD	1					/* Ordinary wild expression */
-#define	 REC_WILD	2					/* Recursive wild expression */
-
-#define	 FW_ALL		(FW_HIDDEN | FW_SYSTEM | FW_SUBD)
-#define	 FW_FLS		(FW_HIDDEN | FW_SYSTEM | FW_FILE)
-
-#define PATHCH	('\\')
-#define NULCH	('\0')
-
-typedef enum		// Internal error codes
+typedef enum
 	{
 	NO_MEM = 1,		// Insufficient memory
-	EP_ERR,			// Element ptr error
 	INV_STATE,		// Invalid state
-	INV_UNC,		// Invalid UNC syntax
-	INV_DRV,		// Invalid drive syntax
-	INV_RWILD,		// Invalid RWILD syntax
-	INV_PATH		// Invalid path syntax
+	INV_TYPE,		// Invalid file type
+	INV_RWLD,		// Invalid RWILD syntax
+	INV_PATH,		// Invalid path syntax
+	INV_FOPEN,		// FinderOpen() failed
+	PAT_OVF,		// Pattern level overflow
+	SRCH_OVF		// Search level overflow
 	} ERR_CODE;
 
-#define ONENTRY (0)
-#define ONEXIT  (1)
+//----------------------------------------------------------------------------
+//	Forward Declarations
+//----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------
-// Private variables
-// -----------------------------------------------------------------------
+static void		HdrInit(PFW_HDR hp, int SearchAttr, int mode);
+static void		StateInit(PFW_HDR hp, PFW_LEV pLev, int segIndex, int depthUp);
+static char    *stateMachine (FW_HDR *hp);
 
-#ifdef MEMORYWATCH
-static	unsigned int	AllocCount = 0;
-#endif
+//----------------------------------------------------------------------------
+//	Private variables
+//----------------------------------------------------------------------------
 
-static  char	 rwild_str [] = "\\**";
-static  char	 owild_str [] = "\\*";
+// Because this fWild library is intended to support multiple
+// fWild instances within a single instance of the application,
+// there must not be any private (application static) variables
+// having long term scope.
+// Static things used during a function call, and not expected
+// to survive between calls, are OK, because this library
+// is not designed to be used by multiple threads.
 
-int			    xporlater = 0;					// TRUE if Windows XP or later (global)
+//----------------------------------------------------------------------------
+//	Diagnostics
+//----------------------------------------------------------------------------
+//	Translate file search attributes to a diagnostic string
+//----------------------------------------------------------------------------
+#ifdef	VERBOSEOUT
 
-/* ----------------------------------------------------------------------- */
-// Default file exclusion management
+#define showSrchAttr showFileAttr
 
-// Force the inclusion of the corrected DTOXTIME library file
-// Removed because no longer in use
-//extern int	ForceDtoxtime;
-//static int *pForceDtoxtime = &ForceDtoxtime;
+//----------------------------------------------------------------------------
+//	Display a graphic concatenation pointer in a diagnostic string
+//----------------------------------------------------------------------------
+	static char *
+concatDisp (
+	int offset)
 
-// -----------------------------------------------------------------------
-// Private methods
-// -----------------------------------------------------------------------
+	{
+static	char	offsetb [60];	/* The returned caret string */
 
-/* ----------------------------------------------------------------------- */
+	int   count = min(50, (offset + 1));
+	char *p = offsetb;
+
+	while (count-- > 0)
+		*p++ = ' ';
+	*p++ = '^';
+	sprintf(p, " (%d)", offset);
+
+	return (offsetb);
+	}
+
+//----------------------------------------------------------------------------
+//	Translate SM state to a diagnostic string
+//----------------------------------------------------------------------------
+	static char *
+dispState (
+	int state)
+
+	{
+	char *p;
+
+	switch(state)
+		{
+		default:				p = "<???>";			break;
+		case 	ST_ROOT_NT_0:	p = "Root NONT 0";		break;
+		case 	ST_ROOT_NT_1:	p = "Root NONT 1";		break;
+		case 	ST_ROOT_TL_0:	p = "Root TERM 0";		break;
+		case 	ST_NORM_NT_0:	p = "Normal NONT 0";	break;
+		case 	ST_NORM_NT_1:	p = "Normal NONT 1";	break;
+		case 	ST_NORM_TL_0:	p = "Normal TERM 0";	break;
+		case 	ST_NORM_TL_1:	p = "Normal TERM 1";	break;
+		case 	ST_NORM_TL_2:	p = "Normal TERM 2";	break;
+		case 	ST_WILD_NT_0:	p = "Wild NONT 0";		break;
+		case 	ST_WILD_NT_1:	p = "Wild NONT 1";		break;
+		case 	ST_WILD_NT_2:	p = "Wild NONT 2";		break;
+		case 	ST_WILD_TL_0:	p = "Wild TERM 0";		break;
+		case 	ST_WILD_TL_1:	p = "Wild TERM 1";		break;
+		case 	ST_WILD_TL_2:	p = "Wild TERM 2";		break;
+		case 	ST_RWLD_NT_0:	p = "RWild NONT 0";		break;
+		case 	ST_RWLD_NT_1:	p = "RWild NONT 1";		break;
+		case 	ST_RWLD_NT_2:	p = "RWild NONT 2";		break;
+		case 	ST_RWLD_NT_3:	p = "RWild NONT 3";		break;
+		case 	ST_RWLD_TL_0:	p = "RWild TERM 0";		break;
+		case 	ST_RWLD_TL_1:	p = "RWild TERM 1";		break;
+		case 	ST_RWLD_TL_2:	p = "RWild TERM 2";		break;
+		case 	ST_RWLD_TL_3:	p = "RWild TERM 3";		break;
+		}
+
+	return (p);
+	}
+
+//----------------------------------------------------------------------------
+//	Diagnostic display the FW_HDR
+//----------------------------------------------------------------------------
+	static void
+hdr_disp(
+	PFW_HDR	hp,
+	char   *pMsg)
+
+	{
+	printf("\nSearch Header - (%s)\n", pMsg);
+	printf("running.....%s\n",		(hp->running ? "TRUE" : "FALSE"));
+	printf("SearchAttr..%s\n",		showSrchAttr(hp->SearchAttr));
+	printf("CallerAttr..%s\n",		showSrchAttr(hp->CallerAttr));
+	printf("rootDepth...%d\n",		hp->rootDepth);
+	printf("curLevel....%d\n",		hp->curLevel);
+	printf("segCount....%d\n",		hp->segmentCount);
+
+	printf("foundFlag...%s\n",		(hp->foundFlag ? "Success" : "Failure"));
+	if (hp->foundFlag)
+		{
+	printf("name........%s\n",		hp->file_name);
+	printf("fdt.........%s\n",		fwtime(hp));
+	printf("Attr........%s\n",		showFileAttr(hp->file_type));
+	printf("size........%lld\n",	hp->file_size);
+		}
+	printf("xI.drive....%d\n",		hp->xItem.drive);
+	printf("xI.type.....%s\n",		showFileAttr(hp->xItem.type));
+	printf("xI.depth....%d\n",		hp->xItem.depth);
+	printf("xI.name.....%s\n",		hp->xItem.name);
+	printf("\n");
+	fflush(stdout);
+	}
+
+//----------------------------------------------------------------------------
+//	Diagnostic display the FW_LEV
+//----------------------------------------------------------------------------
+	static void
+lev_disp (
+	PFW_LEV	pLev,
+	char   *pMsg)
+
+	{
+	printf("\nSearch Level - (%s)\n", pMsg);
+	printf("level.......%d\n",		pLev->index);
+	printf("state.......[%s]\n",	dispState(pLev->state));
+	printf("depth.......%d\n",		pLev->depth);
+	printf("pSeg........Seg %d\n",	pLev->pSeg->index);
+	printf("segIndex....%d\n",		pLev->segIndex);
+	printf("pattern.....\"%s\"\n",	pLev->pattern);
+	printf("patConcat...%s\n",		concatDisp((int)(pLev->patConcat - pLev->pattern)));
+	printf("found.......\"%s\"\n",	pLev->found);
+	printf("fndConcat...%s\n",		concatDisp((int)(pLev->fndConcat - pLev->found)));
+	printf("match.......\"%s\"\n",	pLev->pSeg->buffer);
+	printf("\n");
+	fflush(stdout);
+	}
+
+//----------------------------------------------------------------------------
+//	Diagnostic display the FW_DTA
+//----------------------------------------------------------------------------
+	static void
+dta_disp (
+	PFW_DTA	pDta)
+
+	{
+	char handle [20];
+	
+	if (((INT64)(pDta->sh)) == (-1))
+		strcpy(handle, "INVALID");
+	else
+		sprintf(handle, "%0llX", (UINT64)(pDta->sh));
+	
+	printf("\nDta Block\n");
+	printf("valid.......%s\n",		(pDta->valid ? "Valid" : "Empty"));
+	printf("Search Attr.%s\n",		showSrchAttr(pDta->SearchAttr));
+	printf("file Attr...%s\n",		showFileAttr(pDta->dta_type));
+	printf("file size...%lld\n",	pDta->dta_size);
+	printf("file fdt....%lld\n",	pDta->dta_fdt);
+	printf("dta_name....\"%s\"\n",	pDta->dta_name);
+	printf("handle......%s\n",		handle);
+	printf("\n");
+	fflush(stdout);
+	}
+
+//----------------------------------------------------------------------------
+//	Diagnostic display the FW_SEG
+//----------------------------------------------------------------------------
+	static void
+seg_disp (
+	PFW_SEG  pSeg)				// Pointer to the segment
+
+	{
+	printf("Segment %d\n", pSeg->index);
+
+	SegType  t = pSeg->type;
+
+//	printf("Index.......%d\n",		(pSeg->index));
+	printf("Terminal....%s\n",		(pSeg->terminal ? "Terminal" : "Non-terminal"));
+	printf("Type........%s\n",	   ((t == TYPE_ROOT)	? "Root" :
+									(t == TYPE_NORMAL)	? "Normal" :
+									(t == TYPE_WILD)	? "Wild"   :
+									(t == TYPE_RWLD)	? "Recursive wild"
+														: "<???>" ));
+	printf("delta.......%d\n",	 	(pSeg->delta));
+//	printf("Begin:......\"%s\"\n",	(pSeg->pBegin));
+	printf("Buffer:.....\"%s\"\n",	(pSeg->buffer));
+	printf("\n");
+	}
+
+//----------------------------------------------------------------------------
+//	Diagnostic display all compiled FW_SEG segments
+//----------------------------------------------------------------------------
+	static void
+pc_disp (
+	PFW_HDR  hp)				// Pointer to the search level
+
+	{
+	printf("\nCompiled Pattern\n\n");
+
+	for (int i = 0; (i < hp->segmentCount); ++i)
+		seg_disp(&hp->segment[i]);
+	printf("Compiled Pattern End\n");
+	}
+
+#endif // BUILD_DIAGS
+//----------------------------------------------------------------------------
+//	Private Methods
+//----------------------------------------------------------------------------
+//	Explain fatal runtime errors
+//----------------------------------------------------------------------------
 	static void
 fat_err (						// Report fatal internal error and die
 	ERR_CODE ec,				// Error code
-	char    *s)					// Relevent path string
+	char    *path)				// Relevent path string
 
 	{
 	char  *p;
@@ -142,1102 +335,1258 @@ fat_err (						// Report fatal internal error and die
 		case NO_MEM:
 			p = "Insufficient memory";	break;
 
-		case EP_ERR:
-			p = "Element ptr error";	break;
-
 		case INV_STATE:
 			p = "Invalid state";		break;
 
-		case INV_UNC:
-			p = "Invalid UNC";			break;
-
-		case INV_DRV:
-			p = "Invalid drive";		break;
-
-		case INV_RWILD:
+		case INV_RWLD:
 			p = "Invalid RWILD";		break;
 
 		case INV_PATH:
 			p = "Invalid path";			break;
 
+		case PAT_OVF:
+			p = "Pattern overflow";		break;
+
+		case SRCH_OVF:
+			p = "Search overflow";		break;
+
+		case INV_FOPEN:
+			p = "FinderOpen failure";	break;
+
 		default:
 			p = "Invalid error code";
 		}
-	fprintf(stderr, "Fwild-F-%s\n\7", p);
+	fprintf(stderr, "Fwild-F: %s\n", p);
 
-	if (s)
-		fprintf(stderr, "%s\n", s);
+	if (path)
+		fprintf(stderr, "Path: \"%s\"\n", path);
 
 	exit(1);
 	}
 
-/* ----------------------------------------------------------------------- *\
-|  Copy n bytes
-\* ----------------------------------------------------------------------- */
-	static void
-copyn (p2, p1, n)				/* Copy n bytes from p1 to p2 */
-	char  *p2;					/* and NULL terminate the string */
-	char  *p1;
-	int	   n;
+//----------------------------------------------------------------------------
+//	Validate a FW_HDR pointer
+//----------------------------------------------------------------------------
+	static int
+validHeader (hp)				/* Release a header and all its elements */
+	FW_HDR	 *hp;				/* Pointer to the header */
 
 	{
-	while (n--)
-		*(p2++) = *(p1++);
-	*p2 = '\0';
+	return ((hp) && (hp->magic == hp));
 	}
 
-/* ----------------------------------------------------------------------- */
-	static char *				/* Return a pointer to the new block */
-new_object (size)				/* Allocate a block of memory */
-	int	 size;					/* Size of memory to allocate */
+//----------------------------------------------------------------------------
+//	Allocate a new FW_HDR pointer
+//----------------------------------------------------------------------------
+	static FW_HDR *			// Return a pointer to the new fWild instance
+newHeader (void)
 
 	{
-	char  *p;
+	PFW_HDR  hp;
 
-	if ((p = calloc(size, 1)) == NULL)
+	if ((hp = (PFW_HDR)(calloc(sizeof(FW_HDR), 1))) == NULL)
 		fat_err(NO_MEM, NULL);
-#ifdef MEMORYWATCH
 	else
-		++AllocCount;
-#endif
-	return (p);
-	}
+		hp->magic = hp;
 
-/* ----------------------------------------------------------------------- */
-	static char *				/* Always returns NULL */
-dispose_object (				/* Free a block of object memory */
-	char  *s)					/* Pointer to object to free */
-
-	{
-	if (s != NULL)
-		{
-		free(s);
-#ifdef MEMORYWATCH
-		--AllocCount;
-#endif
-		}
-	return (NULL);
-	}
-
-/* ----------------------------------------------------------------------- */
-	static DTA_HDR *			/* Return a pointer to the new DTA header */
-new_header ()
-
-	{
-	DTA_HDR *hp = (DTA_HDR *)(new_object(sizeof(DTA_HDR)));
-mwprintf("New header %d\n", AllocCount);
 	return (hp);
 	}
 
-/* ----------------------------------------------------------------------- */
-	static DTA_ELE *			/* Return a pointer to the new DTA element */
-new_element ()					/* Allocate an initialized DTA element */
+//----------------------------------------------------------------------------
+//	Free a FW_HDR pointer
+//----------------------------------------------------------------------------
+	static void
+freeHeader (hp)				// Release the instance header and all its elements
+	FW_HDR	 *hp;			// Pointer to the header
 
 	{
-	DTA_ELE	 *ep;
-
-	ep = (DTA_ELE *)(new_object(sizeof(DTA_ELE)));
-	ep->pLink	   = NULL;
-	ep->wild	   = NOT_WILD;
-	ep->state	   = FRESH;
-	ep->pLast	   = NULL;
-	ep->pNext	   = NULL;
-	ep->search[0]  = '\0';
-	ep->pattern[0] = '\0';
-	ep->proto[0]   = '\0';
-	ep->found[0]   = '\0';
-mwprintf("New element %d\n", AllocCount);
-	return (ep);
+	hp->magic = NULL;		// Make the object invalid
+	free(hp);				// Return the memory
 	}
 
-/* ----------------------------------------------------------------------- */
-	static DTA_ELE *			/* Returned pointer to the successor element */
-unnest_element (				/* Unnest a DTA element */
-	DTA_ELE	 *ep)				/* Pointer to the element */
+//----------------------------------------------------------------------------
+//	Append a path element to a base path (specified length)
+//	(does not require a separator because a base path segment might not have one)
+//----------------------------------------------------------------------------
+	static void
+append (
+	char  *pDst,		// Destination buffer
+	char  *pSrc,		// Source buffer
+	int    n)			// Number of bytes to copy
 
 	{
-	DTA_ELE	 *epLink;			/* Pointer to the next element */
+	while (n-- > 0)
+		*(pDst++) = *(pSrc++);
+	*pDst = '\0';
+	}
 
-	if (ep != NULL)
+//----------------------------------------------------------------------------
+//	Make a copy of the caller's pattern without parentheses
+//----------------------------------------------------------------------------
+	static int			// Return 0 for success, else (-1) for fail
+patternCopy (
+		  char *pPattern,
+	const char *pOrgPattern)
+
+	{
+	char *pTail;
+	
+	
+	if (pOrgPattern == NULL)		// Reject a NULL pointer
+		return (-1);
+
+	if (*pOrgPattern == '"')		// Remove a possible leading paarenthsis
+		++pOrgPattern;
+
+	pathCopy(pPattern, pOrgPattern, MAX_COPY);
+
+	pTail = (pPattern + strlen(pPattern) - 1);
+	if (*pTail == '"')				// Remove a possible trailing paarenthsis
+		*pTail = '\0';
+	return (0);
+	}
+
+//----------------------------------------------------------------------------
+//	Set the initial SM state for a level within the Pattern Compiler
+//----------------------------------------------------------------------------
+	static void
+InitialLevelState (			// Configure the Level starting state
+	PFW_SEG	pSeg)
+
+	{
+	switch (pSeg->type)
 		{
-		epLink = ep->pLink;						/* Point the successor */
-		dispose_object((char *)(ep));			/* Then, release the element */
-mwprintf("Free element %d\n", AllocCount);
-		}
-	else
-		epLink = NULL;							/* There was no element */
-
-	return (epLink);
-	}
-
-/* ----------------------------------------------------------------------- */
-	static void
-release_header (hp)				/* Release a header and all its elements */
-	DTA_HDR	 *hp;				/* Pointer to the header */
-
-	{
-	while (hp->pLink != NULL)					/* Release all DTA elements */
-		hp->pLink = unnest_element(hp->pLink);
-
-	dispose_object((char *)(hp));						/* Then, release the header */
-mwprintf("Free header %d\n", AllocCount);
-	}
-
-/* ----------------------------------------------------------------------- */
-	static void
-CheckVersion (void)
-
-	{
-	xporlater = IsWindowsXPOrGreater();
-    }
-
-/* ----------------------------------------------------------------------- *\
-|  build_fn () - Build the found pathname from the DTA
-\* ----------------------------------------------------------------------- */
-	static void
-build_fn (ep)					/* Build the found filename in the DTA */
-	DTA_ELE	 *ep;
-
-	{
-	int	  n;
-	char  ch;
-
-	if (ep->pLast)
-		{
-		n = (int)(ep->pLast - ep->proto) + 1;
-		copyn(ep->found, ep->proto, n);
-		if (strlen(ep->found) > 0)
+		default:
 			{
-			ch = ep->found[strlen(ep->found) - 1];
-			if ((ch != ':')	&&	(ch != '/')	&&	(ch != '\\'))
-				strcat(ep->found, "\\");
+			pSeg->levelState	 = ST_FINISHED;
+			break;
 			}
-		strcat(ep->found, ep->dta.dta_name);
-		}
-	else
-		{
-		strcpy(ep->found, ep->dta.dta_name);
+		case TYPE_ROOT:
+			{
+			if (pSeg->terminal)
+				pSeg->levelState = ST_ROOT_TL_0;
+			else
+				pSeg->levelState = ST_ROOT_NT_0;
+			break;
+			}
+		case TYPE_NORMAL:		// Normal non-wild segment
+			{
+			if (pSeg->terminal)
+				pSeg->levelState = ST_NORM_TL_0;
+			else
+				pSeg->levelState = ST_NORM_NT_0;
+			break;
+			}
+		case TYPE_WILD:			// Wild segment
+			{
+			if (pSeg->terminal)
+				pSeg->levelState = ST_WILD_TL_0;
+			else
+				pSeg->levelState = ST_WILD_NT_0;
+			break;
+			}
+		case TYPE_RWLD:		// Recursive wild segment
+			{
+			if (pSeg->terminal)
+				pSeg->levelState = ST_RWLD_TL_0;
+			else
+				pSeg->levelState = ST_RWLD_NT_0;
+			}
 		}
 	}
 
-// ------------------------------------------------------------------------------------------------
-// Pattern compiler
-// ------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------
+//	Close a segment compilation within the Pattern Compiler
+// ---------------------------------------------------------------------------
 	static void
-PatternCompiler (				// Compile the caller's pattern
-	DTA_HDR	 *hp)				// Pointer to the DTA header
+SegmentClose (
+	PFW_SEG  pSeg,				// Ptr to the segment
+	char	*pEnd)				// Ptr to the terminating character
 
 	{
-	char  *pRawPattern = hp->rawPattern;	// Ptr to the caller's raw search pattern
-	int    insertSeparator = FALSE;			// Set TRUE to prefix a path char before a segment copy
+	int  length = (int)(pEnd - pSeg->pBegin);	// Compute the length
+	
+	InitialLevelState(pSeg);					// Configure the Level starting state
 
-
-	int			level	 = 0;					// Start in level 0
-	PDTA_SEG	pSeg	 = &hp->segment[level];	// Pointer to path origin
-	char	   *pSegBuff = pSeg->segBuffer;		// Pointer to the current segment
-
-	char	   *pPatSrc;					// Ptr to rawPattern copy origin
-	char	   *pScan;						// Scan Ptr into the origin string
-	char	   *pSegDst;					// Ptr to segment destination buffer string
-	char	   *pResult;					// Temporary result value
-
-//?? Deal with quotes here ?
-
-	pScan = hp->rawPattern;
-
-	// Compile level 0 (if a UNC spec)
-
-	if ((pResult = QueryUNCPrefix(pScan)) != NULL)
+	switch (pSeg->type)
 		{
-//		(pScan == hp->rawPattern now)		// pScan is already initialized
-		pSeg->type = TYPE_UNC;				// Set segment 0 to UNC type
-		pScan      = pResult;				// (pScan now points past the prefix)
-
-		pPatSrc	   = hp->rawPattern;
-		pSegDst	   = pSegBuff;				// Point the segment string begin
-		while (pPatSrc < pScan)				// Copy the UNC prefix string
-			*(pSegDst++) = *(pPatSrc++);
-		*pSegDst = NULCH;					// Terminate the segment string
-
-		pSeg->pEnd   = pSegDst;						// Points to string trailing NUL
-		pSeg->length = (int)(pSegDst - pSegBuff);	// Standard string length
-
-		hp->rooted = TRUE;					// All UNC paths are rooted, by definition
-		}
-
-	// Compile level 0 (if a drive spec(s)
-
-	else if ((pResult = QueryDrivePrefix(pScan, FALSE)) != NULL)	// Multiple mode
-		{
-//		(pScan == hp->rawPattern now)		// pScan is already initialized
-		pSeg->type = TYPE_DRIVE;			// Set segment 0 to DRIVE type
-		pScan      = pResult;				// (pScan now points past the prefix)
-
-		pPatSrc	   = hp->rawPattern;
-		pSegDst	   = pSegBuff;				// Point the segment string begin
-		while (pPatSrc < pScan-1)			// Copy the DRIVE prefix string (but not the ':')
-			*(pSegDst++) = *(pPatSrc++);
-		*pSegDst = NULCH;					// Terminate the segment string
-
-		pSeg->pEnd   = pSegDst;						// Points to string trailing NUL
-		pSeg->length = (int)(pSegDst - pSegBuff);	// Standard string length
-
-		hp->rooted = (*pScan == PATHCH);	// Check if rooted
-		if (hp->rooted)
-			++pScan;						// Skip over the root separator
-		}
-
-	// Compile level 0 (if no prefix (other than a possible root separator) present)
-
-	else
-		{
-//		(pScan == hp->rawPattern now)		// pScan is already initialized
-		pSeg->type   = TYPE_EMPTY;
-		pSeg->pEnd   = NULL;
-		pSeg->length = 0;
-		pSegBuff[0]  = NULCH;
-
-		hp->rooted   = (*pScan == PATHCH);	// Check if rooted
-		if (hp->rooted)
-			++pScan;						// Skip over the root separator
-		}
-
-	// End of level 0 compilation
-
-	// Compile level 1 and above, if present
-
-//	(pScan points the first character of the first segment following the UNC/DRIVE/Root specs
-	for (;;)								// Compile all remaining levels
-		{
-		if (*pScan == NULCH)				// Pattern exhausted,
+		case TYPE_ROOT:		// ROOT segment can't be terminal (has at least a "*")
 			{
-			pSeg->terminal = TRUE;			// Mark (still prev) segment terminal if no further pattern now
-			break;							// Compiling is complete
+				append(pSeg->buffer, pSeg->pBegin, length);		// Copy (with seg)
+			pSeg->delta = 0;									// by definition
+			break;
 			}
-		if (*pScan == PATHCH)				// Should be a path char (except the first time)
-			++pScan;						// Skip over the path char
-
-		pSeg	 = &hp->segment[++level];	// Advance to the next segment level
-		pSegBuff = pSeg->segBuffer;
-		pPatSrc  = pScan;
-
-		// Process a possible recursive wild segment
-		// pScan points to the first char after the separator (if any)
-
-		if ((((*(pPatSrc+0)) == '*')   &&   ((*(pPatSrc+1)) == '*'))
-		&&  (((*(pPatSrc+2)) == NULCH)  ||  ((*(pPatSrc+2)) == PATHCH)))
+		case TYPE_NORMAL:
 			{
-			pScan += 2;						// Recursive wild segment found
-
-			pSeg->type = TYPE_RWILD;
-			pSegDst    = pSegBuff;
-
-			while (pPatSrc < pScan)				// Copy the segment body string
-				*(pSegDst++) = *(pPatSrc++);
-			*pSegDst = NULCH;					// Terminate the segment string
-
-			pSeg->pEnd   = pSegDst;						// Points to trailing NUL
-			pSeg->length = (int)(pSegDst - pSegBuff);	// Standard string length
-
-			// At runtime, we will copy segments with a preceding separator when...
-
-			pSeg->separator = 
-				   ((level > 1)
-				|| ((level == 1)  &&  (hp->segment[0].type != TYPE_UNC)  &&  (hp->rooted)));
-			continue;
+			if (pSeg->terminal)
+				append(pSeg->buffer, pSeg->pBegin, length);		// Search (no seg)
+			else // NOT terminal
+				append(pSeg->buffer, pSeg->pBegin, length);		// Copy (with seg)
+			pSeg->delta = ((strncmp(pSeg->buffer, "..", 2) == 0) ? (-1) : (1));
+			break;
 			}
-
-		// Process a nonrecursive segment
-		// pScan points to the first char after the separator (if any)
-
-		pSeg->type = TYPE_NONWILD;	// Starting assumption, until determined wrong
-		pPatSrc    = pScan;
-
-		for (char ch; (isValidPath(ch = *pScan)); ++pScan)
+		case TYPE_WILD:
 			{
-			if (ch == PATHCH)
-				break;
+			if (pSeg->terminal)
+				append(pSeg->buffer, pSeg->pBegin, length);		// Search (no seg)
+			else // NOT terminal
+				append(pSeg->buffer, pSeg->pBegin, length-1);	// Search (no seg)
+			pSeg->delta = 1;									// by definition
+			break;
+			}
+		case TYPE_RWLD:
+			{
+				append(pSeg->buffer, "*\0", 1);					// Search (no seg)
+			pSeg->delta = 1;									// by definition
+			break;
+			}
+		default:
+			{
+			pSeg->buffer[0] = NULCH;	// Should never happen
+			break;
+			}
+		}
+	}
+	
+// ---------------------------------------------------------------------------
+//	Pattern Compiler
+// ---------------------------------------------------------------------------
+	static int					// Returns TRUE if successful, else FALSE if error
+PatternCompiler (				// Compile the copy of the caller's pattern
+	FW_HDR	*hp,				// Pointer to the DTA header
+	char	*pPattern)			// Pointer to the search pattern
 
-			else if (ch == '?')
-				pSeg->type = TYPE_WILD;			// '?' makes it wild
+	{
+	char		ch;								// Workong character
+	int			rwildCount	= 0;				// Count of RWILD segments
+	int			segIndex	= 0;				// Start in the first segment
+	int			segOpen		= FALSE;			// TRUE when the segment is in progress
+	int			terminal;						// TRUE if segment is terminal
+	int			segType;						// type found when scanning
+	PFW_SEG		pSeg		= NULL;				// Point the current segment descriptor
+	char	   *pScan;							// Ptr to the current pattern segment
+	char	   *pWork;							// Working Ptr into the current pattern segment
+	char	   *pEnd;							// Ptr to the end segment name character
+	
+	// While scanning, open and build the segment structures when each pattern segment scan is complete.
+	// Leave the current segment open for NORMAL and WILD segments, closed for an RWILD segment.
+	// Always leave an open segment complete other than the terminal flag.
+	// When a new segment matches the open segment update it at the end of the segment.
 
-			else if (ch == '*')
-				{
-				pSeg->type = TYPE_WILD;			// '*' makes it wild,
+	// Point past the prefix, if a prefix or root separator, init the first segment 
 
-				if (*(pScan + 1) == '*')		// but, can't be recursive
-					fat_err(INV_RWILD, hp->rawPattern);	// Report invalid RWILD syntax
+	pScan = pPattern;							// Init the pattern scan pointer
+	pWork = PointPastPrefix(pScan);				// Also skips the root separator
+	ch    = *pWork;								// Get the segment termination
+
+	segType = TYPE_ROOT;						// Configure segment type
+	terminal = (ch == NULCH);					// Configure terminal property
+	segOpen = (pWork > pScan);					// Normal segment (can be continued)
+	if (segOpen)								// If a prefix or root separator found, open the root segment
+		{
+		pSeg = &hp->segment[segIndex];			// Point the first segment descriptor
+		pSeg->index	   = segIndex++;			// Install the segment index (0 is always good)
+		pSeg->terminal = terminal;				// Determine if this is the terminal segment
+		pSeg->type	   = segType;				// If a prefix found, it is always normal
+		pSeg->pBegin   = pScan;					// Point the segment begin
+		SegmentClose(pSeg, pWork);
+		segOpen        = FALSE;
+		pEnd		   = pWork;					// Mark the segment end
+		}
+
+	// Process all remaining segments
+
+	pScan = pWork;									// Point the next segment
+	for (;;)										// Outer loop: Loop over all path segments
+		{
+		ch = *pWork;								// Check if a path segment has ended
+		if (ch == NULCH)							// Scanning is complete
+			{
+			pEnd = pWork;
+			if (segOpen)							// Done; if a segment is open,
+				{									//   close it (can't be RWILD)
+				pSeg->terminal = TRUE;				// Show this is the terminal segment
+				SegmentClose(pSeg, pEnd);			// Close the segment
 				}
-			}	// Scan complete
-
-//printf("scanned %X %X\n\n", (UINT)pPatSrc, (UINT)pScan);
-
-		if ((*pScan != NULCH)  &&  (*pScan != PATHCH))
-			fat_err(INV_PATH, hp->rawPattern);	// Report invalid path syntax
-
-		// If this segment and the preceding segment are both TYPE_NONWILD, and
-		// the preceding segment will not be a search term for a preceding wild
-		// segment, concatenate this segment to the preceding segment (with separator)
-		// (and, don't consult level 0.)
-
-		if ((level >= 2)
-		&&  (hp->segment[level  ].type == TYPE_NONWILD)
-		&&  (hp->segment[level-1].type == TYPE_NONWILD)
-		&&  ((level <= 2)  ||  (hp->segment[level-2].type != TYPE_RWILD)))
-			{
-			pSeg	 = &hp->segment[--level];	// Return to the previous level
-			pSegBuff = pSeg->segBuffer;
-
-			pSegDst = pSeg->pEnd;				// Concatenate to previous segment level
-			insertSeparator = TRUE;				// Require separator for concatenation
-//printf("prev\n\n");
+			break;									// NULCH: terminate the outer loop
 			}
-		else
+		else if (ch == PATHCH)						// Continue scanning the next path segment
 			{
-			pSegDst = pSegBuff;					// Copy into the current level
-			insertSeparator = FALSE;			// Require separator for concatenation
-//printf("cur\n\n");
+			pEnd    = ++pWork;						// Note the buffer end point, skip over the separator
+			pScan   = pWork;						// Point the next segment
 			}
 
-		// Copy this segment string to the selected segment
+		segType = TYPE_NORMAL;						// Assume the coming segment will be normal
+		for (;;)									// Inner loop: Process another path segment
+			{
+			ch = *pWork;							// Get the current character
+			// Process a RWILD pattern segment
+			
+			if ((pWork == pScan)						// If this is the beginning of the segment
+			&&  ((ch == '*') && (*(pWork+1) == '*')))	// and the segment is "**" then process as RWILD
+				{
+				pWork = (pScan + 2);
+				ch = *(pWork);						// Check for a root separator, or terminating NULCH
 
-		if (insertSeparator)
-			*pSegDst++ = PATHCH;				// Write a required separator
+				if ((ch != PATHCH)
+				&&  (ch != NULCH))
+					return (0);						// Invalid '**' sequence, must be followed by PATHCH or NULCH
 
-		while (pPatSrc < pScan)					// Copy the segment body string
-			*(pSegDst++) = *(pPatSrc++);
-		*pSegDst = NULCH;						// Terminate the segment string
-//printf("copied %X\n\n", (UINT)pSegDst);
-		pSeg->pEnd   = pSegDst;						// Points to trailing NUL
-		pSeg->length = (int)(pSegDst - pSegBuff);	// Standard string length
+				terminal = (ch == NULCH);			// Configure terminal
 
-		// At runtime, we will copy segments with a preceding separator when...
+				if (segOpen)						// If the preceding segment is open, then
+					{								//   close it
+					SegmentClose(pSeg, pEnd);
+					segOpen = FALSE;
+					}
 
-		pSeg->separator = 
-			   ((level > 1)
-			|| ((level == 1)  &&  (hp->segment[0].type != TYPE_UNC)  &&  (hp->rooted)));
-		continue;
-		}
+				// Build the complete RWILD segment
 
-//BWJ pc_disp(hp);								// Display monitor data on the way out
+				pSeg = &hp->segment[segIndex];		// RWILD always gets a new segment
+				pSeg->index	   = segIndex++;		// Install the segment index
+				if (segIndex > SEG_MAX)				// Check for segment overflow
+					fat_err(PAT_OVF, NULL);			// Fatal; no segments remaining
+				pSeg->terminal = terminal;			// Configure terminal property
+				pSeg->type     = TYPE_RWLD;			// RWILD by definition
+				pSeg->pBegin   = pScan;				// Point the first segment char
+				SegmentClose(pSeg, pWork);			// Not pEnd (because it is wrong here)
+				segOpen = FALSE;					// This segment doesn't need delayed closing
+
+				++rwildCount;						// RWILD is valid; count it (only one allowed)
+				break;								// Terminate the inner loop
+				}
+
+			// Process a non-RWILD pattern segment
+
+			if ((ch != NULCH)
+			&&  (ch != PATHCH))						// End of segment not yet reached
+				{
+				if ((ch == '*')  ||  (ch == '?'))	// If a wild character found,
+					segType = TYPE_WILD;			//   then it needs to be a WILD segment
+				++pWork;							// Move on to the next character
+				}
+
+			else // the path segment has ended; type is known
+				{
+				if (pWork == pScan)					// if this segment is empty,
+					return (0);						//   apparently an illegal PATHCH
+
+				terminal = (ch == NULCH);			// Configure terminal
+
+				if (segOpen)						// If a previous segment is open,
+					{
+					SegmentClose(pSeg, pEnd);		//   close it
+					segOpen = FALSE;
+					}
+				
+				if (! segOpen)						// If no segment is open,
+					{
+					pSeg = &hp->segment[segIndex];	// Point the first segment descriptor
+					pSeg->index	   = segIndex++;	// Install the segment index (0 is always good)
+					if (segIndex > SEG_MAX)			// Check for segment overflow
+						fat_err(PAT_OVF, NULL);		// Fatal; no segments remaining
+					pSeg->terminal = terminal;		// Configure terminal property
+					pSeg->type	   = segType;		// If a prefix found, it is always normal
+					pSeg->pBegin   = pScan;			// Point the first segment char
+					segOpen        = TRUE;
+					}
+				break;								// Terminate the inner loop
+				}
+
+			} // Inner loop, processing one path segment
+		} // Outer loop, processing inter-segment affairs
+
+	hp->segmentCount = segIndex;
+
+SHOWPC
+
+	if (rwildCount > 1)
+		fat_err(INV_RWLD, pPattern);			// Fatal; too many RWILD segments
+
+	return (segIndex >= 1);						// Need at least one segment
 	}
 
-/* ----------------------------------------------------------------------- *\
-|  fwinit () - Initialize the fwild system for a wild search
-\* ----------------------------------------------------------------------- */
-	DTA_HDR *					/* Return a pointer to a DTA header */
-fwinit (						/* Initialize the wild filename system */
-	char *pattern,				/* Drive/path/filename search string */
-	int fmode)					/* Find search mode to use */
+//----------------------------------------------------------------------------
+//	Public Methods
+//----------------------------------------------------------------------------
+//	fwOpen () - Create a new fWild instance
+//----------------------------------------------------------------------------
+	FW_HDR *						// Return a pointer to an allocated DTA header
+fwOpen (void)						// Create a new fWild instance
 
 	{
-	PDTA_HDR	hp;
-	PDTA_ELE	ep;
-	char         p [MAX_PATH];	// Working pattern string
+	return (newHeader());			// Return the instance pointer
+	}
 
-//printf("pattern1: \'%s\'\n", pattern);
-//fflush(stdout);
+//----------------------------------------------------------------------------
+//	fwInit () - Initialize the fWild instance for a wild search
+//----------------------------------------------------------------------------
+	int								// Returns 0 for success, else FWERR_* code
+fwInit (							// Initialize the wild filename system
+	FW_HDR		*hp,				// Pointer to an allocated DTA header
+	const char  *pOrgPattern,		// Caller's search string (Prefix.Body)
+	int			 CallerAttr)		// Caller's search mode
 
-	if (fnreduce(pattern) < 0)		// Simplify any redundance
-		return (NULL);				// Invalid pattern
-
-//printf("pattern2: \'%s\'\n", pattern);
-//fflush(stdout);
-
-	int errCode = fwvalid(pattern);	// Validate the pattern
-	if ((errCode != FWERR_NONE)  &&  (errCode != FWERR_TRAIL))
-		return	(NULL);
-
-// Make an internal working copy of the pattern
-
-	strcpy_s(p, MAX_PATH, pattern);
-
-	// Fix up the file name pattern string if it is incomplete.
+	{
+	char   *pPattern = hp->pattern;	// Working copy of pattern string
 
 
-	char *pBody = PointPastPrefix(p, TRUE);	// Skip past the prefix
-	char *pTail = fntail(pBody);			// Skip to the tail
+	// The instance must have been opened, and
+	// the passed pattern pointer must be non-NULL (empty is OK, however)
 
-	if (fmode & FW_FILE)					// If looking for files...
-		{
-		if (strlen(pBody) == 0)				// If no search string body
-			strcpy(pBody, "*");				// Use "*"
+	if (! fwActive(hp))
+		return (fwerrno = FWERR_INSTANCE);		// Bad instance pointer
 
-		else if (*pTail == NULCH)			// If ends in path character
-			strcat(pTail, "*");				// Append "*"
+	if (pOrgPattern == NULL)
+		return (fwerrno = FWERR_NULL);			// NULL pattern pointer
 
-		else if (strcmp(pTail, ".") == 0)	// If ends in "."
-			strcpy(pTail, "*");				// Replace it with "*"
+	// The target device must be valid (includes default drive)
 
-		else if (strcmp(pTail, "..") == 0)	// If ends in ".."
-			strcat(pTail, "\\*");			// Append "\*"
-		}
-// BWJ PROBABLY DOESNT MAKE SENSE HERE
-	else if (fmode & FW_SUBD)				// If looking only for directories...
-		{
-		if (strlen(pBody) == 0)				// If no search string body
-			strcpy(pBody, ".");				// Use "."
+	if (! isPhysical(pOrgPattern))
+		return (fwerrno = FWERR_PHYSICAL);		// Non-physical pattern path
 
-		else if (*pTail == NULCH)			// If ends in path character
-			strcat(pTail, ".");				// Append "."
+	// Make a temporary working copy of the pattern
+	// Remove surrounding parentheses, if present
 
-//		else if (*pTail == NULCH)			// If ends in path character
-//			strcat(pTail, "*");				// Append "*"
-		}
+	if (patternCopy(pPattern, pOrgPattern))
+		return (fwerrno = FWERR_INVALID);		// Invalid pattern pointer
 
-//printf("pattern3: \'%s\'\n", p);
-//fflush(stdout);
+	fnreduce(pPattern);							// Simplify any redundance
 
-	// Allocate a DTA header, and allocate the first DTA element for
-	// the DTA list.  Initialize the first element with the supplied
-	// prototype file name pattern.
+	strsetp(pPattern, PATHCH);
 
-	hp = new_header();
-	hp->xmode = 0;					// File exclusion mode, updated by fexclude
-	hp->mode  = fmode;				// Find mode to use
-	hp->pLink = ep = new_element();
-	strcpy(hp->rawPattern, p);
+	if ((fwValid(pPattern) != FWERR_NONE)		// Validate the pattern
+	&&  (fwerrno != FWERR_TRAIL))
+		return (fwerrno);						// Invalid pattern
 
-	PatternCompiler(hp);			// Compile the caller's pattern
+	// Setup the exclusion instance initial path depth
 
-//BWJ to be removed eventually (after compiiled pattern is used)
-	strcpy(ep->proto, p);
+	if ((hp->rootDepth = GetDepth(pPattern, &hp->xItem.drive)) < 0)
+		return (fwerrno = FWERR_INVALID);		// Invalid pattern content
+	int SearchAttr = (FW_WILD | CallerAttr);
 
-	fexcludeInit(&(hp->xmode));		// Init the file exclusion system, effective once only
-
-#ifdef	VERBOSEOUT
-h_disp(hp, "FWINIT");
+#ifdef VERBOSEOUT
+printf("Caller attributes: %02X, ( %s)\n", CallerAttr,	showSrchAttr(CallerAttr));
+printf("Search attributes: %02X, ( %s)\n", SearchAttr,	showSrchAttr(SearchAttr));
+printf("Search path:  \"%s\"\n", pOrgPattern);
 #endif
 
-	return (hp);
+	// Skip past the prefix and fix up the pattern string if it is incomplete.
+
+	char *pBody = PointPastPrefix(pPattern);
+	char *pTail = _fntail(pBody);			// Skip to the tail
+
+#if 0	// Design for the following algorithm
+	If caller wants:		FILE		DIR			FILE || DIR
+	if no body				use "*"		use "*"		use "*"
+	if body is "."			use "*"		use "*"		use "*"
+	if body is ".."			append "*"	as is		append "*"
+	if path wild			as is		as is		as is
+	if path is a file		as is		as is		as is
+	if path is a dir		append "*"	as is		as is
+#endif
+
+	if (strlen(pBody) == 0)					// If no search string body,
+		strcpy(pBody, "*");					//   use "*"
+
+	else if (strcmp(pBody, ".") == 0)		// If the body is ".",
+		strcpy(pBody, "*");					//   use "*"
+
+	else if ((strcmp(pBody, "..") == 0)		// If the body is "..",
+		 &&  (CallerAttr & FW_FILE))		// and caller wants files
+		pathCat(pBody, "*", MAX_COPY);		//   append "*"
+
+	else if ((! isWild(pBody))				// If the body is not wild,
+		 &&  (fnchkdir(pPattern))			// and the path is a dir,
+		 &&  (! (CallerAttr & FW_DIR)))		// and the caller doesn't want dirs,
+			pathCat(pBody, "*", MAX_COPY);	//   append "*" for files
+
+#ifdef VERBOSEOUT
+printf("Pattern path:  \"%s\"\n", pPattern);
+#endif
+
+	if (PatternCompiler(hp, pPattern))		// Compile the caller's search pattern
+		{
+		HdrInit(hp, SearchAttr, CallerAttr);// Initialize the header
+		}
+
+	PFW_LEV pLev = &hp->level[hp->curLevel];
+	SHOWHDR("Initial")
+
+#ifdef TRUNCATE
+	return (-1);
+#else
+	return (0);
+#endif
 	}
 
-/* ----------------------------------------------------------------------- *\
-|  fwfree () - Close and free the fwild system instance
-\* ----------------------------------------------------------------------- */
-	DTA_HDR *					/* Always returns NULL */
-fwfree (						/* Close and free the fwild system instance */
-	DTA_HDR	 *hp)				/* Pointer to the DTA header */
+//----------------------------------------------------------------------------
+//	fwExclEnable () - Enable the file exclusion mechanism for the fWild object
+//	(called from the caller to enable/initialize the path exclusion mechanism)
+//----------------------------------------------------------------------------
+	void
+fwExclEnable (					// Enable/disable file exclusion
+	PFWH	hp,					// Pointer to the fWild instance
+	PEX		xp,					// Pointer to the Excl instance
+	int     enable)				// TRUE to enable exclusion
 
 	{
-	fexcludeClean();			// Terminate the fexclude mechanism
-	release_header(hp);
-mwprintf("Allocs (done) %d\n", AllocCount);
+	if ( ! validHeader(hp))
+		{
+		fwerrno = FWERR_INSTANCE;
+		fwInitError("Exclusion interface");
+		}
+
+	hp->xp = ((enable) ? xp : NULL);	// Install Excl instance pointer
+	}
+
+//----------------------------------------------------------------------------
+//	fwActive () - Check the hp for current validity
+//----------------------------------------------------------------------------
+	int							// TRUE iff valid
+fwActive (						// Check the fWild system instance
+	FW_HDR	 *hp)				// Pointer to the FW_HDR header
+
+	{
+	return (validHeader(hp));
+	}
+
+//----------------------------------------------------------------------------
+//	fwFree () - Close and free the fWild system instance
+//----------------------------------------------------------------------------
+	static void
+fwFree (						// Close and free the fWild system instance
+	FW_HDR	*hp)				// Pointer to the DTA header
+
+	{
+	if (validHeader(hp))
+		{
+		hp->xp = NULL;			// Disconnect the fexclude mechanism
+		freeHeader(hp);
+		}
+	}
+
+//----------------------------------------------------------------------------
+//	fwClose () - Close and free the fWild system instance
+//----------------------------------------------------------------------------
+	FW_HDR *					// Always returns NULL (to NULL the caller's hp)
+fwClose (						// Close and free the fWild system instance
+	FW_HDR	*hp)				// Pointer to the instance header
+
+	{
+	fwFree(hp);
 	return (NULL);
 	}
 
-/* ----------------------------------------------------------------------- */
-
-/* ----------------------------------------------------------------------- *\
-|  Public Methods
-\* ----------------------------------------------------------------------- */
-/* ----------------------------------------------------------------------- *\
-|  fwild () - Request the next (or first) matching pathname
-\* ----------------------------------------------------------------------- */
-	char *						/* Return a drive/path/filename string */
-fwild (							/* Find the next filename */
-	DTA_HDR	 *hp)				/* Pointer to the DTA header */
+//----------------------------------------------------------------------------
+//	fWild () - Request the first/next matching pathname
+//----------------------------------------------------------------------------
+	char *						// Return a drive/path/filename string
+fWild (							// Find the next filename
+	FW_HDR	 *hp)				// Pointer to the DTA header
 
 	{
-	DTA_ELE	 *ep;
-	DTA_ELE	 *xep;
-	int		  findFail ;
-	int		  chflag;
-	int		  m_mode;
-	char	 *p;
-	char	 *ps;
+	char *pFound = NULL;
+	
+	if (! validHeader(hp))		// Require a valid header
+		return (NULL);
+
+	hp->running = TRUE;			// Enable the state machine
+
+	pFound = stateMachine(hp);	// Find the first/next matching filename
+
+	if (pFound)
+		return (pFound);		// Return with a filespec
+
+	return (NULL);				// Return finished
+	}
+
+//----------------------------------------------------------------------------
+//	State Machine support functions
+//----------------------------------------------------------------------------
+//	Initialize the fWild system header; done once per instance
+//	This must not damage the fexclude initialization; it is already done.
+//----------------------------------------------------------------------------
+	static void
+HdrInit (						// Common init for all search states
+	PFW_HDR hp,					// The search header
+	int		SearchAttr,			// Mode used to search
+	int		CallerAttr)			// Caller's requested search mode
+
+	{
+	if (hp)
+		{
+		hp->SearchAttr	= SearchAttr;	// Search attribute bitmap
+		hp->CallerAttr	= CallerAttr;	// Caller's search bitmap
+		hp->curLevel	= 0;			// Initial search level
+
+		// Initialize the search level indices
+
+		for (int i = 0; (i < LEV_MAX); ++i)
+			{
+			PFW_LEV p = &hp->level[i];
+			p->index = i;
+			}
+
+		StateInit(hp, &hp->level[0], 0, 0);	// Init the initial search level
+		}
+//SHOWHDR("HdrInit")
+	}
+	
+//----------------------------------------------------------------------------
+//	Initialize a search level; done whenever it is entered from below
+//----------------------------------------------------------------------------
+	static void
+StateInit (						// Common init for all search states
+	PFW_HDR	hp,					// Pointer to the search header
+	PFW_LEV	pLev,				// Pointer to the search level
+	int		segIndex,			// Requested segment index
+	int		depthUp)			// Depth should increase
+
+	{
+	PFW_SEG  pSeg	= &hp->segment[segIndex];
+
+	pLev->pHdr		= (void *)(hp);
+	pLev->state		= pSeg->levelState;
+	pLev->pSeg		= pSeg;
+	pLev->segIndex	= segIndex;
+
+	memset(&pLev->dta, 0, sizeof(FW_DTA));
+	pLev->dta.sh = INVALID_HANDLE_VALUE;	// Make the DTA invalid
+	pLev->dta.SearchAttr = hp->SearchAttr;	// Install the search bitmap
+
+	if (pLev->index == 0)				// There is no parent level
+		{								// (depthup does not apply)
+#ifdef VERBOSEOUT
+printf("\n No parent; in level 0\n");
+#endif
+		pLev->depth		 = hp->rootDepth + pSeg->delta - 1;	// 0-based
+		pLev->pattern[0] = '\0';
+		pLev->found[0]   = '\0';
+		pLev->patConcat  = pLev->pattern;
+		pLev->fndConcat  = pLev->found;
+		}
+	else // (Index > 0)					// Inherit from the parent
+		{
+#ifdef VERBOSEOUT
+printf("\n Inherit from parent - level %d\n", (pLev-1)->index);
+#endif
+		PFW_LEV pParent = (pLev-1);
+		pLev->depth	= pParent->depth;
+		if (depthUp)
+			pLev->depth	+= pSeg->delta;
+		pathCopy(pLev->pattern, pParent->found, FWP_MAX);
+		pathCopy(pLev->found,   pParent->found, FWP_MAX);
+		pLev->patConcat  = (pLev->pattern + strlen(pLev->pattern));
+		pLev->fndConcat  = (pLev->found  + strlen(pLev->found));
+		}
+
+	switch (pSeg->type)			// Prepare the pattern or found path
+		{
+		default:
+			fat_err(INV_TYPE, pLev->pattern);
+			break;
+
+		case TYPE_ROOT:
+				strcat(pLev->fndConcat, pSeg->buffer);
+			break;
+
+		case TYPE_NORMAL:
+			{
+			if (pSeg->terminal)
+				strcat(pLev->patConcat, "*");
+			else			
+				strcat(pLev->fndConcat, pSeg->buffer);
+			break;
+			}
+
+		case TYPE_WILD:
+		case TYPE_RWLD:
+			{
+				strcat(pLev->patConcat, "*");
+			break;
+			}
+		}
+
+	if ((pSeg->type == TYPE_RWLD) && ! pSeg->terminal)	// Handled internally
+		strcpy(pLev->patConcat, pSeg->buffer);
+
+//SHOWLEV("StateInit")
+//SHOWSEG
+	}
+	
+//----------------------------------------------------------------------------
+//	Transition UP one level during processing
+//----------------------------------------------------------------------------
+	static int			// Returns FALSE to fail, fatal error to abort
+AnalyzeError (
+	const char *path,	// Search pathspec that failed to open
+	int			enable)	// TRUE to enable printing access denied meassage
+  
+	{
+	DWORD error = GetLastError();		// The windows error code
+
+	switch (error)
+		{
+		case ERROR_ACCESS_DENIED:
+			if (enable)
+				fprintf(stderr, "\7Access denied:  \"%s\"\n", path);
+			break;
+
+		case ERROR_FILE_NOT_FOUND:
+			fprintf(stderr, "File not found:  \"%s\"\n", path);
+			break;
+
+		case ERROR_PATH_NOT_FOUND:		// This happens normally
+//			fprintf(stderr, "Path not found:  \"%s\"\n", path);
+			break;
+
+		default:
+			fprintf(stderr, "\7ErrorCode (%d)  \"%s\"\n", error, path);
+//			fat_err(INV_FOPEN, pLev->pattern);
+			break;
+		}
+
+	return (FALSE);
+	}
+
+//----------------------------------------------------------------------------
+//	Open theFinder
+//----------------------------------------------------------------------------
+	static int
+SearchOpen (		// Returns TRUE for OK to continue, FALSE to fail
+	PFW_LEV	pLev)
+
+	{
+	if (FinderOpen(&pLev->dta, pLev->pattern))
+		return (TRUE);
+	else
+		return (AnalyzeError(pLev->pattern,
+					(((PHP)(pLev->pHdr))->CallerAttr & FW_AD)));
+	}
+
+//----------------------------------------------------------------------------
+//	Transition UP one level during processing
+//----------------------------------------------------------------------------
+	static void
+Search_UP (
+	PFW_HDR	hp,			// Instance pointer
+	PFW_LEV	pLev,		// Current level pointer
+	int		segIndex,	// Requested next segment (may or may not increase in RWLD)
+	int		depthUp)	// TRUE if depth should increase
+
+	{
+PROGRESS("Up...\n")
+	if (hp->curLevel >= LEV_MAX)
+		fat_err(SRCH_OVF, NULL);		// Level overflow
+
+	PFW_LEV	pLevUp = (pLev+1);			// Point the next up DTE
+	StateInit(hp,						// Init the search level
+		pLevUp,							// Requested level
+		segIndex,						// Requested pattern segment
+		depthUp);						// TRUE if depth should increase
+	hp->curLevel = pLevUp->index;		// Update the current search level
+//SHOWLEV("UP")
+//SHOWHDR("UP")
+	}
+
+//----------------------------------------------------------------------------
+//	Transition DOWN one level during processing
+//----------------------------------------------------------------------------
+	static int
+Search_DN (
+	PFW_HDR	hp,			// Instance pointer
+	PFW_LEV	pLev)		// Current level pointer
+
+	{
+PROGRESS("Down...\n")
+//printf("closed\n");
+	if (hp->curLevel > 0)
+		{
+		--(hp->curLevel);				// Go down one search level
+		pLev = &hp->level[hp->curLevel];
+SHOWHDR("DN")
+SHOWLEV("DN")
+		return (FALSE);					// Not back to level 0 yet
+		}
+	else // we are at level zero, stop the state machine
+		{
+//printf("true\n");
+PROGRESS("Done\n")
+		hp->running = FALSE;			// At level 0, finished
+		return (TRUE);
+		}
+//SHOWLEV("DN")
+//SHOWHDR("DN")
+	}
+
+//----------------------------------------------------------------------------
+//	Copy the exclusion check name, don't copy separator
+//----------------------------------------------------------------------------
+	static void
+nameCopy (
+	char  *pDst,
+	char  *pSrc)
+
+	{
+	char  ch;
+	while ((ch = *pSrc++) != NULCH)
+		{
+		if (ch != PATHCH)
+			*pDst++ = ch;
+		}
+	*pDst = NULCH;	
+	}
+
+//----------------------------------------------------------------------------
+//	Check if a file/dir name is excluded; fExcludeCheck will make it monocase
+//----------------------------------------------------------------------------
+	static int
+isExcluded (
+	PFW_HDR	hp,
+	PFW_LEV	pLev,
+	int		FileAttr)
+
+	{
+	hp->xItem.type  = pLev->dta.dta_type & (ATT_DIR | ATT_FILE);
+	hp->xItem.depth = pLev->depth;
+	nameCopy(hp->xItem.name, pLev->fndConcat);
+	return (fExcludeCheck(hp->xp, &hp->xItem));
+	}
+
+//----------------------------------------------------------------------------
+//	Set the file properties when fWild returns a filespec
+//----------------------------------------------------------------------------
+	static void
+SetProperties (
+	PFW_HDR	hp,
+	PFW_LEV	pLev)
+
+	{
+	hp->foundFlag	= TRUE;		// Successful search
+	hp->file_name	= pLev->found;
+	hp->file_fdt	= pLev->dta.dta_fdt;
+	hp->file_type	= pLev->dta.dta_type;
+	hp->file_size	= pLev->dta.dta_size;
+//SHOWLEV("Set properties")
+//SHOWHDR("Set properties")
+	}
+
+//----------------------------------------------------------------------------
+//	State Machine
+//----------------------------------------------------------------------------
+//	stateMachine () - Request the first/next matching pathname
+//	called exclusively from fWild()
+//----------------------------------------------------------------------------
+	static char *				// Return a drive/path/filename string
+stateMachine (					// Find the next filename
+	FW_HDR	 *hp)				// Pointer to the DTA header
+
+	{
+	PFW_LEV  pLev;
+	PFW_SEG  pSeg;
 
 	if (hp == NULL)
 		return (NULL);
 
-	if ((ep = hp->pLink) == NULL)
-		fat_err(EP_ERR, NULL);
+	hp->foundFlag  = FALSE;		// No search success
 
 	for (;;)
 		{
+//SHOWHDR("SM loop top")
 
-#ifdef	VERBOSEOUT
-e_disp(ep, "Main switch", ONENTRY);
-#endif
+		if (! hp->running)
+			return (NULL);		// Finished, shut down the state machine
 
-		switch (ep->state)
+//SHOWHDR("Entering SM loop")
+		pLev = &hp->level[hp->curLevel];
+		pSeg = &hp->segment[pLev->segIndex];
+//SHOWLEV("Entering SM loop")
+//SHOWSEG
+		switch (pLev->state)
 			{
-
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-			case FRESH:			/* Freshly initialized DTA element */
-				p = ep->proto;
-				chflag = FALSE;
-				do	{
-					if (*p == '?')
-						{
-						if (ep->wild != REC_WILD)
-							ep->wild = ORD_WILD;
-						}
-					else if (*p == '*')
-						{
-						if ((chflag == FALSE)  &&  (*(p + 1) == '*'))
-							{
-							++p;
-							ep->wild = REC_WILD;
-							}
-						else
-							ep->wild = ORD_WILD;
-						}
-					else if ((*p == '/') || (*p == ':') || (*p == '\\'))
-						{
-						chflag = FALSE;
-						if (ep->wild)
-							break;
-						ep->pLast = p;	// Point the last replaced proto separator
-						}
-					else
-						chflag = TRUE;
-					} while (*(++p));	// Point end of active proto string
-				ep->pNext = p;			// Point end of the proto string
-
-				if (ep->wild)
-					{
-					int  n;			// Copy length
-
-					if (ep->wild == REC_WILD)	/* Make match pattern */
-						ep->state = RECW_F;
-					else
-						{
-						ep->state = WILD_F;
-						if (ep->pLast)
-							{
-							n =(int)((p - (ep->pLast + 1)));
-							copyn(ep->pattern, (ep->pLast + 1), n);
-							}
-						else
-							{
-							n = (int)(p - (ep->proto));
-							copyn(ep->pattern, ep->proto, n);
-							}
-						}
-					if (ep->pLast)				/* Make search pattern */
-						{
-						n = (int)((ep->pLast + 1) - (ep->proto));
-						copyn(ep->search, ep->proto, n);
-						strcat(ep->search, "*");
-						}
-					else
-						strcpy(ep->search, "*");
-					}
-				else			/* Not wild, make only a search string */
-					{
-					int  n;		// Copy length
-
-					ep->state = NONW_F;
-					ps = ep->search;
-					n = (int)(p - ep->proto);
-					copyn(ps, ep->proto, n);
-// printf("proto: %s\n", ep->proto	? ep->proto	 : "null" );
-// printf("last:  %s\n", ep->pLast	? ep->pLast	 : "null" );
-// printf("next:  %s\n", ep->pNext	? ep->pNext	 : "null" );
-// printf("srch:  %s\n", ep->search ? ep->search : "null" );
-
-					if (fnchkunc(ps))	 // UNC fixup
-						{
-#ifdef SHOWSRCH
-printf("srch:  %s\n", ep->search ? ep->search : "null" );
-#endif
-						if (_findf(&ep->dta, ps, (hp->mode & FW_ALL) | FW_SUBD) != 0)
-							{
-							strcat(ps, "\\*");
-							ep->state = NONW_F;
-							ep->pLast  = ep->proto + strlen(ep->proto);
-							}
-						}
-					}
-				break;
-
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-			case RECW_F:						/* Recursive wild case */
-			case RECW_N:
-
-#ifdef	VERBOSEOUT
-e_disp(ep, "RECW", ONENTRY);
-#endif
-				if (ep->state == RECW_F)		/* Search for file */
-					{
-#ifdef SHOWSRCH
-printf("srch:  %s\n", ep->search ? ep->search : "null" );
-#endif
-					findFail  = _findf(&ep->dta, ep->search, (hp->mode & FW_ALL) | FW_SUBD);
-					ep->state = RECW_N;
-					}
-				else
-					findFail  = _findn(&ep->dta);
-
-				if (findFail )						/* If no file found... */
-					{
-					if ((hp->pLink = ep = unnest_element(ep)) == NULL)
-						{
-						fwfree(hp);				/* Terminate the object */
-						return (NULL);			/* Return failure */
-						}
-					break;						/* Continue unnested */
-					}
-
-
-#ifdef	VERBOSEOUT
-e_disp(ep, "RECW", ONEXIT);
-#endif
-
-				if (ep->dta.dta_type & ATT_SUBD)		/* Check if SUBD */
-					{
-					if (*ep->pNext)			/* Process non-terminal subd */
-						{
-						if (fnmatch2(ep->pNext + 1, ep->dta.dta_name))
-							{
-							if (hp->exActive && (hp->xmode & XD_BYNAME) && fexcludeCheck(ep->dta.dta_name))
-								break;
-							build_fn(ep);
-							if (hp->exActive && (hp->xmode & XD_BYPATH) && fexcludeCheck(ep->found))
-								break;
-
-							ep->state = RECW_T;
-							if (hp->mode & FW_SUBD)
-								{
-								ep->fdt = fgetfdt(ep->found);
-								return (ep->found);
-								}
-							}
-						}
-					else // (not *ep->pNext)					/* Process terminal subd */
-						{
-						if (hp->exActive && (hp->xmode & XD_BYNAME) && fexcludeCheck(ep->dta.dta_name))
-							break;
-						build_fn(ep);		/* Terminal match case */
-						if (hp->exActive && (hp->xmode & XD_BYPATH) && fexcludeCheck(ep->found))
-							break;
-
-						ep->state = RECW_T;
-						if (hp->mode & FW_SUBD)
-							{
-							ep->fdt = fgetfdt(ep->found);
-							return (ep->found);
-							}
-						}
-					ep->state = RECW_T;
-					break;
-					}
-
-				else if (hp->mode & FW_FLS)		/* Process file case */
-					{
-					if (*ep->pNext)				/* Process non-terminal file */
-						{
-						if (fnmatch2(ep->pNext + 1, ep->dta.dta_name))
-							{
-							if (hp->exActive && (hp->xmode & XF_BYNAME) && fexcludeCheck(ep->dta.dta_name))
-								break;
-							build_fn(ep);		/* Terminal match case */
-							if (hp->exActive && (hp->xmode & XF_BYPATH) && fexcludeCheck(ep->found))
-								break;
-
-							ep->fdt = fgetfdt(ep->found);
-							return (ep->found);
-							}
-						}
-					else // (not *ep->pNext)		/* Process terminal file */
-						{
-						if (hp->exActive && (hp->xmode & XF_BYNAME) && fexcludeCheck(ep->dta.dta_name))
-							break;
-						build_fn(ep);		/* Terminal match case */
-						if (hp->exActive && (hp->xmode & XF_BYPATH) && fexcludeCheck(ep->found))
-							break;
-
-						ep->fdt = fgetfdt(ep->found);
-						return (ep->found);
-						}
-					}
-				break;
-
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-			case RECW_T:
-
-				ep->state = RECW_N;
-//				if (ep->dta.dta_name[0] != '.')
-				if ((strcmp(ep->dta.dta_name,  ".") != 0)
-				&&	(strcmp(ep->dta.dta_name, "..") != 0))
-					{			/* Wild "." and ".." don't nest */
-					build_fn(ep);
-					xep = ep;			/* Nest the DTA element list */
-					hp->pLink = ep = new_element();
-					ep->pLink = xep;
-					strcpy(ep->proto, xep->found);
-					strcat(ep->proto, rwild_str);
-					strcat(ep->proto, xep->pNext);
-					}
-				break;
-
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-
-			case WILD_F:						/* Ordinary wild case */
-			case WILD_N:
-
-#ifdef	VERBOSEOUT
-e_disp(ep, "WILD", ONENTRY);
-#endif
-				if (ep->state == WILD_F)		/* Search for file */
-					{
-#ifdef SHOWSRCH
-printf("srch:  %s\n", ep->search ? ep->search : "null" );
-#endif
-					findFail  = _findf(&ep->dta, ep->search, (hp->mode & FW_ALL) | FW_SUBD);
-					ep->state = WILD_N;
-					}
-				else
-					findFail  = _findn(&ep->dta);
-
-				if (findFail )						/* If no file found... */
-					{
-					if ((hp->pLink = ep = unnest_element(ep)) == NULL)
-						{
-						fwfree(hp);				/* Terminate the object */
-						return (NULL);			/* Return failure */
-						}
-					break;						/* Continue unnested */
-					}
-
-#ifdef	VERBOSEOUT
-e_disp(ep, "WILD", ONEXIT);
-#endif
-				if (*ep->pNext)			/* If terminal name, set match mode */
-					m_mode = 0;
-
-				if (!fnmatch2(ep->pattern, ep->dta.dta_name))
-					break;
-
-				if (ep->dta.dta_type & ATT_SUBD)		/* Check if SUBD */
-					{
-					if (*ep->pNext)					/* Yes, process non-terminal subd */
-						{
-						if ((strcmp(ep->dta.dta_name,  ".") == 0)	// No
-						||	(strcmp(ep->dta.dta_name, "..") == 0))
-							break;		/* Wild "." and ".." don't nest */
-
-						if (hp->exActive && (hp->xmode & XD_BYNAME) && fexcludeCheck(ep->dta.dta_name))
-							break;
-						build_fn(ep);
-						if (hp->exActive && (hp->xmode & XD_BYPATH) && fexcludeCheck(ep->found))
-							break;
-						xep = ep;				/* Nest the DTA element list */
-						hp->pLink = ep = new_element();
-						ep->pLink = xep;
-						strcpy(ep->proto, xep->found);
-						strcat(ep->proto, xep->pNext);
-						}
-					else // (not *ep->pNext)		/* Process terminal subd */
-						{
-						if (hp->exActive && (hp->xmode & XD_BYNAME) && fexcludeCheck(ep->dta.dta_name))
-							break;
-						build_fn(ep);
-						if (hp->exActive && (hp->xmode & XD_BYPATH) && fexcludeCheck(ep->found))
-							break;
-
-						if (hp->mode & FW_SUBD)	/* If reading subd's... */
-							{
-							ep->fdt = fgetfdt(ep->found);
-							return (ep->found);
-							}
-						}
-					}
-
-				else								/* Process file */
-					{
-					if ((*ep->pNext == '\0')  &&  (hp->mode & FW_FLS))
-						{
-						if (hp->exActive && (hp->xmode & XF_BYNAME) && fexcludeCheck(ep->dta.dta_name))
-							break;
-						build_fn(ep);
-						if (hp->exActive && (hp->xmode & XF_BYPATH) && fexcludeCheck(ep->found))
-							break;
-
-						ep->fdt = fgetfdt(ep->found);
-						return (ep->found);
-						}
-					}
-				break;
-
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-			case NONW_F:
-			case NONW_N:
-
-#ifdef	VERBOSEOUT
-e_disp(ep, "NONW", ONENTRY);
-#endif
-				if (ep->state == NONW_F)
-					{
-// printf("\nNONW: findf on \"%s\" (2)\n", ep->search);
-#ifdef SHOWSRCH
-printf("srch:  %s\n", ep->search ? ep->search : "null" );
-#endif
-					findFail  = _findf(&ep->dta, ep->search, (hp->mode & FW_ALL) | FW_SUBD);
-					}
-
-				if (ep->state == NONW_N)
-					{
-// printf("\nNONW: findn on \"%s\" (3)\n", ep->search);
-					findFail  = _findn(&ep->dta);
-					}
-
-				ep->state = NONW_N;
-
-				if (findFail )						/* If no file found... */
-					{
-					if ((hp->pLink = ep = unnest_element(ep)) == NULL)
-						{
-						fwfree(hp);				/* Terminate the object */
-						return (NULL);			/* Return failure */
-						}
-					break;						/* Continue unnested */
-					}
-
-#ifdef	VERBOSEOUT
-e_disp(ep, "NONW", ONEXIT);
-#endif
-
-				if (ep->dta.dta_type & ATT_SUBD)
-					{
-					if (hp->exActive && (hp->xmode & XD_BYNAME) && fexcludeCheck(ep->dta.dta_name))
-						break;
-					build_fn(ep);
-					if (hp->exActive && (hp->xmode & XD_BYPATH) && fexcludeCheck(ep->found))
-						break;
-
-					ep->state = NONW_T;
-					if (hp->mode & FW_SUBD)
-						{
-						ep->fdt = fgetfdt(ep->found);
-						return (ep->found);	/* Return the directory */
-						}
-					break;						// Return to top of loop
-					}
-				else if (hp->mode & FW_FLS)		// And is a file (because not a directory)
-					{
-					if (hp->exActive && (hp->xmode & XF_BYNAME) && fexcludeCheck(ep->dta.dta_name))
-						break;
-					build_fn(ep);
-					if (hp->exActive && (hp->xmode & XF_BYPATH) && fexcludeCheck(ep->found))
-						break;
-
-					ep->fdt = fgetfdt(ep->found);
-					return (ep->found);		/* Return the filename */
-					}
-				break;
-
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-			case NONW_T:
-
-// printf("\nNONW_T: entered, mode = %04X, DTA.type = %04X\n", hp->mode, ep->dta.dta_type);
-				ep->state = NONW_N;
-				if (hp->mode & (FW_FILE | FW_ALL))
-					{
-// printf("\nNONW_T: nesting\n");
-					xep = ep;			/* Nest the DTA element list */
-					hp->pLink = ep = new_element();
-					ep->pLink = xep;
-					strcpy(ep->proto, xep->found);
-					strcat(ep->proto, owild_str);
-					}
-				break;
-
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
 			default:
+				{
 				fat_err(INV_STATE, NULL);
-			}					// End of the state switch table
-		}						// Return to top of the state loop
+				}
 
-//	fwfree(hp);					// Terminate the object (if it were a real exit)
-	return	(NULL);				// Dummy to make the compiler happy, never taken
+			case ST_FINISHED:
+				{
+				return (NULL);
+				}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+//	Root segment (non-terminal)
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+case ST_ROOT_NT_0:
+	{
+SHOWLEV("ST_ROOT_NT_0")
+SHOWDTA
+
+	// Buffer was copied in StateInit()
+
+	pLev->state = ST_ROOT_NT_1;
+	if (! isExcluded(hp, pLev, ATT_DIR))			// If not excluded,
+		Search_UP(hp, pLev, (pLev->segIndex+1), 1);	//   advance to the next level
+	break; // exit the state
 	}
 
-/* ----------------------------------------------------------------------- *\
-|  fwExclEnable () - Enable the file exclusion mechanism for the fwild object
-\* ----------------------------------------------------------------------- */
-	void
-fwExclEnable (			// Enable/disable file exclusion
-	DTA_HDR	 *hp,		// Pointer to the DTA header
-	int       enable)	// TRUE to enable exclusion
-
+case ST_ROOT_NT_1:
 	{
-	if (hp)
-		hp->exActive = enable;
+SHOWLEV("ST_ROOT_NT_1")
+	if (Search_DN(hp, pLev))		// Search End
+		return (NULL);
+	break; // exit the state
 	}
 
-/* ----------------------------------------------------------------------- */
-
-/* ----------------------------------------------------------------------- */
-#ifdef	VERBOSEOUT
-	static void
-m_disp(s1, s2)
-	char  *s1;
-	char  *s2;
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+//	Root segment (terminal)
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
+case ST_ROOT_TL_0:			// Root segment should never be terminal (at least a '*')
 	{
-	printf("\n");
-	printf("Match strings:\n");
-
-	if (s1)
-		printf("String1..%s\n", s1);
-	else
-		printf("String1 is NULL\n");
-
-	if (s2)
-		printf("String2..%s\n", s2);
-	else
-		printf("String2 is NULL\n");
-
-	printf("\n");
-	fflush(stdout);
+SHOWLEV("ST_ROOT_TL_0")
+	fat_err(INV_PATH, NULL);
 	}
 
-#endif
-/* ----------------------------------------------------------------------- */
-#ifdef	VERBOSEOUT
-	static void
-h_disp(hp, s)
-	DTA_HDR	 *hp;
-	char	 *s;
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+//	Normal segment (non-terminal)
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
+case ST_NORM_NT_0:
 	{
-	printf("\n");
-	printf("From: %s\n", s);
-	printf("Pointer....%04x\n", (int)(INT64)(hp));
-	printf("Link.......%04x\n", (int)(INT64)(hp->pLink));
-	printf("Mode.......%04x\n", (int)(INT64)(hp->mode));
-	printf("\n");
-	fflush(stdout);
+SHOWLEV("ST_NORM_NT_0")
+SHOWDTA
+
+	// Buffer was copied in StateInit()
+
+	pLev->state = ST_NORM_NT_1;
+	if (! isExcluded(hp, pLev, ATT_DIR))			// If not excluded,
+		Search_UP(hp, pLev, (pLev->segIndex+1), 1);	//   advance to the next level
+	break; // exit the state
 	}
 
-#endif
-/* ----------------------------------------------------------------------- */
-#ifdef	VERBOSEOUT
-	static void
-e_disp(ep, s, flag)
-	DTA_ELE	 *ep;				/* Pointer to the DTA element */
-	char	 *s;				/* Originination string */
-	int		  flag;				/* True for a search result */
-
+case ST_NORM_NT_1:
 	{
-	printf("\n");
+SHOWLEV("ST_NORM_NT_1")
+	if (Search_DN(hp, pLev))		// Search End
+		return (NULL);
+	break; // exit the state
+	}
 
-	if (flag == (ONEXIT))
-		printf("Result from: %s\n", s);
-	else //  == (ONENTRY)
-		printf("Entry to: %s\n", s);
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+//	Normal segment (terminal)
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-	printf("Pointer____%04x\n", (int)(INT64)(ep));
+case ST_NORM_TL_0:
+	{
+SHOWLEV("ST_NORM_TL_0")
+SHOWDTA
 
-	printf("Link_______%04x\n", (int)(INT64)(ep->pLink));
+	// Pattern was copied in StateInit()
 
-	switch (ep->wild)
-		{
-		case NOT_WILD:	printf("Wild_______NOT_WILD\n");  break;
-		case ORD_WILD:	printf("Wild_______ORD_WILD\n");  break;
-		case REC_WILD:	printf("Wild_______REC_WILD\n");  break;
-		default:		printf("Wild_______BAD\n");
+	if (! SearchOpen(pLev))
+		{		
+		pLev->state = ST_NORM_TL_2;						// Access denied
+		break; // exit the loop
 		}
-
-	switch (ep->state)
-		{
-		case FRESH:		printf("State______FRESH\n");	break;
-		case NONW_F:	printf("State______NONW_F\n");	break;
-		case NONW_N:	printf("State______NONW_N\n");	break;
-		case NONW_T:	printf("State______NONW_T\n");	break;
-		case WILD_F:	printf("State______WILD_F\n");	break;
-		case WILD_N:	printf("State______WILD_N\n");	break;
-		case RECW_F:	printf("State______RECW_F\n");	break;
-		case RECW_N:	printf("State______RECW_N\n");	break;
-		case RECW_T:	printf("State______RECW_T\n");	break;
-		default:		printf("State______BAD\n");
-		}
-
-	if (ep->proto[0])
-		printf("Prototype__%s\n",	ep->proto);
-
-	if (ep->pLast)
-		printf("Last_______%3lld\n", (ep->pLast - ep->proto));
-	else
-		printf("Last_______  0\n");
-
-	if (ep->pNext)
-		printf("Next_______%3lld\n", (ep->pNext - ep->proto));
-	else
-		printf("Next_______  0\n");
-
-	if (ep->search)
-		printf("Search_____%s\n",	ep->search);
-
-	if (ep->pattern)
-		printf("Pattern____%s\n",	ep->pattern);
-
-	if (ep->found[0])
-		printf("Found______%s\n",	ep->found);
-
-	if (flag)
-		{
-		printf("DTA.name___%s\n",	ep->dta.dta_name);
-		printf("DTA.type___%04X\n", ep->dta.dta_type);
-		printf("DTA.size___%u\n",	(int)(ep->dta.dta_size));
-		}
-
-	printf("\n");
-	fflush(stdout);
+	pLev->state = ST_NORM_TL_1;							// Access denied
 	}
 
-#endif
-/* ----------------------------------------------------------------------- */
-#if 1	//VERBOSEOUT
-	static void
-pc_disp (
-	PDTA_HDR  hp)				/* Pointer to the DTA element */
-
+case ST_NORM_TL_1:
 	{
-	printf("\n");
-
-	printf("Raw pattern: \"%s\"\n", hp->rawPattern);
-	printf("Rooted:      %s\n\n", (hp->rooted ? "TRUE" : "FALSE"));
-
-	for (int i = 0; (i < LEVEL_MAX); ++i)
+SHOWLEV("ST_NORM_TL_1")
+	for (;;)
 		{
-		PDTA_SEG pSeg = &hp->segment[i];
-		SegType  t = pSeg->type;
+		int  FileAttr = FinderFile(&pLev->dta, pLev->fndConcat);
 
-		if ((i >= 2)  &&  (pSeg->pEnd == 0))
-			break;
+		hp->foundFlag = FALSE;
+		if (FileAttr == ATT_NONE)
+			{
+			pLev->state = ST_NORM_TL_2;
+			break; // exit the loop
+			}
+		if (( ! fnMatch(pSeg->buffer, pLev->fndConcat))	// Must match,
+		||  (isExcluded(hp, pLev, FileAttr)))			//   and must be not excluded
+			continue;									// Otherwise, skip over it
 
-		printf("Level     %d\n", i);
-		printf("Type      %s\n", (	(t == TYPE_UNKNOWN)	? "Unknown" :
-									(t == TYPE_EMPTY)	? "Empty"   :
-									(t == TYPE_DRIVE)	? "Drive"   :
-									(t == TYPE_UNC)		? "UNC"     :
-									(t == TYPE_NONWILD)	? "NONWILD" :
-									(t == TYPE_WILD)	? "WILD"    :
-									(t == TYPE_RWILD)	? "RWILD"   : "Bad"));
-		printf("Terminal:  %s\n", (pSeg->terminal ? "TRUE" : "FALSE"));
-		printf("Separator: %s\n", (pSeg->separator ? "TRUE" : "FALSE"));
-		printf("Length:    %d\n", pSeg->length);
-#ifdef _WIN64
-		printf("pEnd:      %llX\n", (UINT64)(pSeg->pEnd));
-		printf("Buffer:    %llX\n", (UINT64)(pSeg->segBuffer));
-#else
-		printf("pEnd:      %X\n", (UINT32)(pSeg->pEnd));
-		printf("Buffer:    %X\n", (UINT32)(pSeg->segBuffer));
-#endif
-		printf("String:    \"%s\"\n", pSeg->segBuffer);
-		printf("\n");
+		if (((FileAttr & ATT_FILE)  &&  hp->CallerAttr & FW_FILE)
+		||  ((FileAttr & ATT_DIR)   &&  hp->CallerAttr & FW_DIR))
+			{
+			hp->foundFlag = TRUE;
+			break; // exit the loop
+			}
+		}
+			
+	if (hp->foundFlag)
+		{
+		SetProperties(hp, pLev);		// Report this file/directory
+		return (pLev->found); // exit the state machine
 		}
 	}
 
-#endif
-/* ----------------------------------------------------------------------- */
+case ST_NORM_TL_2:
+	{
+SHOWLEV("ST_NORM_TL_2")
+	FinderClose(&pLev->dta);
+	if (Search_DN(hp, pLev))		// Search End
+		return (NULL);
+	break; // exit the state
+	}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+//	Simple wild segment (non-terminal)
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+case ST_WILD_NT_0:
+	{
+SHOWLEV("ST_WILD_NT_0")
+SHOWDTA
+
+	// Pattern was copied in StateInit()
+
+	if (! SearchOpen(pLev))
+		{		
+		pLev->state = ST_WILD_NT_2;						// Access denied
+		break; // exit the loop
+		}
+	pLev->state = ST_WILD_NT_1;
+	}
+
+case ST_WILD_NT_1:
+	{
+SHOWLEV("ST_WILD_NT_1")
+	for (;;)
+		{
+		int  FileAttr = FinderFile(&pLev->dta, pLev->fndConcat);
+
+		if (FileAttr == ATT_NONE)
+			{
+			pLev->state = ST_WILD_NT_2;
+			break; // exit the loop
+			}
+
+		if ((FileAttr != ATT_DIR)						// Must be a directory,
+		||  (! fnMatch(pSeg->buffer, pLev->fndConcat))	//   and must match,
+		||  (isExcluded(hp, pLev, FileAttr)))			//   and must be not excluded
+			continue;									// Otherwise, skip over it
+
+		strcat(pLev->found, "\\");						// Add the separator, and
+		Search_UP(hp, pLev, (pLev->segIndex+1), 1);		//   advance to next level
+		break; // exit the loop
+		}
+	break; // exit the state
+	}
+
+case ST_WILD_NT_2:
+	{
+SHOWLEV("ST_WILD_NT_2")
+	FinderClose(&pLev->dta);
+	if (Search_DN(hp, pLev))		// Search End
+		return (NULL);
+	break; // exit the state
+	}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+//	Simple wild segment (terminal)
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+case ST_WILD_TL_0:
+	{
+SHOWLEV("ST_WILD_TL_0")
+SHOWDTA
+
+	// Pattern was copied in StateInit()
+
+	if (! SearchOpen(pLev))
+		{		
+		pLev->state = ST_WILD_TL_2;						// Access denied
+		break; // exit the loop
+		}
+	pLev->state = ST_WILD_TL_1;
+	}
+
+case ST_WILD_TL_1:
+	{
+SHOWLEV("ST_WILD_TL_1")
+	for (;;)
+		{
+		int  FileAttr = FinderFile(&pLev->dta, pLev->fndConcat);
+
+		hp->foundFlag = FALSE;
+		if (FileAttr == ATT_NONE)
+			{
+			pLev->state = ST_WILD_TL_2;
+			break; // exit the loop
+			}
+
+		if (( ! fnMatch(pSeg->buffer, pLev->fndConcat))	// Must match,
+		||  (isExcluded(hp, pLev, FileAttr)))			//   and must be not excluded
+			continue;									// Otherwise, skip over it
+
+		if (((FileAttr & ATT_FILE)  &&  hp->CallerAttr & FW_FILE)
+		||  ((FileAttr & ATT_DIR)   &&  hp->CallerAttr & FW_DIR))
+			{
+			hp->foundFlag = TRUE;
+			break; // exit the loop
+			}
+		}
+					
+	if (hp->foundFlag)
+		{
+		SetProperties(hp, pLev);		// Report this file/directory
+		return (pLev->found); // exit the state machine
+		}
+	}
+
+case ST_WILD_TL_2:
+	{
+SHOWLEV("ST_WILD_TL_2")
+	FinderClose(&pLev->dta);
+	if (Search_DN(hp, pLev))		// Search End
+		return (NULL);
+//printf("break\n");
+	break; // exit the state
+	}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+//	Recursive wild segment (non-terminal)
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+case ST_RWLD_NT_0:
+	{
+SHOWLEV("ST_RWLD_NT_0")
+SHOWDTA
+
+	pLev->state = ST_RWLD_NT_1;
+	if (! isExcluded(hp, pLev, ATT_DIR))			// If not excluded,
+		Search_UP(hp, pLev, (pLev->segIndex+1), 0);	// Skip no directories
+	break;
+	}
+
+case ST_RWLD_NT_1:
+	{
+	if (! SearchOpen(pLev))
+		{		
+		pLev->state = ST_RWLD_NT_3;						// Access denied
+		break; // exit the loop
+		}
+	pLev->state = ST_RWLD_NT_2;
+	}
+
+case ST_RWLD_NT_2:
+	{
+	for (;;)
+		{
+		int  FileAttr = FinderFile(&pLev->dta, pLev->fndConcat);
+
+		if (FileAttr == ATT_NONE)
+			{
+			pLev->state = ST_RWLD_NT_3;
+			break; // exit the loop
+			}
+
+		if ((FileAttr != ATT_DIR)				// Must be a directory, and
+		||  (isExcluded(hp, pLev, FileAttr)))	//   must be not excluded
+			continue;							// Otherwise, skip over it
+
+		strcat(pLev->found, "\\");				// Add the separator
+		Search_UP(hp, pLev, pLev->segIndex, 1);	// Skip a directory
+		break; // exit the loop
+		}
+	break; // exit the state
+	}
+
+case ST_RWLD_NT_3:
+	{
+SHOWLEV("ST_RWLD_NT_3")
+	FinderClose(&pLev->dta);
+	if (Search_DN(hp, pLev))		// Search End
+		return (NULL);
+	break; // exit the state
+	}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+//	Recursive wild segment (terminal)
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+case ST_RWLD_TL_0:
+	{
+SHOWLEV("ST_RWLD_TL_0")
+SHOWDTA
+
+	if (! SearchOpen(pLev))
+		{		
+		pLev->state = ST_RWLD_TL_3;						// Access denied
+		break; // exit the loop
+		}
+	pLev->state = ST_RWLD_TL_1;
+	}
+
+case ST_RWLD_TL_1:
+	{
+SHOWLEV("ST_RWLD_TL_1")
+	for (;;)
+		{
+		int  FileAttr = FinderFile(&pLev->dta, pLev->fndConcat);
+
+		hp->foundFlag = FALSE;
+		if (FileAttr == ATT_NONE)
+			{
+			pLev->state = ST_RWLD_TL_3;
+			break; // exit the loop
+			}
+
+		if (isExcluded(hp, pLev, FileAttr))		// Must not be excluded
+			continue;
+
+		if ((FileAttr & ATT_FILE)  &&  hp->CallerAttr & FW_FILE)
+			{
+			hp->foundFlag = TRUE;
+			break; // exit the loop
+			}
+
+		if (FileAttr & ATT_DIR)
+			{
+			if (hp->CallerAttr & FW_DIR)
+				hp->foundFlag = TRUE;
+			pLev->state = ST_RWLD_TL_2;
+			break; // exit the loop
+			}
+		}
+			
+	if (hp->foundFlag)
+		{
+		SetProperties(hp, pLev);		// Report this file/directory
+		return (pLev->found); // exit the state machine
+		}
+	break; // exit the state
+	}
+
+case ST_RWLD_TL_2:
+	{
+SHOWLEV("ST_RWLD_TL_2")
+	strcat(pLev->found, "\\");		// Add the separator
+	pLev->state = ST_RWLD_TL_1;
+	Search_UP(hp, pLev, pLev->segIndex, 1);
+	break; // exit the state
+	}
+
+case ST_RWLD_TL_3:
+	{
+SHOWLEV("ST_RWLD_TL_3")
+	FinderClose(&pLev->dta);
+	if (Search_DN(hp, pLev))		// Search End
+		return (NULL);
+	break; // exit the state
+	}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+			} // End of switch
+		} // End for (;;)
+	} // End of FWild()
+
+//----------------------------------------------------------------------------
+//----------------------------------------------------------------------------

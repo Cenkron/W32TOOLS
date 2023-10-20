@@ -103,13 +103,13 @@ fexcludeClean
 
 // -----------------------------------------------------------------------
 	int					// Return non-zero if an error
-fexclude (				// Exclude a path or path file from the fwild search
+fexclude (				// Exclude a path or path file from the fWild search
 	char  *pattern);	// Pointer to the pattern string
 
 // -----------------------------------------------------------------------
 	int					// Return non-zero if an error
 fexcludeInit (			// Initialize the eclusion system
-	int  *xmode);		// Pointer to the fwild.xmode variable
+	int  *xmode);		// Pointer to the fWild.xmode variable
 
 // -----------------------------------------------------------------------
 
