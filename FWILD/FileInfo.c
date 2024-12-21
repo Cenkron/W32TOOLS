@@ -195,9 +195,15 @@ FileInfoOpen (					// Open a FileInfo instance
 		return (NULL);
 
 	pFi->dta.SearchAttr = callerAttrMask;
-	if ((! FinderOpen(&pFi->dta, pFileSpec))
-	||  (FinderFile(&pFi->dta, NULL) == 0))
+	if (! FinderOpen(&pFi->dta, pFileSpec))	// Open the finder
 		{
+		freeFI(pFi);				// Failure, filespec was not found
+		return (NULL);
+		}
+
+	if  (FinderFile(&pFi->dta, NULL) == 0)
+		{
+		FinderClose(&pFi->dta);	// Close the finder
 		freeFI(pFi);				// Failure, filespec was not found
 		return (NULL);
 		}
@@ -268,7 +274,11 @@ FileInfoClose (					// Open a FileInfo instance
 	PFI pFi)					// FI pointer to instance to be freed
 
 	{
-	freeFI(pFi);				// Validate and free it
+	if (pFi)
+		{
+		FinderClose(&pFi->dta);	// Close the finder
+		freeFI(pFi);			// Validate and free it
+		}
 	return (NULL);				// Returned for pointer reassignment
 	}
 

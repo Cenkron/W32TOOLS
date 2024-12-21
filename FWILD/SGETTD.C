@@ -498,7 +498,7 @@ static	STRINGS	str_table [NUM_STR] =
 	{ "mon",	X_WDAY,		 1	},	/* Monday */
 	{ "tue",	X_WDAY,		 2	},	/* Tuesday */
 	{ "wed",	X_WDAY,		 3	},	/* Wednesday */
-	{ "thu",	X_WDAY,		 4	},	/* Thurday */
+	{ "thu",	X_WDAY,		 4	},	/* Thursday */
 	{ "fri",	X_WDAY,		 5	},	/* Friday */
 	{ "sat",	X_WDAY,		 6	},	/* Saturday */
 

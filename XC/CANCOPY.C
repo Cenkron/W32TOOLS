@@ -26,9 +26,42 @@ Copyright (c) 2007 by Brian Johnson, TX - All Rights Reserved
 #define VERSION "940602.091928"
 /**********************************************************************/
 
-int	ch_disk (void);
+static	UINT64	spaceAvailable = 0;
+
 
 /**********************************************************************/
+	static int
+ch_disk (void)
+	{
+	char buffer[256];
+
+	printf(" -- change disks?  [Y/N] : ");
+	gets(buffer);
+
+	return ( (tolower(buffer[0])=='y')
+		? TRUE
+		: FALSE );
+	}
+
+/**********************************************************************/
+	static int
+CheckSpace (
+	char   *path,
+	UINT64	chkSize)
+
+	{
+	if (chkSize >= spaceAvailable)
+		spaceAvailable = dfree(path);
+	if (chkSize < spaceAvailable)
+		{
+		spaceAvailable -= chkSize;
+		return TRUE;
+		}
+	return FALSE;
+	}
+
+/**********************************************************************/
+
 	EXPORT int
 can_copy (
 	char *src,
@@ -39,7 +72,6 @@ can_copy (
 	int 	retval = TRUE;
 	int		srcfh;
 	UINT64	dstSize;
-	UINT64	spaceAvailable = dfree(path);
 	
 
 	if (v_flag >= 2)
@@ -82,10 +114,10 @@ printf("CANcopy pth: \"%s\"\n", path);
 
 //printf("dstSize %lldd\n", dstSize);
 
-	if (! azFlags.p)
+	if ((! azFlags.p)  &&  (! AZ_Flags.s))
 		spaceAvailable += dstSize;	
 
-	while ( filesize > spaceAvailable )
+	while ( ! CheckSpace(path, dstSize))
 		{
 		error(dst, "destination disk full");
 		if ( !azFlags.c || !ch_disk() )
@@ -99,20 +131,6 @@ printf("CANcopy pth: \"%s\"\n", path);
 exit:
 
 	return (retval);
-	}
-
-/**********************************************************************/
-	int
-ch_disk (void)
-	{
-	char buffer[256];
-
-	printf(" -- change disks?  [Y/N] : ");
-	gets(buffer);
-
-	return ( (tolower(buffer[0])=='y')
-		? TRUE
-		: FALSE );
 	}
 
 /**********************************************************************/

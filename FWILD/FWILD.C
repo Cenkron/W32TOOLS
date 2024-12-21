@@ -57,7 +57,7 @@
 
 //	#define  TRUNCATE			// Define this to truncate execution of the caller
 //	#define  VERBOSEOUT			// Define this in the makefile for verbose output
-	#define  BUILD_DIAGS		// Define this to include the diagnostice methods
+	#define  BUILD_DIAGS		// Define this to include the diagnostic methods
 								// This is done so printfs can use the decoders
 // -------------------------
 
@@ -1058,6 +1058,7 @@ SearchOpen (		// Returns TRUE for OK to continue, FALSE to fail
 	PFW_LEV	pLev)
 
 	{
+PROGRESS("SearchOpen\n")
 	if (FinderOpen(&pLev->dta, pLev->pattern))
 		return (TRUE);
 	else

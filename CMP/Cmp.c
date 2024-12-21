@@ -163,7 +163,7 @@ void	process		(char *, char *);
 void	file1error	(char *);
 void	file2error	(char *);
 void	fat_err		(char *);
-int		putdiff		(int, char *);
+// int	putdiff		(int, char *);
 int		dataComp	(int fd1, int fd2);
 int		sizeComp	(int fd1, int fd2);
 
@@ -798,7 +798,7 @@ process (				/* Compare one pair one of input files */
 
 	if (c_flag)
 		{
-		PFI pFi;
+		PFI pFi = NULL;
 
 		if ((! fExcludePathCheck (xp, fnp1))
 		&&  ((pFi = FileInfoOpen(filetypes, fnp1)) != NULL))

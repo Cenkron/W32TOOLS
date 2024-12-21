@@ -36,11 +36,11 @@
 
 #if defined(TEST)
 #define DEBUG
-#endif
+#endif //TEST
 
 #if defined(DEBUG)
 #include <stdio.h>
-#endif
+#endif // DEBUG
 
 //----------------------------------------------------------------------------
 
@@ -50,6 +50,10 @@
 
 #define ATT_MASK (ATT_RONLY | ATT_HIDDEN | ATT_SYSTEM | ATT_DIR | ATT_ARCH | FW_AD)
 
+//----------------------------------------------------------------------------
+#ifdef DEBUG
+static int FinderDepth = 0;
+#endif // DEBUG
 //----------------------------------------------------------------------------
 //	Translate file search attributes to a diagnostic string
 //----------------------------------------------------------------------------
@@ -121,7 +125,7 @@ d_disp (
 //	printf("Hand: %-01X\n",		(unsigned)(pDta->sh));
 	}
 
-#endif
+#endif // DEBUG
 /* ----------------------------------------------------------------------- *\
 |  wfd_to_dta () - Translate the WIN32_FIND_DATA to the FW_DTA structure
 \* ----------------------------------------------------------------------- */
@@ -166,7 +170,7 @@ TypeMatch (
 	printf("TypeMatch(): filename:  \"%s\"\n", pDta->dta_name);
 	printf("TypeMatch(): Srch Attr: %s\n",     showSrchAttr(SrchAttr));
 	printf("TypeMatch(): Fnd  Attr: %s\n",     showFileAttr(fileAttr));
-#endif
+#endif // DEBUG
 	if ((fileAttr & ATT_DIR)  &&  (SrchAttr & ATT_DIR))
 		{
 		if (((fileAttr & (ATT_HIDDEN | ATT_SYSTEM)) == 0)
@@ -185,12 +189,12 @@ TypeMatch (
 
 #ifdef DEBUG
 	printf("TypeMatch(): %s\n", (result ? "Matched" : "Unmatched"));
-#endif
+#endif // DEBUG
 	return (result);
 	}
 
 /* ----------------------------------------------------------------------- *\
-|  FindOpen ()	Open a wild card search Version 2 (public version)
+|  FinderOpen ()	Open a wild card search Version 2 (public version)
 \* ----------------------------------------------------------------------- */
 	int				// TRUE for success, FALSE for failure
 FinderOpen (
@@ -198,23 +202,21 @@ FinderOpen (
 	const char *pPattern)	// Pointer to the search string
 
 	{
-	HANDLE  hFind;					// The returned file handle
+	HANDLE  hFind;				// The returned file handle
 
-	pDta->valid		 = FALSE;
-	pDta->sh = hFind = FindFirstFile(pPattern, &pDta->wfd);
-	if (hFind == INVALID_HANDLE_VALUE)
-		return (FALSE);
-
-	pDta->valid = TRUE;
+	pDta->sh    = hFind = FindFirstFile(pPattern, &pDta->wfd);
+	pDta->valid = (hFind != INVALID_HANDLE_VALUE);
 
 #ifdef DEBUG
-printf("FinderOpen:    \"%s\"\n", pPattern);
-#endif
-	return (TRUE);
+if (pDta->valid)
+	++FinderDepth;
+printf("FinderOpen: (%d)   \"%s\"\n", FinderDepth, pPattern);
+#endif // DEBUG
+	return (pDta->valid);
 	}
 
 /* ----------------------------------------------------------------------- *\
-|  FindFile ()	Find the first/next file Version 2 (public version)
+|  FinderFile ()	Find the first/next file Version 2 (public version)
 \* ----------------------------------------------------------------------- */
 	int			// Returns ATTR bitmap: ATT_FILE, ATT_DIR, or 0 for failure
 FinderFile (
@@ -264,7 +266,7 @@ FinderFile (
 		}	
 #ifdef DEBUG
 printf("FinderFile:    \"%s\"\n", pDta->dta_name);
-#endif
+#endif // DEBUG
 
 //printf("FinderFile 3:  [%d] %s\n", pDta->valid, showFileAttr(fileType));
 
@@ -272,23 +274,32 @@ printf("FinderFile:    \"%s\"\n", pDta->dta_name);
 	}
 
 /* ----------------------------------------------------------------------- *\
-|  FindClose ()	Close a wild card search Version 2 (public version)
+|  FinderClose ()	Close a wild card search Version 2 (public version)
 \* ----------------------------------------------------------------------- */
 	void
 FinderClose (
 	PFW_DTA	pDta)			// Pointer to the search DTA
 
 	{
+#ifdef DEBUG
+	int decrement = FALSE;
+#endif // DEBUG
+
 	if ((pDta)  &&  (pDta->sh != INVALID_HANDLE_VALUE))
 		{
+#ifdef DEBUG
+		decrement = TRUE;
+#endif // DEBUG
 		FindClose(pDta->sh);
 		pDta->sh = INVALID_HANDLE_VALUE;
 		pDta->valid = FALSE;
 		}
 	
 #ifdef DEBUG
-printf("FinderClose\n");
-#endif
+	printf("FinderClose: (%d)\n", FinderDepth);
+	if (decrement)
+		--FinderDepth;
+#endif // DEBUG
 	}
 
 /* ----------------------------------------------------------------------- *\
