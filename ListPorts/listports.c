@@ -93,7 +93,7 @@ BOOL Win9xListPorts(LISTPORTS_CALLBACK lpCbk,LPVOID lpCbkValue)
  *       |-LEVEL3
  *         · CLASS
  *
- * LEVEL1 keys indicate the type of technology (vg., "PCI", "BIOS", "SCSI"). LEVEL2
+ * LEVEL1 keys indicate the type of technology (eg., "PCI", "BIOS", "SCSI"). LEVEL2
  * keys refer to the type of device. So, for instance, "*PNP0501" is for 16550A UARTs.
  * LEVEL3 keys enumerate actual devices installed on the system. The value "CLASS",
  * present in all LEVEL3 keys, informs about the type of driver. For our purposes, we must

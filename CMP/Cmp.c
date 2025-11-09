@@ -2,7 +2,7 @@
 |
 |				      CMP
 |
-|	    Copyright (c) 1985, 1990, 2000, all rights reserved
+|	    Copyright (c) 1985, 1990, 2000, 2025, all rights reserved
 |				Brian W Johnson
 |				   18-Aug-90
 |				   26-Dec-92
@@ -17,6 +17,8 @@
 |				    4-Nov-03 /p and /m options (for NTFS problems)
 |				   29-Sep-07 for 64 bit file sizes
 |				   10-Sep-23 New fnreduce(), fnabspth, pathCopy, etc.
+|				    4-Jun-25 Added ability to directly delete files
+|				   14-Jun-25 Separated flag for system from hidden
 |
 \* ----------------------------------------------------------------------- */
 
@@ -70,7 +72,7 @@ char  *usagedoc [] =
 "    %cd      reports different data in the file pairs",
 "    %cD      also tests directories, including file/dir mismatch",
 "    %ce      reports non-existence of the path2 file    (default)",
-"    %ch      also checks hidden and system files",
+"    %ch      also checks hidden files",
 "    %cl      lists all file names as they are compared",
 "    %cL      also lists the path2 names",
 "    %cn      lists all file names, but does not compare them",
@@ -84,7 +86,8 @@ char  *usagedoc [] =
 "    %cs      reports different sizes of the file pairs  (default)",
 "    %ct      reports different ages of the file pairs   (default)",
 "    %cT nnn  Offset timestamp 1 by (+/-)nnn hours       (default 0)",
-"    %cu      chack files in text mode (slower), else binary (faster))",
+"    %cu      check files in text mode (slower), else binary (faster))",
+"    %cU      Unlink (delete) reported files",
 "    %cv      lists verbose information",
 "    %cw      warning beeps on error",
 "    %cX <pathspec> e/X/cludes (possibly wild) files matching pathspec",
@@ -95,8 +98,9 @@ char  *usagedoc [] =
 "    %cy <td> compares only files younger than <td>",
 "    %cY      reports only \"younger\" files",
 "    %cz      returns a zero completion code even if errors",
+"    %cZ      also checks system files",
 "",
-"Copyright (c) 1988, 1993 by J & M Software, Dallas TX - All Rights Reserved",
+"Copyright (c) 1988, 1993, 2025 by J & M Software, Dallas TX - All Rights Reserved",
 NULL
 };
 
@@ -118,6 +122,7 @@ int	R_flag			= FALSE;		/* show raw times of unsuccessful compares */
 int	s_flag			= FALSE;		/* Report size mismatch */
 int	t_flag			= FALSE;		/* Report Timedate mismatch */
 int	u_flag			= FALSE;		/* UNIX mode (text translation) */
+int	U_flag			= FALSE;		/* Unlink fault files (implies -N) */
 int	v_count			= 0;			/* Verbose information flag */
 int	w_flag			= FALSE;		/* Beep on error flag */
 int	y_flag			= FALSE;		/* Compare only if younger than <td> */
@@ -225,6 +230,29 @@ timebound (
 		&&	((o_flag == FALSE)	||	(t <= oldertime)));
 	}
 
+/*--------------------------------------------------------------------*/
+	static void
+delete_file (		// Deletes the named file (not directories)
+	char *fnp)		// filename (must be a file)
+
+	{
+	int attrib = fgetattr(fnp);
+
+	if ((attrib != (-1)) 
+	&&  ((attrib & ATT_DIR) == 0))
+		{
+		if ( ! q_flag)
+			printf("Deleting \"%s\"", fnp);	// List file 1 for pipeline use
+
+		if ((attrib & ATT_RONLY)
+		&& (fsetattr(fnp, _A_NORMAL) < 0))
+			printf(" (Readonly attribute change failed)");
+		else if (unlink(fnp) != 0)
+			printf(" (failed)");
+		printf("\n");
+		}
+    }
+
 /* ----------------------------------------------------------------------- */
 	void
 main (
@@ -288,7 +316,7 @@ static	char   *optstring = "?aAbBdDeEhHlLnNo:OqQrRsStT:uUvVwWX:y:YzZ";
 				break;
 
 			case 'h':
-				filetypes |= (FW_HIDDEN | FW_SYSTEM);
+				filetypes |= FW_HIDDEN;
 				break;
 
 			case 'l':
@@ -368,7 +396,13 @@ static	char   *optstring = "?aAbBdDeEhHlLnNo:OqQrRsStT:uUvVwWX:y:YzZ";
 				break;
 
 			case 'u':
-				++u_flag;
+				if (option == 'U')
+					{
+					++N_flag;	// List only fault filenames
+					++U_flag;	// Delete fault filenames
+					}
+				else
+					++u_flag;
 				break;
 
 			case 'v':
@@ -411,7 +445,10 @@ static	char   *optstring = "?aAbBdDeEhHlLnNo:OqQrRsStT:uUvVwWX:y:YzZ";
 				break;
 
 			case 'z':
-				z_flag = !z_flag;
+				if (option == 'Z')
+					filetypes |= FW_SYSTEM;
+				else // (option == 'z')
+					z_flag = !z_flag;
 				break;
 
 			case '?':
@@ -565,7 +602,7 @@ filepair1 (void)		// Process the pathnames forward
 	BuildForwardPaths();
 
 	if (v_count >= 1)
-		printf("F Comparing Pat ('%s')\n", pPath2);
+		printf("F Comparing Pat ('%s')  target ('%s')\n", pSearch, pPath2);
 
 	if (fwInit(hp, pSearch, filetypes) != FWERR_NONE)	// Find the first path1 file
 		fwInitError(pSearch);
@@ -610,6 +647,9 @@ filepair1 (void)		// Process the pathnames forward
 	pathCopy(pCompare, pPath1, MAX_PATH);
 	*(pPath1 + TermIndex1) = '\0';
 
+	if (*pPath1 == 0)	// Don't leave it empty
+		strcpy(pPath1, ".");
+
 	if (v_count >= 3)
 		printf("R Search Pat F1 ('%s')  F2 ('%s')\n", pSearch, pPath1);
 	}
@@ -643,7 +683,7 @@ filepair2 (void)		// Process the pathnames backward
 	BuildReversePaths();
 
 	if (v_count >= 1)
-		printf("R Compare Pat ('%s')  target ('%s')\n", pSearch, pPath1);
+		printf("R Comparing Pat ('%s')  target ('%s')\n", pSearch, pPath1);
 
 	if (fwd_enable)	// Don't test these thing going both ways
 		{
@@ -654,6 +694,7 @@ filepair2 (void)		// Process the pathnames backward
 		d_flag  = FALSE;		/* Don't check the data */
 		s_flag  = FALSE;		/* Don't check the size */
 		u_flag  = FALSE;		/* Don't check the size */
+		U_flag  = FALSE;		/* Don't unlink any files */
 		t_flag  = FALSE;		/* Don't check the timedate */
 		}
 
@@ -990,8 +1031,15 @@ process (				/* Compare one pair one of input files */
 		if (different  &&  w_flag  &&  ! N_flag)
 			putchar('\7');
 
-		if (N_flag)
-			printf("\"%s\"\n", fnp1);	// List file 1 for pipeline use
+		if (N_flag) // Either pipelining or deleting
+			{
+			if (! U_flag)
+				printf("\"%s\"\n", fnp1);	// List file/dir 1 for pipeline use
+			else if (type1 == ATT_FILE)
+				delete_file(fnp1);			// Delete file
+			else			
+				printf("\"%s\" can't delete DIR\n", fnp1);	// Don't delete directory
+			}
 		else if (DiffList[0] != '\0')
 			printf("    %s\n", DiffList);
 		}

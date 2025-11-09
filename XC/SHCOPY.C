@@ -43,11 +43,6 @@ should_copy (
 
 	{
 	BOOL        copy_flag = FALSE;
-	int         attrib	    = 0;
-	time_t      dst_dt;
-	time_t      src_dt;
-	UINT64      dst_size;
-	UINT64      src_size;
 //	char       *abssrc;
 
 
@@ -76,34 +71,25 @@ printf("SHcopy dst: \"%s\"\n", dst);
 		goto exit;
 		}
 
-	if (azFlags.u)
-		attrib	= fwtype(hp);
-	src_dt		= fwgetfdt(hp);
-	src_size	= fwsize(hp);
-
-	if (fgetfdt(dst, &dst_dt) != 0)
-		dst_dt = 0;
-	if (fgetsize(dst, &dst_size) != 0)
-		dst_size = 0;
-//	printf("%%lld %lld %lld %lld\n", src_dt, dst_dt, src_size, dst_size);
+//	printf("%%lld %lld %lld %lld\n", src_time, dst_time, src_size, dst_size);
 
 	if (v_flag >= 3)
 		{
-printf("SHcopy srcFdt:  %010llX\n", src_dt);
-printf("SHcopy dstFdt:  %010llX\n", dst_dt);
+printf("SHcopy srcFdt:  %010llX\n", src_time);
+printf("SHcopy dstFdt:  %010llX\n", dst_time);
 printf("SHcopy srcSize: %lld\n",    src_size);
 printf("SHcopy dstSize: %lld\n",    dst_size);
 		}
 
-	if ((azFlags.m  && MISSING(dst_dt) )
-	||  (azFlags.e  && EXIST(dst_dt) )
-	||  (azFlags.y  && EXIST(dst_dt) && NEWER(src_dt, dst_dt) )
-	||  (azFlags.o  && EXIST(dst_dt) && OLDER(src_dt, dst_dt) )
-	||  (azFlags.d  && EXIST(dst_dt) && DIFFERENT(src_dt, dst_dt) )
-	||  (AZ_Flags.d && EXIST(dst_dt) && DIFFERENT(src_size, dst_size) )
-	||  (azFlags.u  && ARCHIVE(attrib) )
-	||  (AZ_Flags.y && NEWERDT(src_dt) )
-	||  (AZ_Flags.o && OLDERDT(src_dt) ) )
+	if ((azFlags.m  && MISSING(dst_time) )
+	||  (azFlags.e  && EXIST(dst_time) )
+	||  (azFlags.y  && EXIST(dst_time) && NEWER(src_time, dst_time) )
+	||  (azFlags.o  && EXIST(dst_time) && OLDER(src_time, dst_time) )
+	||  (azFlags.d  && EXIST(dst_time) && DIFFERENT(src_time, dst_time) )
+	||  (AZ_Flags.d && EXIST(dst_time) && DIFFERENT(src_size, dst_size) )
+	||  (azFlags.u  && ARCHIVE(src_attrib) )
+	||  (AZ_Flags.y && NEWERDT(src_time) )
+	||  (AZ_Flags.o && OLDERDT(src_time) ) )
 		{
 		copy_flag = TRUE;
 		}

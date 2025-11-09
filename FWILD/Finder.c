@@ -164,7 +164,7 @@ TypeMatch (
 	{
 	BOOL	   result	= FALSE;				// The returned result
 	int		   SrchAttr = pDta->SearchAttr;		// The search attribute bitmap
-	int		   fileAttr	= pDta->dta_type;		// The returned bitmap */
+	int		   fileAttr = pDta->dta_type;		// The returned bitmap
 
 #ifdef DEBUG
 	printf("TypeMatch(): filename:  \"%s\"\n", pDta->dta_name);
@@ -204,13 +204,17 @@ FinderOpen (
 	{
 	HANDLE  hFind;				// The returned file handle
 
+#ifdef DEBUG
+printf("FinderOpen: (%d)   \"%s\"\n", FinderDepth, pPattern);
+#endif // DEBUG
 	pDta->sh    = hFind = FindFirstFile(pPattern, &pDta->wfd);
 	pDta->valid = (hFind != INVALID_HANDLE_VALUE);
 
 #ifdef DEBUG
 if (pDta->valid)
 	++FinderDepth;
-printf("FinderOpen: (%d)   \"%s\"\n", FinderDepth, pPattern);
+else
+	printf("FinderOpen error: (%ld)\n", GetLastError());
 #endif // DEBUG
 	return (pDta->valid);
 	}

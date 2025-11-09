@@ -8,6 +8,7 @@
 |						23-Dec-17 Added 'a' response for uncondional deletion mode
 |						30-Aug-21 Added command line options -a and -l
 |						30-Aug-21 Added command line usage and help
+|						21-Jun-25 Made cleaning more complete
 |
 \* ----------------------------------------------------------------------- */
 
@@ -181,200 +182,106 @@ PathCat (
 	}
 
 /* ----------------------------------------------------------------------- *\
-|  Interesting () - Determine whether the found item is to be examined
+|  IgnoredObject () - Determine whether the found item is to be ignored
 \* ----------------------------------------------------------------------- */
-	static BOOL			// Returns TRUE if the item is interesting
-Interesting (
-	char  *s)			// The pointer to the item name
+	static BOOL			// Returns TRUE if the item shoule be ignored
+IgnoredObject (
+	char  *s)			// Pointer to the item name
 
 	{
-	return ((strcmp(s, ".") != 0)  &&  (strcmp(s, "..") != 0));
+	return ((strcmp(s, ".") == 0)  ||  (strcmp(s, "..") == 0));
 	}
 
 /* ----------------------------------------------------------------------- *\
 |  ProcessPath () - Process one recursive level of path processing
 \* ----------------------------------------------------------------------- */
-	static BOOL			// Returns true if the path is not empty, else false
+	static int			// Returns >0 if the path is not empty, else 0 (empty
 ProcessPath (
 	char  *pPath)		// Ptr to the path string
 
 	{
-	BOOL             PathNotEmpty = FALSE;	// The path is not empty flag, starting as empty
-	HANDLE           sh;			// The find search handle
-	WIN32_FIND_DATA  wfd;			// The find information
-	char CurrentFile [1024];		// The current item name, assuming a file
-	char CurrentDir  [1024];		// The current directory name
-	char NewPath     [1024];		// The new base path
+	int				 PathContent = 0;	// The path content count, starting as empty
+	HANDLE           sh;				// The find search handle
+	WIN32_FIND_DATA  wfd;				// The find information
+	char CurrentFile [1024];			// The current item name, assuming a file
+	char CurrentDir  [1024];			// The current directory name
+	char DirPath     [1024];			// The new base path
 
 
 	if (Verbose)
 		printf("Processing path \"%s\"\n", pPath);
 
-	strcpy(NewPath, pPath);		// Make the starting search path
-	PathCat(NewPath, star);
+	strcpy(DirPath, pPath);		// Make the starting search path
+	PathCat(DirPath, star);
 
 	// The following code is a simplified abstraction from the fWild library
 
-	if ((sh = FindFirstFile(NewPath, &wfd)) != INVALID_HANDLE_VALUE)
+	if ((sh = FindFirstFile(DirPath, &wfd)) != INVALID_HANDLE_VALUE)
 		{
 		BOOL   NextResult;		// Result of the next search
 		DWORD  Attr;			// Attributes of the current search
 
 		do  {
 
-			// Save the useful parameters of this search, and perform
-			// the next search, in case the current item is deleted
+			// Save the useful parameters of this search, and perform the
+			// next search, in case the current item (a directory) is deleted
+		
+				Attr = wfd.dwFileAttributes;
+				strcpy(CurrentFile, wfd.cFileName);
+				
+				NextResult = FindNextFile(sh, &wfd);
 
-			Attr = wfd.dwFileAttributes;
-			strcpy(CurrentFile, wfd.cFileName);
-			NextResult = FindNextFile(sh, &wfd);
-
-			if (Interesting(CurrentFile))
+			if (! IgnoredObject(CurrentFile))
 				{
 				if (Attr & FILE_ATTRIBUTE_DIRECTORY)
 					{
-					strcpy(CurrentDir, CurrentFile);	// Current file is a directory
-					strcpy(NewPath, pPath);				// Make the child search path
-					PathCat(NewPath, CurrentDir);
+					strcpy(CurrentDir, CurrentFile);	// Current object is a directory
+					strcpy(DirPath, pPath);				// Make the child search path
+					PathCat(DirPath, CurrentDir);
 
-					// Check if the file/path is excluded
+					// Check if the directory is excluded
 
-					if (fExcludePathCheck(xp, NewPath))
+					if (fExcludePathCheck(xp, DirPath))
 						{
 						if (Verbose)
-//BWJ fix xmode system
 							printf(" Dir  found, \"%s\" (EXCLUDED)\n", CurrentDir);
 
-						PathNotEmpty = TRUE;
+						++PathContent;		// Keeping the directory
 						}
 
-					else if (Attr & FILE_ATTRIBUTE_HIDDEN)
+					else // Checkable directory found, check if it is empty
 						{
+						int result = ProcessPath(DirPath);	// Search it recursively
+
+						if (result == 0)					// Apparently empty
+							{
+							if (PathDelete(DirPath))		// Request deletion
+								result = 1;					// Permission refused, not deleted
+							}
+					
 						if (Verbose)
-							printf(" Dir  found, \"%s\" (HIDDEN)\n", CurrentDir);
-
-						PathNotEmpty = TRUE;
-						}
-
-					else if (Attr & FILE_ATTRIBUTE_SYSTEM)
-						{
-						if (Verbose)
-							printf(" Dir  found, \"%s\" (SYSTEM)\n", CurrentDir);
-
-						PathNotEmpty = TRUE;
-						}
-
-					else
-						{
-						if (Verbose)
-							printf(" Dir  found, \"%s\"\n", CurrentDir);
-
-						PathNotEmpty |= ProcessPath(NewPath);	// Search it recursively
+							printf(" Dir  found, \"%s\"  (%s)\n", CurrentDir, (result ? "non-empty" : "empty"));
+						PathContent += result;
 						}
 					}
-
-				else /* (the current item is a file), and is therefore automatically excluding its parent directory */
+				
+				else // (found a file or other object that must be kept)
 					{
-					if (Verbose > 1)
+					++PathContent;		// Keeping all files
+
+					if (Verbose)
 						printf(" File found, \"%s\"\n", CurrentFile);
-
-					PathNotEmpty = TRUE;
 					}
 				}
-
-			}  while (NextResult  &&  Running);
-			FindClose(sh);
-		}
-
-	// If this directory is empty, try to delete it
-	// If the delete fails, the path is not empty
-
-	if ( ! PathNotEmpty)
-		PathNotEmpty |= PathDelete(pPath);
-
-	if (Verbose)
-		printf("Returning \"%s\"%s empty\n", pPath, (PathNotEmpty ? " not" : ""));
-
-	return (PathNotEmpty);
-	}
-
-/* ----------------------------------------------------------------------- *\
-|  ProcessRootPath () - Process the first level of root level recursive path processing
-\* ----------------------------------------------------------------------- */
-	void
-ProcessRootPath (
-	char  *pPath)		// Ptr to the path string
-
-	{
-	HANDLE           sh;			// The find search handle
-	WIN32_FIND_DATA  wfd;			// The find information
-	char CurrentFile [1024];		// The current item name, assuming a file
-	char CurrentDir  [1024];		// The current directory name
-	char NewPath     [1024];		// The new base path
-
-
-	if (Verbose)
-		printf("Processing root \"%s\"\n", pPath);
-
-	strcpy(NewPath, pPath);		// Make the starting search path
-	PathCat(NewPath, star);
-
-	// The following code is a simplified abstraction from the fWild library
-
-	if ((sh = FindFirstFile(NewPath, &wfd)) != INVALID_HANDLE_VALUE)
-		{
-		BOOL   NextResult;		// Result of the next search
-		DWORD  Attr;			// Attributes of the current search
-		do  {
-
-			// Save the useful parameters of this search, and perform
-			// the next search, in case the current item is deleted
-
-			Attr = wfd.dwFileAttributes;
-			strcpy(CurrentFile, wfd.cFileName);
-			NextResult = FindNextFile(sh, &wfd);
-
-			if ((Interesting(CurrentFile))
-			&&  (Attr & FILE_ATTRIBUTE_DIRECTORY))
-				{
-				strcpy(CurrentDir, CurrentFile);	// Current file is a directory
-				strcpy(NewPath, pPath);				// Make the child search path
-				PathCat(NewPath, CurrentDir);
-
-				// Check if the file/path is excluded
-
-				if (fExcludePathCheck(xp, NewPath))
-					{
-					if (Verbose)
-//BWJ fix xmode system
-						printf(" Dir  found, \"%s\" (EXCLUDED)\n", CurrentDir);
-					}
-
-				else if (Attr & FILE_ATTRIBUTE_HIDDEN)
-					{
-					if (Verbose)
-						printf(" Dir  found, \"%s\" (HIDDEN)\n", CurrentDir);
-					}
-
-				else if (Attr & FILE_ATTRIBUTE_SYSTEM)
-					{
-					if (Verbose)
-						printf(" Dir  found, \"%s\" (SYSTEM)\n", CurrentDir);
-					}
-
-				else
-					{
-					if (Verbose)
-						printf(" Dir  found, \"%s\"\n", CurrentDir);
-
-					ProcessPath(NewPath);			// Begin a recursive search of this directory
-					}
-				}
-			}  while (NextResult  &&  Running);
+			} while ((NextResult != 0)  &&  Running);
+		
 		FindClose(sh);
 		}
 
-	return;
+	if (Verbose)
+		printf("Returning \"%s\"%s empty\n", pPath, ((PathContent > 0) ? " not" : ""));
+
+	return (PathContent);
 	}
 
 /* ----------------------------------------------------------------------- *\
@@ -400,8 +307,6 @@ Process (char *p)		// Ptr to the raw path string
 		printf("Usage: CleanDir [path1] .. [pathN]\n");
 		exitcode = 1;
 		}
-	else if (IsRootPath(pPath))
-		ProcessRootPath(pPath);
 	else
 		ProcessPath(pPath);
 

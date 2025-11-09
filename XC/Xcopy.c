@@ -126,20 +126,26 @@ PRIVATE void    filepair (char *s1, char *s2);
 
 /**********************************************************************/
 
-A_Z_FLAGS       AZ_Flags             = {0};
-A_Z_FLAGS       azFlags              = {0};
-int				v_flag				 = 0;
-unsigned int    bsize                = 0;
-time_t          timedelta            = 0L;	/* Timestamp compare correction */
-char *          buffer               = NULL;
-int             cols                 = 40;
-UINT64          filesize             = 0;
-int             mode                 = 0;
-time_t          o_time               = 0L;
-char            path_char            = 0;
+A_Z_FLAGS       AZ_Flags            = {0};
+A_Z_FLAGS       azFlags             = {0};
+int				v_flag				= 0;
+unsigned int    bsize               = 0;
+time_t          timedelta           = 0L;	/* Timestamp compare correction */
+char *          buffer              = NULL;
+int             cols                = 40;
+UINT64          filesize            = 0;
+int             mode                = 0;
+char            path_char           = 0;
+int				src_attrib			= 0;
+UINT64			src_size			= 0L;
+UINT64			dst_size			= 0L;
+time_t          src_time			= 0L;
+time_t          dst_time			= 0L;
+time_t          o_time              = 0L;
+time_t          y_time              = 0L;
 char            temp_name [MAX_PATH] = "";
-time_t          y_time               = 0L;
-int				copy_rename		     = 0;	// Enables direct copy and rename option
+
+int				copy_rename		    = 0;	// Enables direct copy and rename option
 
 PHP		hp = NULL;				// FWILD instance pointer
 PEX		xp = NULL;				// FEX instance pointer
@@ -405,10 +411,14 @@ printf("FP dstp: \"%s\"\n", pDstPath);
 printf("-pDstName  \"%s\"\n", pDstName);
 printf("-pSrcPath  \"%s\"\n", pDstPath);
 printf("-pSrcName  \"%s\"\n", pSrcName);
-printf("-[%d]       \"%s\"\n", CatIndex, (pSrcName + CatIndex));
+printf("-CatIndex  [%d]  \"%s\"\n", CatIndex, (pSrcName + CatIndex));
 					}
 				if ((_fncatpth(pDstName, pDstPath, (pSrcName + CatIndex))) != 0)
 					fatal("dst pathspec error 3");
+				if (v_flag > 3)
+					{
+printf("-pDstName  \"%s\"\n", pDstName);
+					}
 				pDstEffPath = pDstPath;
 				}
 
@@ -420,6 +430,22 @@ printf("FP1 EP:   \"%s\"\n", pDstEffPath);
 fflush(stdout);
 				}
 
+			src_attrib	= fwtype(hp);
+			src_time	= fwgetfdt(hp);
+			src_size	= fwsize(hp);
+
+			if (fgetfdt(pDstName, &dst_time) != 0)
+				dst_time = 0;
+			if (fgetsize(pDstName, &dst_size) != 0)
+				dst_size = 0;
+
+	if (v_flag >= 3)
+		{
+printf("F1 srcFdt:  %010llX\n", src_time);
+printf("F2 dstFdt:  %010llX\n", dst_time);
+printf("F1 srcSize: %lld\n",    src_size);
+printf("F2 dstSize: %lld\n",    dst_size);
+		}
 			process(hp, pSrcName, pDstName, pDstEffPath);
 
 			} while ((pSrcName = fWild(hp)) != NULL);

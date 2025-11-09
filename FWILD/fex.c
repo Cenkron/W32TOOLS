@@ -35,6 +35,9 @@
 #include  "fWild.h"
 
 // -----------------------------------------------------------------------
+//	#define DEBUG
+
+// -----------------------------------------------------------------------
 // Private data
 // -----------------------------------------------------------------------
 
@@ -507,7 +510,7 @@ fExcludePathCheck (				// Check if a file/path is excluded
 	EXITEM  item;				// Exclusion item structure
 static char path [MAX_PATH];
 
-
+//printf("0\n");
 	if (pPath == NULL)					// NULL pointer not allowed
 		return (TRUE);					// Excluded by definition
 
@@ -522,6 +525,7 @@ static char path [MAX_PATH];
 	if ((item.depth = GetDepth(path, &item.drive)) < 0)
 		return (TRUE);					// Excluded because path invalid
 
+//printf("1\n");
 	pBody  = PointPastPrefix(path);		// Skip over the path prefix (and any root separator)
 	pTemp  = pBody;						// Working pointer into the body
 	item.type = ATT_DIR;				// Assume there will be directory segments
@@ -529,6 +533,7 @@ static char path [MAX_PATH];
 	// The path body contains some number (>= 0) of directories and a file
 	// Check each segment of the path body for exclusion
 	
+//printf("2\n");
 	while ((pSep = strchr(pTemp, PATHCH)) != NULL)
 		{
 		*pSep = NULCH;					// NUL the segment separator
@@ -543,7 +548,7 @@ static char path [MAX_PATH];
 			pathCopy(item.name, pTemp, MAX_COPY);	// Copy the segment for checking
 			if (fExcludeCheck(xp, &item))
 				{
-//printf("Excluded %s\n", pPath);
+//  printf("Excluded %s\n", pPath);
 				return (TRUE);			// Segment is excluded, so path is excluded
 				}
 			++item.depth;				// Advance the depth for the next segment		
@@ -553,8 +558,9 @@ static char path [MAX_PATH];
 
 	// At this point, pTemp points the filename segment
 
+//printf("3\n");
 	pathCopy(item.name, pTemp, MAX_COPY);	// Copy the segment for checking
-	item.type = ATT_FILE;
+//	item.type = ATT_FILE;
 	return (fExcludeCheck(xp, &item));	// if filename is excluded, path is excluded
 	}
 

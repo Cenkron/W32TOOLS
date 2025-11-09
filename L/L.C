@@ -51,6 +51,7 @@ char  *usagedoc [] =
 "    %cd        List only directories, not files (default both)",
 "    %cD        Enable listing \"Access Denied\" warnings",
 "    %ce        Check only for existence of the files",
+"    %cee       Report missing files",
 "    %cE        Don't do automatic directory expansion",
 "    %cf        List only files, not directories (default all)",
 "    %cF pnstaw Determine the list format (default \"psta\")",
@@ -103,7 +104,8 @@ NULL
 int		defflg = TRUE;					/* Use the defaults flag */
 int		b_flag = FALSE;					/* List lengths in hexadecimal flag */
 int		c_flag = FALSE;					/* List all files/directories flag */
-int		e_flag = TRUE;					/* Existence check flag */
+int		e_flag = 0;						/* Existence check flag */
+										/* 0 = Normal, 1 = exitcode only, 2 = list not found */
 int		E_flag = FALSE;					/* Don't do automatic directory expansion */
 int		H_flag = FALSE;					/* List only hidden files and/or directories */
 int		i_flag = FALSE;					/* Take pathnames from stdin (automatic) */
@@ -112,7 +114,7 @@ int		m_flag = FALSE;					/* List in "more" mode */
 int		o_flag = FALSE;					/* List older than <td> flag */
 int		p_flag = FALSE;					/* List parameters flag */
 int		r_flag = FALSE;					/* List at requested rate flag */
-int		q_flag = FALSE;					/* Quiet errors flag */
+int		q_flag = TRUE;					/* Quiet errors flag */
 int		S_flag = FALSE;					/* List only hidden files and/or directories */
 int		t_flag = FALSE;					/* File and byte total flag */
 int		u_flag = FALSE;					/* Upper case flag */
@@ -141,7 +143,7 @@ UINT32	ftotal = 0;						/* Total file count */
 UINT32	dtotal = 0;						/* Total directory count */
 
 int		exitcode = 0;					/* Exit code - assume success */
-int		itemcode = 0;					/* Exit code for each item */
+int		itemcode = 1;					/* Exit code for each item */
 
 int		QuoteFlag = 1;					/* Quote filenames with spaces */
 
@@ -249,8 +251,8 @@ static	char   *optstring = "?aA:bcC:dDeEfF:hHlL:mM:nN:o:O:pP:qQrR:sStTuUvwW:VxX:
 			case 'e':
 				if (option == 'E')
 					E_flag = TRUE;
-				else
-					e_flag = FALSE;
+				else // (option == 'e')
+					++e_flag;
 				break;
 
 			case 'f':
@@ -264,8 +266,9 @@ static	char   *optstring = "?aA:bcC:dDeEfF:hHlL:mM:nN:o:O:pP:qQrR:sStTuUvwW:VxX:
 					}
 				else // (option == 'f')
 					{
-					smode |=  FW_FILE;					}
+					smode |=  FW_FILE;
 					smode &= ~FW_DIR;
+					}
 				break;
 
 			case 'h':
@@ -361,7 +364,7 @@ static	char   *optstring = "?aA:bcC:dDeEfF:hHlL:mM:nN:o:O:pP:qQrR:sStTuUvwW:VxX:
 						}
 					outrate = (int)(ltemp);
 					}
-				else
+				else // (option == 'r')
 					r_flag = TRUE;
 				break;
 
@@ -376,7 +379,7 @@ static	char   *optstring = "?aA:bcC:dDeEfF:hHlL:mM:nN:o:O:pP:qQrR:sStTuUvwW:VxX:
 					{
 					rawTimeFlag = TRUE;
 					}
-				else
+				else // (option == 't')
 					{
 					defflg  = FALSE;
 					LoopEnb = TRUE;
@@ -398,7 +401,7 @@ static	char   *optstring = "?aA:bcC:dDeEfF:hHlL:mM:nN:o:O:pP:qQrR:sStTuUvwW:VxX:
 					DispEnb = FALSE;
 					V_flag  = TRUE;
 					}
-				else
+				else // (option == 'v')
 					{
 					++verbose;
 					}
@@ -475,6 +478,7 @@ static	char   *optstring = "?aA:bcC:dDeEfF:hHlL:mM:nN:o:O:pP:qQrR:sStTuUvwW:VxX:
 
 	if (i_flag)
 		{
+//		printf("Using stdin\n");
 		while ((ap = UseStdin()) != NULL)				// Process the stdin list
 			{
 			if (V_flag > 0)					// Process the volume name
@@ -488,7 +492,7 @@ static	char   *optstring = "?aA:bcC:dDeEfF:hHlL:mM:nN:o:O:pP:qQrR:sStTuUvwW:VxX:
 			}
 		}
 
-	else if (optind >= argc)				// if no filespec provided, use default ""
+	else if (optind >= argc)				// if no filespec provided, use default "" (empty)
 		{
 		ProcessLoop("");
 		}
@@ -497,7 +501,7 @@ static	char   *optstring = "?aA:bcC:dDeEfF:hHlL:mM:nN:o:O:pP:qQrR:sStTuUvwW:VxX:
 		{
 		while (optind < argc)				// Process the command line list
 			{
-			ap = argv[optind++];
+			ap = argv[optind++];			// Remember the name for -ee switch
 			if (V_flag > 0)					// Process the volume name
 				VolPrint(ap);
 			if (LoopEnb)
@@ -520,6 +524,7 @@ ProcessLoop (
 	const char *pPattern)		// Search pathspec
 
 	{
+	int    found = 0;			// found count
 	char  *fnp;					// Found file name pointer
 
 	pathCopy(pSrch, pPattern, MAX_COPY);		// Copy the pathspec
@@ -532,13 +537,24 @@ ProcessLoop (
 //		pathCat(pSrch, "*", MAX_COPY);
 
 	if (verbose > 0)
+		{
 printf("L2 Pattern: \"%s\"\n", pSrch);
+printf("L2 Mode:    \"%04X\"\n", smode);
+		}
 
 	if (fwInit(hp, pSrch, smode) != FWERR_NONE)	// Process the pattern
 		fwInitError(pSrch);
 	fExcludeConnect(xp, hp);					// Connect the exclusion instance
 	while (fnp = fWild(hp))						// Process each filespec
-		Process(fnp);
+		{
+		++found;
+		if (e_flag < 2)
+			Process(fnp);
+		}
+
+	if ((found == 0)  &&  (e_flag >= 2))
+		printf("%s\n", pSrch);					// Reporting only not founds
+
 
 	if ((itemcode != 0)
 	&& (( ! t_flag)  &&	 ( ! q_flag)))
@@ -572,7 +588,7 @@ printf("L: Attr:  \"%s\"\n", showFileAttr(type));
 			{
 			++dtotal;
 			itemcode = 0;
-			if (e_flag && DispEnb)	// If file/directory listing is enabled
+			if ((e_flag == 0)  &&  DispEnb)	// If file/directory listing is enabled
 				fdpr();
 			}
 		}
@@ -584,7 +600,7 @@ printf("L: Attr:  \"%s\"\n", showFileAttr(type));
 			++ftotal;
 			btotal += size;
 			itemcode = 0;
-			if (e_flag && DispEnb)	// If file/directory listing is enabled
+			if ((e_flag == 0)  &&  DispEnb)	// If file/directory listing is enabled
 				fdpr();
 			}
 		}

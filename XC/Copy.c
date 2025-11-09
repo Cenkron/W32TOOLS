@@ -33,7 +33,6 @@ copy (char *src, char *dst, char *path)
 	const int	p_flag = azFlags.p;
 	int			pmode;
 	int			errorflg; // == FALSE;
-	time_t		src_dt;
 
 #ifdef DEBUG
 printf("Copy Entry \"%s\",  \"%s\",  \"%s\"\n", src, dst, path);
@@ -149,10 +148,7 @@ printf("\nunlink copy temp_name \"%s\"\n", temp_name);
 			unlink(temp_name);
 			}
 
-		if ((fgetfdt(src, &src_dt)) != 0)
-			error(dst, "error getting source time/date");
-
-		else if (fsetfdt(dst, src_dt) != 0)
+		if (fsetfdt(dst, src_time) != 0)
 			error(dst, "error setting destination time/date");
 		}
 

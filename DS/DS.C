@@ -35,6 +35,7 @@ usagedoc[] = {
 	"               (or drive x: if -dx: specified)",
 	"               return errorlevel == 1 if fileset will not fit",
 	"-h       hidden: include hidden files",
+	"-l       list as single line with directory and total bytes",
 	"-s       system: include system files",
 	"-b       brief: no output to screen",
 	"-v       verbose: output directory name also",
@@ -67,6 +68,7 @@ BOOL            bBflag          = FALSE;
 BOOL            bDflag          = FALSE;
 BOOL            bFflag          = FALSE;
 BOOL            bHflag          = FALSE;
+BOOL            bLflag          = FALSE;
 BOOL            bQflag          = FALSE;
 BOOL            bSflag          = FALSE;
 BOOL            bVflag          = FALSE;
@@ -137,7 +139,7 @@ main (
 
 	optenv = getenv("DS");
 
-	while ((c=getopt(argc, argv, "?bBd:D:fFhHqQsSvVX:")) != EOF)
+	while ((c=getopt(argc, argv, "?bBd:D:fFhHlLqQsSvVX:")) != EOF)
 		{
 		switch (tolower(c))
 			{
@@ -167,6 +169,7 @@ main (
 			case 'b':		++bBflag;	break;
 			case 'f':		++bFflag;	break;
 			case 'h':		++bHflag;	break;
+			case 'l':		++bLflag;	break;
 			case 'q':		++bQflag;	break;
 			case 's':		++bSflag;	break;
 			case 'v':		++bVflag;	break;
@@ -200,70 +203,78 @@ main (
 		process("*");
 		}
 
-	if (!bBflag)
+	if (bLflag)
 		{
-		if (bVflag)
-			printf("%s:  ", szLegend);
-		printf("%s byte%c used in %I64u file%c\n",
-			km_bytes(TotalData), plural(TotalData), Files, plural(Files));
+		printf("%s		%I64u\n", szLegend, TotalData);
 		}
 
-	if (bFflag && !bBflag && !bDflag)
+	else	
 		{
+		if (!bBflag)
+			{
+			if (bVflag)
+				printf("%s:  ", szLegend);
+			printf("%s byte%c used in %I64u file%c\n",
+				km_bytes(TotalData), plural(TotalData), Files, plural(Files));
+			}
+
+		if (bFflag && !bBflag && !bDflag)
+			{
 #if defined (PS2)
-		if (bVflag)
-			printf("%s:  ", szLegend);
-		i = DiskCount(mfd_total, MFD_DISK);
-		printf("%s byte%c free required on ", km_bytes(mfd_total), plural(mfd_total));
-		printf("%3I64u 3.5\"  HD diskette%c\n", i, plural(i));
+			if (bVflag)
+				printf("%s:  ", szLegend);
+			i = DiskCount(mfd_total, MFD_DISK);
+			printf("%s byte%c free required on ", km_bytes(mfd_total), plural(mfd_total));
+			printf("%3I64u 3.5\"  HD diskette%c\n", i, plural(i));
 #endif
 
 #if defined (AT)
-		if (bVflag)
-			printf("%s:  ", szLegend);
-		i = DiskCount(dr_total, AT_DISK);
-		printf("%s byte%c free required on ", km_bytes(at_total), plural(at_total));
-		printf("%3I64u 5.25\" HD diskette%c\n", i, plural(i));
+			if (bVflag)
+				printf("%s:  ", szLegend);
+			i = DiskCount(dr_total, AT_DISK);
+			printf("%s byte%c free required on ", km_bytes(at_total), plural(at_total));
+			printf("%3I64u 5.25\" HD diskette%c\n", i, plural(i));
 #endif
 
 #if defined (XT)
-		if (bVflag)
-			printf("%s:  ", szLegend);
-		i = DiskCount(dr_total, XT_DISK);
-		printf("%s byte%c free required on ", km_bytes(xt_total), plural(xt_total));
-		printf("%3I64u 5.25\" DD diskette%c\n", i, plural(i));
+			if (bVflag)
+				printf("%s:  ", szLegend);
+			i = DiskCount(dr_total, XT_DISK);
+			printf("%s byte%c free required on ", km_bytes(xt_total), plural(xt_total));
+			printf("%3I64u 5.25\" DD diskette%c\n", i, plural(i));
 #endif
-		}
+			}
 
 #if defined (CUR)
-	if (!bBflag && !bDflag)
-		{
-		if (bVflag)
-			printf("%s:  ", szLegend);
-		printf("%s byte%c consumed on current disk\n", km_bytes(dr_total), plural(dr_total));
-		}
-#endif
-
-#if defined (CUR)
-	if (!bBflag && bDflag)
-		{
-		if (bVflag)
-			printf("%s:  ", szLegend);
-		i = DiskCount(dr_total, DR_DISK);
-		printf("%s bytes free required on ", km_bytes(dr_total));
-		printf("%3I64u diskette%c\n", i, plural(i));
-		}
+		if (!bBflag && !bDflag  && !bLflag)
+			{
+			if (bVflag)
+				printf("%s:  ", szLegend);
+			printf("%s byte%c consumed on current disk\n", km_bytes(dr_total), plural(dr_total));
+			}
 #endif
 
 #if defined (CUR)
-	if (bQflag)
-		{
-		if (FreeSpace < dr_total)
-			retval = 1;
-		if (!bBflag)
-			printf("Fileset will probably%s fit\n", retval ? " not" : "");
-		}
+		if (!bBflag && bDflag)
+			{
+			if (bVflag)
+				printf("%s:  ", szLegend);
+			i = DiskCount(dr_total, DR_DISK);
+			printf("%s bytes free required on ", km_bytes(dr_total));
+			printf("%3I64u diskette%c\n", i, plural(i));
+			}
 #endif
+
+#if defined (CUR)
+		if (bQflag)
+			{
+			if (FreeSpace < dr_total)
+				retval = 1;
+			if (!bBflag)
+				printf("Fileset will probably%s fit\n", retval ? " not" : "");
+			}
+#endif
+		}
 
 	xp = fExcludeClose(xp);				// Close the Exclusion instance
 	hp = fwClose(hp);					// Close the fWild instance

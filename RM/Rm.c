@@ -151,7 +151,7 @@ main (
 
 			case 'd' :
 				++d_flag;
-				verbosity = 1;
+//				++verbosity;
 				break;
 
 			case 'h' :
@@ -218,12 +218,15 @@ main (
 
 	i_flag = ( ! isatty(fileno(stdin)));
 
+	if (verbosity > 0)
+		printf("Verbosity = %d\n", verbosity);
+
 	if (i_flag)
 		{
 		while ((pathName = UseStdin()) != NULL)		// Process the stdin list
 			{
 			if (verbosity > 1)
-				printf("PathName (stdin): \"%s\"\n", pathName);
+				printf("PatternName (stdin): \"%s\"\n", pathName);
 			++NumberRequests;
 
 			processLoop(pathName, attrib);
@@ -239,7 +242,7 @@ main (
 			{
 			pathName = argv[optind++];
 			if (verbosity > 1)
-				printf("PathName (cmd): \"%s\"\n", pathName);
+				printf("PatternName (cmd): \"%s\"\n", pathName);
 			++NumberRequests;
 			processLoop(pathName, attrib);
 
@@ -273,6 +276,9 @@ processLoop (
 	char *t;
 	BOOL  flag = FALSE;
 
+
+	if (verbosity > 1)
+		printf("PathName loop \"%s\"\n", s);
 
 	if (fwInit(hp, s, attr) != FWERR_NONE)	// Process the pattern
 		fwInitError(s);
@@ -315,6 +321,9 @@ proc_file (
 	int		attrib	= fwtype(hp);
 	int		result;
 	time_t	fdt = 0;
+
+	if (verbosity > 2)
+		printf("PathName proc \"%s\"\n", s);
 
 	if ((attrib != (-1)) 
 	&&  (attrib & ATT_DIR))

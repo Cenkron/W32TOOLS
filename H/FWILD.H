@@ -61,7 +61,7 @@ typedef unsigned __int64  UINT64, *PUINT64;
 #ifdef  FWILD_INTERNAL
 #define  FW_VOLU		(0x08)			// Volume name request
 #endif
-#define  FW_FILE		(0x40)			// Ordinary file request (synthetic)
+#define  FW_FILE		(0x80)			// Ordinary file request (synthetic)
 
 // Allow fWild to print Access Denied warnings (synthetic)
 
@@ -69,8 +69,8 @@ typedef unsigned __int64  UINT64, *PUINT64;
 
 #define FW_ALLAD	(FW_FILE | FW_DIR | FW_HIDDEN | FW_SYSTEM | FW_AD)
 #define FW_ALL		(FW_FILE | FW_DIR | FW_HIDDEN | FW_SYSTEM)
-#define ATT_ALL		(ATT_RONLY | ATT_HIDDEN | ATT_SYSTEM\
-					| ATT_VOLU | ATT_DIR | ATT_ARCH | ATT_FILE
+//#define ATT_ALL		(ATT_RONLY | ATT_HIDDEN | ATT_SYSTEM\
+//					| ATT_VOLU | ATT_DIR | ATT_ARCH | ATT_FILE
 
 // File/directory  attribute bit definitions
 
@@ -80,7 +80,7 @@ typedef unsigned __int64  UINT64, *PUINT64;
 #define  ATT_VOLU		(0x08)			// Volume identification
 #define  ATT_DIR		(0x10)			// Subdirectory file
 #define  ATT_ARCH		(0x20)			// File not archived
-#define  ATT_FILE		(0x40)			// Ordinary file request (synthetic)
+#define  ATT_FILE		(0x80)			// Ordinary file request (synthetic)
 #define  ATT_NONE		(0x00)			// FinderFile() failure (synthetic)
 
 // File exclusion control attributes

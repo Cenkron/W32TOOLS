@@ -774,7 +774,7 @@ printf("Search path:  \"%s\"\n", pOrgPattern);
 	// Skip past the prefix and fix up the pattern string if it is incomplete.
 
 	char *pBody = PointPastPrefix(pPattern);
-	char *pTail = _fntail(pBody);			// Skip to the tail
+//	char *pTail = _fntail(pBody);			// Skip to the tail
 
 #if 0	// Design for the following algorithm
 	If caller wants:		FILE		DIR			FILE || DIR
@@ -784,6 +784,12 @@ printf("Search path:  \"%s\"\n", pOrgPattern);
 	if path wild			as is		as is		as is
 	if path is a file		as is		as is		as is
 	if path is a dir		append "*"	as is		as is
+#endif
+
+#ifdef VERBOSEOUT
+printf("Search pattern:  \"%s\"\n", pPattern);
+printf("Search pBody:    \"%s\"\n", pBody);
+//printf("Search pTail:    \"%s\"\n", pTail);
 #endif
 
 	if (strlen(pBody) == 0)					// If no search string body,
@@ -798,9 +804,9 @@ printf("Search path:  \"%s\"\n", pOrgPattern);
 
 	else if ((! isWild(pBody))				// If the body is not wild,
 		 &&  (fnchkdir(pPattern))			// and the path is a dir,
-		 &&  (! (CallerAttr & FW_DIR)))		// and the caller doesn't want dirs,
+		 &&  ((CallerAttr & FW_FILE)))		// and the caller wants files,
 			pathCat(pBody, "*", MAX_COPY);	//   append "*" for files
-
+	
 #ifdef VERBOSEOUT
 printf("Pattern path:  \"%s\"\n", pPattern);
 #endif
@@ -979,20 +985,37 @@ printf("\n Inherit from parent - level %d\n", (pLev-1)->index);
 		pathCopy(pLev->found,   pParent->found, FWP_MAX);
 		pLev->patConcat  = (pLev->pattern + strlen(pLev->pattern));
 		pLev->fndConcat  = (pLev->found  + strlen(pLev->found));
+
+#ifdef VERBOSEOUT
+printf("Found path:   \"%s\"\n", pParent->found);
+printf("Search path:  \"%s\"\n", pLev->pattern);
+#endif
 		}
 
 	switch (pSeg->type)			// Prepare the pattern or found path
 		{
 		default:
+
+#ifdef VERBOSEOUT
+printf("case default\n");
+#endif
 			fat_err(INV_TYPE, pLev->pattern);
 			break;
 
 		case TYPE_ROOT:
+
+#ifdef VERBOSEOUT
+printf("case ROOT\n");
+#endif
 				strcat(pLev->fndConcat, pSeg->buffer);
 			break;
 
 		case TYPE_NORMAL:
 			{
+
+#ifdef VERBOSEOUT
+printf("case NORM\n");
+#endif
 			if (pSeg->terminal)
 				strcat(pLev->patConcat, "*");
 			else			
@@ -1003,6 +1026,10 @@ printf("\n Inherit from parent - level %d\n", (pLev-1)->index);
 		case TYPE_WILD:
 		case TYPE_RWLD:
 			{
+//BWJ
+#ifdef VERBOSEOUT
+printf("case WILD or RWILD\n");
+#endif
 				strcat(pLev->patConcat, "*");
 			break;
 			}
@@ -1021,10 +1048,14 @@ printf("\n Inherit from parent - level %d\n", (pLev-1)->index);
 	static int			// Returns FALSE to fail, fatal error to abort
 AnalyzeError (
 	const char *path,	// Search pathspec that failed to open
-	int			enable)	// TRUE to enable printing access denied meassage
+	int			enable)	// TRUE to enable printing access denied message
   
 	{
 	DWORD error = GetLastError();		// The windows error code
+
+#ifdef VERBOSEOUT
+printf("AnalyzeError: %d, ( %s)\n", error, path);
+#endif
 
 	switch (error)
 		{
@@ -1059,6 +1090,11 @@ SearchOpen (		// Returns TRUE for OK to continue, FALSE to fail
 
 	{
 PROGRESS("SearchOpen\n")
+
+#ifdef VERBOSEOUT
+printf("Search path:  \"%s\"\n", pLev->pattern);
+#endif
+
 	if (FinderOpen(&pLev->dta, pLev->pattern))
 		return (TRUE);
 	else
@@ -1229,7 +1265,7 @@ SHOWDTA
 
 	pLev->state = ST_ROOT_NT_1;
 	if (! isExcluded(hp, pLev, ATT_DIR))			// If not excluded,
-		Search_UP(hp, pLev, (pLev->segIndex+1), 1);	//   advance to the next level
+		Search_UP(hp, pLev, (pLev->segIndex+1), 1);	//   advance to the next (deeper) level
 	break; // exit the state
 	}
 
@@ -1264,7 +1300,7 @@ SHOWDTA
 
 	pLev->state = ST_NORM_NT_1;
 	if (! isExcluded(hp, pLev, ATT_DIR))			// If not excluded,
-		Search_UP(hp, pLev, (pLev->segIndex+1), 1);	//   advance to the next level
+		Search_UP(hp, pLev, (pLev->segIndex+1), 1);	//   advance to the next (deeper) level
 	break; // exit the state
 	}
 
@@ -1374,7 +1410,7 @@ SHOWLEV("ST_WILD_NT_1")
 			continue;									// Otherwise, skip over it
 
 		strcat(pLev->found, "\\");						// Add the separator, and
-		Search_UP(hp, pLev, (pLev->segIndex+1), 1);		//   advance to next level
+		Search_UP(hp, pLev, (pLev->segIndex+1), 1);		//   advance to next (deeper) level
 		break; // exit the loop
 		}
 	break; // exit the state

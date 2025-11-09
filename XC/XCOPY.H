@@ -37,6 +37,11 @@ extern          char    temp_name [];	// MAX_PATH
 extern          char    path_char;
 extern          int     cols;
 
+extern	 		UINT64	src_size;
+extern			UINT64	dst_size;
+extern			int		src_attrib;
+extern          time_t  src_time;
+extern          time_t  dst_time;
 extern          time_t  o_time;
 extern          time_t  y_time;
 
