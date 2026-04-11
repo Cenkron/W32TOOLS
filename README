@@ -1,10 +1,18 @@
+This repository is now complete, from the perspective of the author.
+There will likely be no more updates due to the age of the author.
+Blanket permission is now granted to any and all who might wish to take
+over this repository for the purpose of continuing it into the future.
+
 This repository is a collection of command line utility tools for
 Windows, and are similar to the command line utilities provided by
 unix, Linux, and other unix-like operating systems.
 
 It was built for those, like the author, that think there is a time
 and place for file management and other activities via the command
-line, as well as a time and place for the visual utilites.
+line, as well as a time and place for the visual utilites.  The
+original motivating purpose was for file backup and restore, in the
+days of DOS 3.2.  These utilities have been used for that purpose
+since their inception.
 
 These tools are quite similar to the unix style utilities in purpose,
 but most provide significantly more capabilities, and cater to the
